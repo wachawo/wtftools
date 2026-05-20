@@ -577,10 +577,13 @@ def cmd_explain(args: argparse.Namespace) -> int:
         print(explain_mod.render_prompt(results, host=host))
         return 0
 
-    suggestions = explain_mod.explain_results(results, include_ok=args.all)
+    deep = getattr(args, "deep", False)
+    suggestions = explain_mod.explain_results(results, include_ok=args.all,
+                                              deep=deep)
     if args.format == "json":
         payload = [
-            {"name": s.name, "status": s.status, "message": s.message, "advice": s.advice}
+            {"name": s.name, "status": s.status, "message": s.message,
+             "advice": s.advice, "investigation": s.investigation}
             for s in suggestions
         ]
         print(json.dumps(payload, indent=2, default=str))
@@ -597,6 +600,10 @@ def cmd_explain(args: argparse.Namespace) -> int:
         # Wrap advice loosely; keep it readable on 80-col terminals.
         for paragraph in s.advice.split("\n"):
             print(f"      {paragraph}")
+        if s.investigation:
+            print(f"      {colors.dim('── investigation ──')}")
+            for line in s.investigation:
+                print(f"      {line}")
         print("")
     return 0
 
@@ -1268,6 +1275,10 @@ def build_parser() -> argparse.ArgumentParser:
                          help="Look-back window for time-bounded checks (default: 24)")
     explain.add_argument("--all", action="store_true",
                          help="Also explain OK results (default: only WARN/FAIL)")
+    explain.add_argument("--deep", action="store_true",
+                         help="Run dynamic investigation per finding (du -d1 on the "
+                              "filling mount, docker system df, container/log sizes). "
+                              "Slower; opt-in.")
     explain.add_argument("--prompt", action="store_true",
                          help="Print an LLM-ready prompt instead of built-in advice. "
                               "Pipe it: `wtf explain --prompt | claude` or `| ollama run llama3`.")

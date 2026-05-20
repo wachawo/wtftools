@@ -12,10 +12,11 @@ Two modes:
    LLM and get a synthesized diagnosis without bundling an LLM dependency.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple, Union
 
 from wtftools.audit import CheckResult
+from wtftools.checks import sysinfo
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Suggestion:
     status: str
     message: str
     advice: str
+    investigation: List[str] = field(default_factory=list)
 
 
 SuggestionAdvice = Union[str, Callable[[CheckResult], str]]
@@ -226,13 +228,85 @@ def suggest(result: CheckResult) -> Suggestion:
                       message=result.message, advice=_FALLBACK)
 
 
-def explain_results(results: List[CheckResult], include_ok: bool = False) -> List[Suggestion]:
-    """Return Suggestions for every problem result (or all when include_ok)."""
+def investigate(result: CheckResult) -> List[str]:
+    """Collect dynamic context for one CheckResult — heavier than static advice.
+
+    Returns a list of rendered lines (no markup; caller adds indentation).
+    Skipped silently when underlying tools are unavailable.
+
+    Currently specialised for disk-fill findings (`disk /…` and `inodes /…`).
+    Future scope: per-finding investigation for swap, failed-units, OOM, etc.
+    """
+    lines: List[str] = []
+    name = result.name
+    if name.startswith("disk ") or name.startswith("inodes "):
+        prefix_len = 5 if name.startswith("disk ") else 7
+        mount = name[prefix_len:]
+
+        top = sysinfo.get_top_paths_in(mount, limit=6)
+        if top:
+            lines.append(f"Top directories under {mount}:")
+            for entry in top:
+                lines.append(
+                    f"  {sysinfo.format_bytes(entry['bytes']):>10}  {entry['path']}"
+                )
+
+        big_files = sysinfo.get_largest_files(mount, limit=5, min_size_mb=100)
+        if big_files:
+            lines.append(f"Largest files (>100MB) under {mount}:")
+            for entry in big_files:
+                lines.append(
+                    f"  {sysinfo.format_bytes(entry['bytes']):>10}  {entry['path']}"
+                )
+
+        journal_bytes = sysinfo.get_journal_disk_usage()
+        if journal_bytes:
+            lines.append(
+                f"Journald: {sysinfo.format_bytes(journal_bytes)}  "
+                f"(`journalctl --vacuum-size=2G` to trim)"
+            )
+
+        docker_df = sysinfo.get_docker_disk_usage()
+        if docker_df:
+            lines.append("Docker `system df`:")
+            for row in docker_df:
+                lines.append(
+                    f"  {row['type']:<14} count={row['count']:<4} "
+                    f"size={row['size']:<10} reclaimable={row['reclaimable']}"
+                )
+
+        containers = sysinfo.get_docker_container_sizes(limit=5)
+        if containers:
+            lines.append("Largest Docker containers (RW + base image):")
+            for c in containers:
+                lines.append(f"  {c['size']:>14}  {c['name']:<24} {c['image']}")
+
+        logs = sysinfo.get_docker_log_sizes(limit=5)
+        if logs:
+            lines.append("Largest Docker JSON log files:")
+            for entry in logs:
+                lines.append(
+                    f"  {sysinfo.format_bytes(entry['bytes']):>10}  "
+                    f"{entry['name']:<24} {entry['log_path']}"
+                )
+    return lines
+
+
+def explain_results(results: List[CheckResult], include_ok: bool = False,
+                    deep: bool = False) -> List[Suggestion]:
+    """Return Suggestions for every problem result (or all when include_ok).
+
+    When `deep=True`, each suggestion is enriched with the output of
+    `investigate(result)` — slower but gives concrete next-action data.
+    """
     out: List[Suggestion] = []
     for r in results:
         if not include_ok and r.status not in ("warn", "fail"):
             continue
-        out.append(suggest(r))
+        s = suggest(r)
+        if deep:
+            s.investigation = investigate(r)
+        out.append(s)
     return out
 
 

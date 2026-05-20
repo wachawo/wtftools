@@ -927,6 +927,157 @@ def get_conntrack_usage() -> Optional[Tuple[int, int]]:
     return None
 
 
+def get_top_paths_in(directory: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """Return top-N largest immediate subdirectories of `directory` (du -d1).
+
+    Used by `wtf explain --deep` to surface "who's eating the disk" when a
+    disk-fill warning fires. Bounded by 15s — on huge trees `du` can run long.
+    """
+    import shutil
+    if not shutil.which("du") or not os.path.isdir(directory):
+        return []
+    # --block-size=1 → bytes, -d1 → only direct children.
+    rc, out, _ = run(["du", "-d1", "--block-size=1", directory], timeout=15)
+    if rc != 0 or not out:
+        return []
+    results: List[Dict[str, Any]] = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 2:
+            continue
+        try:
+            size = int(parts[0])
+        except ValueError:
+            continue
+        path = parts[1]
+        if path == directory:
+            continue  # skip the directory itself (du -d1 emits it)
+        results.append({"path": path, "bytes": size})
+    results.sort(key=lambda r: r["bytes"], reverse=True)
+    return results[:limit]
+
+
+def get_largest_files(directory: str, limit: int = 5,
+                      min_size_mb: int = 100) -> List[Dict[str, Any]]:
+    """Find regular files under `directory` larger than min_size_mb."""
+    import shutil
+    if not shutil.which("find") or not os.path.isdir(directory):
+        return []
+    rc, out, _ = run(
+        ["find", directory, "-xdev", "-type", "f",
+         "-size", f"+{min_size_mb}M", "-printf", "%s\t%p\n"],
+        timeout=20,
+    )
+    if rc != 0 or not out:
+        return []
+    results: List[Dict[str, Any]] = []
+    for line in out.splitlines():
+        parts = line.split("\t", 1)
+        if len(parts) != 2:
+            continue
+        try:
+            size = int(parts[0])
+        except ValueError:
+            continue
+        results.append({"path": parts[1], "bytes": size})
+    results.sort(key=lambda r: r["bytes"], reverse=True)
+    return results[:limit]
+
+
+def get_docker_disk_usage() -> Optional[List[Dict[str, str]]]:
+    """`docker system df` parsed into rows. None if docker missing/unreachable."""
+    import shutil
+    if not shutil.which("docker"):
+        return None
+    rc, out, _ = run(
+        ["docker", "system", "df", "--format",
+         "{{.Type}}\t{{.TotalCount}}\t{{.Size}}\t{{.Reclaimable}}"],
+        timeout=8,
+    )
+    if rc != 0 or not out:
+        return None
+    rows: List[Dict[str, str]] = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 4:
+            rows.append({
+                "type": parts[0],
+                "count": parts[1],
+                "size": parts[2],
+                "reclaimable": parts[3],
+            })
+    return rows
+
+
+def get_docker_container_sizes(limit: int = 10) -> Optional[List[Dict[str, str]]]:
+    """Per-container size breakdown (`docker ps -as`). None if docker missing.
+
+    The `.Size` field reports `Rw+Vsize` — read-write layer plus base image.
+    """
+    import shutil
+    if not shutil.which("docker"):
+        return None
+    rc, out, _ = run(
+        ["docker", "ps", "-as", "--format",
+         "{{.Names}}\t{{.Size}}\t{{.Image}}\t{{.Status}}"],
+        timeout=8,
+    )
+    if rc != 0 or not out:
+        return None
+    rows: List[Dict[str, str]] = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 4:
+            rows.append({
+                "name": parts[0],
+                "size": parts[1],
+                "image": parts[2],
+                "status": parts[3],
+            })
+    return rows[:limit]
+
+
+def get_docker_log_sizes(limit: int = 5) -> Optional[List[Dict[str, Any]]]:
+    """Per-container log-file size (json-file driver). None if docker missing.
+
+    Reads each container's LogPath via `docker inspect`, stats it on the host
+    filesystem. Requires the wtf process to have read access to the path —
+    typically only root or the docker group.
+    """
+    import shutil
+    if not shutil.which("docker"):
+        return None
+    rc, out, _ = run(["docker", "ps", "-aq"], timeout=5)
+    if rc != 0 or not out:
+        return None
+    ids = [i for i in out.splitlines() if i.strip()]
+    if not ids:
+        return []
+    rc, out, _ = run(
+        ["docker", "inspect", "--format",
+         "{{.Name}}\t{{.LogPath}}"] + ids,
+        timeout=10,
+    )
+    if rc != 0 or not out:
+        return None
+    results: List[Dict[str, Any]] = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 2:
+            continue
+        name = parts[0].lstrip("/")
+        log_path = parts[1]
+        if not log_path or log_path == "<no value>":
+            continue
+        try:
+            size = os.path.getsize(log_path)
+        except OSError:
+            continue
+        results.append({"name": name, "log_path": log_path, "bytes": size})
+    results.sort(key=lambda r: r["bytes"], reverse=True)
+    return results[:limit]
+
+
 def get_journal_disk_usage() -> Optional[int]:
     """Total bytes occupied by journald archives via `journalctl --disk-usage`."""
     rc, out, _ = run(["journalctl", "--disk-usage"], timeout=5)
