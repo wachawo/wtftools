@@ -1,0 +1,221 @@
+.TH WTF 1 "2026-05-20" "wtftools 0.0.0" "User Commands"
+.SH NAME
+wtf, wtftools \- one command to see what is going on with your Linux server
+.SH SYNOPSIS
+.B wtf
+[\fIglobal-options\fR]
+[\fICOMMAND\fR]
+[\fIcommand-options\fR]
+.SH DESCRIPTION
+.B wtftools
+is a diagnostic CLI for Linux SREs and indie operators. It rolls
+the typical \(lqfirst 10 commands\(rq of an incident investigation into a
+single program. With no arguments it runs a health audit and prints a
+green/yellow/red checklist.
+.PP
+The tool degrades gracefully when
+.BR systemctl ,
+.BR journalctl ,
+.BR apt ,
+or
+.B timedatectl
+are missing \(em those checks are simply marked
+.BR [SKIP] .
+Use
+.B wtf doctor
+to see exactly which capabilities are available on this host.
+.SH COMMANDS
+.TP
+.B wtf audit
+Run the health audit (default when no command is given). Combines 29+
+built-in checks plus any user plugins. Each check produces a colored
+.BR [OK] / [WARN] / [FAIL] / [SKIP]
+row.
+.TP
+.B wtf info
+One-page snapshot of the host: OS, kernel, uptime, load, memory, swap,
+per-mount disk usage, top processes by CPU/RAM, network interfaces and
+listening ports.
+.TP
+.B wtf services \fINAME\fR
+Drilldown for one systemd service: ActiveState, SubState, Result,
+UnitFileState, NRestarts, MemoryCurrent, listening ports owned by the
+main PID, and the last N journal lines.
+.TP
+.B wtf logs
+Recent ERROR-level (and worse) journal entries grouped by service.
+.TP
+.B wtf crontab
+Validate every crontab on the host: \fI/etc/crontab\fR,
+\fI/etc/cron.d/*\fR, \fI/var/spool/cron/crontabs/*\fR. Replaces and
+supersedes the standalone \fBcheckcrontab\fR tool.
+.TP
+.B wtf explain
+Suggest concrete actions for the current WARN/FAIL findings.
+With
+.B --prompt
+prints an LLM-ready prompt for piping to claude/ollama/etc.
+.TP
+.B wtf serve\fR (also: \fBwtfd\fR)
+Run as a daemon: periodic audit, HTTP API on
+.B 127.0.0.1:8765
+by default. Endpoints:
+.IR / ,
+.IR /healthz ,
+.IR /audit ,
+.IR /audit.json ,
+.IR /audit.prom ,
+.IR /history ,
+.IR /snapshot/N .
+Flags:
+.BI --listen " HOST:PORT" ,
+.BI --interval " SECONDS" ,
+.BR --save ,
+.BI --auth-token-file " PATH" .
+A bundled systemd unit lives at
+.IR scripts/wtfd.service .
+.TP
+.B wtf doctor
+Self-diagnostic: which CLI tools and \fI/proc\fR files
+.B wtftools
+can use on this host.
+.TP
+.B wtf plugins
+List discovered check plugins and their search directories.
+.TP
+.B wtf config
+Print effective configuration values and search paths. With
+.B --example
+prints a fully-commented template.
+.SH GLOBAL OPTIONS
+.TP
+.B -V, --version
+Print version and exit.
+.TP
+.B --no-color
+Disable colored output.
+.TP
+.B -v, --verbose
+Show extra detail (e.g. failed unit names, OOM events).
+.TP
+.B -q, --quiet
+Reduce logging output to ERROR level.
+.TP
+.B --config \fIPATH\fR
+Stack an additional INI config file on top of the default search paths.
+.SH AUDIT OPTIONS
+.TP
+.B --format {text,json}
+Output format. Default: text.
+.TP
+.B --strict
+Exit non-zero when WARN results exist too. By default only FAIL triggers exit 2.
+.TP
+.B --exit-zero
+Always exit with code 0 (useful in shell pipelines).
+.TP
+.B --check \fINAME\fR
+Run only the named check (repeatable). See
+.B wtf audit --list-checks
+for the list of names.
+.TP
+.B --ignore \fINAME\fR
+Skip a check (by short-name) or a single result-name (e.g.
+.IR "\(lqdisk /mnt/Backup\(rq" ).
+Repeatable. Merges with config\(cqs
+.I [ignore]
+section.
+.TP
+.B --only \fIfail|warn|problem|skip|ok|all\fR
+Show only results with the given status.
+.TP
+.B --since \fIHOURS\fR
+Look-back window for OOM/auth/kernel-error checks. Default: 24.
+.TP
+.B --watch \fISECONDS\fR
+Re-run the audit every N seconds (Ctrl-C to exit).
+.TP
+.B --brief, -b
+One-line summary suitable for MOTD / SSH banners.
+.TP
+.B --serial
+Disable parallel execution (debug).
+.TP
+.B --check-timeout \fISECONDS\fR
+Per-check timeout in seconds. Default: 10.
+.TP
+.B --alert \fICMD\fR
+Shell command to invoke when FAIL results exist. Audit summary is piped
+to stdin. Sets env vars
+.BR WTF_FAIL_COUNT ,
+.BR WTF_WARN_COUNT ,
+.BR WTF_HOST .
+.TP
+.B --alert-on \fIfail|warn|any\fR
+When to fire
+.BR --alert .
+Default: only on FAIL.
+.SH EXIT STATUS
+.TP
+.B 0
+All checks passed (or no FAIL results found).
+.TP
+.B 1
+Warnings present and
+.B --strict
+was passed; or crontab errors found.
+.TP
+.B 2
+At least one check returned FAIL.
+.TP
+.B 130
+Interrupted by Ctrl-C.
+.SH FILES
+.TP
+.I /etc/wtftools/config.ini
+Primary config file.
+.TP
+.I /etc/wtf/config.ini
+Alternative config file.
+.TP
+.I ~/.config/wtftools/config.ini
+Per-user config file.
+.TP
+.I /etc/wtf/checks.d/
+.TQ
+.I /etc/wtftools/checks.d/
+.TQ
+.I ~/.config/wtftools/checks.d/
+Plugin search directories. Drop in any executable script with the exit
+code convention 0=ok, 1=warn, 2=fail, 77=skip.
+.SH EXAMPLES
+.TP
+Default audit:
+.B wtf
+.TP
+Only failures:
+.B wtf audit --only fail
+.TP
+MOTD one-liner:
+.B wtf audit --brief
+.TP
+Drill into nginx:
+.B wtf services nginx
+.TP
+Recent errors aggregated by service:
+.B wtf logs --since '6 hours ago' -p err
+.TP
+Pipe diagnosis to an LLM:
+.B wtf explain --prompt | ollama run llama3
+.TP
+Alert on FAIL via email:
+.B wtf audit --alert 'mail -s "wtf on $WTF_HOST" sre@example.com'
+.SH SEE ALSO
+.BR systemctl (1),
+.BR journalctl (1),
+.BR cron (8),
+.BR crontab (5)
+.SH AUTHOR
+Aleksandr Pimenov <wachawo@gmail.com>
+.SH REPORTING BUGS
+https://github.com/wachawo/wtftools/issues

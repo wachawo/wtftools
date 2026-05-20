@@ -1,0 +1,36 @@
+[Unit]
+Description=wtftools background daemon
+Documentation=man:wtf(1) https://github.com/wachawo/wtftools
+After=network.target
+
+[Service]
+Type=simple
+# Run as a system user (`useradd -r -s /usr/sbin/nologin wtfd`) or use
+# DynamicUser=yes for a transient identity. Below uses DynamicUser for
+# zero-setup, which also gives us an isolated /var/lib state directory.
+DynamicUser=yes
+StateDirectory=wtftools
+Environment=WTFTOOLS_SNAPSHOT_DIR=/var/lib/wtftools/snapshots
+# Bind to localhost by default — expose via nginx/haproxy with TLS+auth.
+ExecStart=/usr/bin/wtfd --listen 127.0.0.1:8765 --interval 300 --save
+
+# If you want bearer-token auth, store the token in /etc/wtftools/token
+# (mode 0600, owned by the wtfd user) and add:
+#   ExecStart=/usr/bin/wtfd --listen 127.0.0.1:8765 --interval 300 --save \
+#            --auth-token-file /etc/wtftools/token
+
+Restart=on-failure
+RestartSec=10s
+
+# Hardening — wtfd does not need write access outside its state dir.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

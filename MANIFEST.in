@@ -1,0 +1,7 @@
+include README.md
+include LICENSE
+include PROJECT.md
+include CHANGELOG.md
+include wtf.1
+recursive-include wtftools *.py
+recursive-include scripts *.sh *.bash-completion

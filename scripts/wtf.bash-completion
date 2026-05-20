@@ -1,0 +1,186 @@
+# bash completion for `wtf` / `wtftools`
+# Install: copy to /etc/bash_completion.d/ or `source` from your bashrc.
+
+_wtf_complete() {
+    local cur prev cmd
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    local subcommands="info audit crontab doctor plugins services config logs explain history diff top ports motd-install serve fleet init compare events"
+    local global_opts="-h --help -V --version --no-color -v --verbose -q --quiet --config"
+
+    # Subcommand at position 1
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        COMPREPLY=( $(compgen -W "$subcommands $global_opts" -- "$cur") )
+        return 0
+    fi
+
+    cmd="${COMP_WORDS[1]}"
+
+    case "$cmd" in
+        info)
+            COMPREPLY=( $(compgen -W "--format --watch" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
+            ;;
+        history)
+            COMPREPLY=( $(compgen -W "--limit --format" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
+            ;;
+        diff)
+            local opts="--snapshot --against --format"
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --against) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        top)
+            local opts="--sort --limit --user --name --format"
+            case "$prev" in
+                --sort)   COMPREPLY=( $(compgen -W "cpu rss" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --user)   COMPREPLY=( $(compgen -u -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        ports)
+            local opts="--proto --public-only --format"
+            case "$prev" in
+                --proto)  COMPREPLY=( $(compgen -W "tcp udp all" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        serve)
+            local opts="--listen --interval --save --auth-token-file"
+            case "$prev" in
+                --auth-token-file) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        fleet)
+            local opts="--hosts --hosts-file --token-file --timeout --workers --problem-only --format --watch --run-now"
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text json prometheus" -- "$cur") ); return 0 ;;
+                --hosts-file|--token-file) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        init)
+            local opts="--non-interactive --dry-run --config-path \
+--enable-config --no-config --enable-motd --no-motd \
+--enable-wtfd --enable-cron --no-cron"
+            case "$prev" in
+                --config-path) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        motd-install)
+            local opts="--path --format"
+            case "$prev" in
+                --path)   COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        audit)
+            local opts="--format --strict --exit-zero --check --only --since --watch --list-checks --brief -b --ignore --serial --check-timeout --alert --alert-on --save --diff"
+            case "$prev" in
+                --alert-on) COMPREPLY=( $(compgen -W "fail warn any" -- "$cur") ); return 0 ;;
+                --format)   COMPREPLY=( $(compgen -W "text json prometheus csv plain html" -- "$cur") ); return 0 ;;
+                --output|-o) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+            esac
+            : "ignore-shadowed-fallthrough-handled-below"
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --only)   COMPREPLY=( $(compgen -W "fail warn problem skip ok all" -- "$cur") ); return 0 ;;
+                --check|--ignore)
+                    local names="uptime system load iowait psi tcp-retrans memory swap disks \
+inodes readonly-mounts failed-units enabled-inactive restart-loops network-errors zombies d-state \
+oom kernel-errors kernel-taint cert-expiry fds pids auth time-sync updates reboot cron-daemon crontab"
+                    COMPREPLY=( $(compgen -W "$names" -- "$cur") )
+                    return 0
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        events)
+            local opts="--since --kind --limit --format --watch"
+            case "$prev" in
+                --kind)   COMPREPLY=( $(compgen -W "reboot oom failed-unit kernel-err auth-fail login" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        logs)
+            local opts="--since --priority -p --units --lines -n --format"
+            case "$prev" in
+                --format)   COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --priority|-p) COMPREPLY=( $(compgen -W "emerg alert crit err warning notice info debug" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        explain)
+            local opts="--check --ignore --since --all --prompt --format --serial --check-timeout --llm --llm-model --llm-timeout"
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --llm) COMPREPLY=( $(compgen -W "ollama claude openai auto" -- "$cur") ); return 0 ;;
+                --check|--ignore)
+                    local names="uptime system load iowait psi tcp-retrans memory swap disks \
+inodes readonly-mounts failed-units enabled-inactive restart-loops network-errors conntrack \
+journal-disk zombies d-state oom kernel-errors kernel-taint cert-expiry fds pids auth time-sync \
+updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban"
+                    COMPREPLY=( $(compgen -W "$names" -- "$cur") )
+                    return 0
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        services)
+            local opts="-n --lines --format"
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+            esac
+            # Suggest active systemd unit names from the host
+            local units=$(systemctl list-units --type=service --no-legend --plain 2>/dev/null \
+                          | awk '{ sub(/\.service$/, "", $1); print $1 }')
+            COMPREPLY=( $(compgen -W "$opts $units" -- "$cur") )
+            ;;
+        config)
+            COMPREPLY=( $(compgen -W "--example --format" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
+            ;;
+        crontab)
+            local opts="-S --system -U --user-file -u --username --format --strict --exit-zero"
+            case "$prev" in
+                -S|--system|-U|--user-file)
+                    COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+                -u|--username)
+                    COMPREPLY=( $(compgen -u -- "$cur") ); return 0 ;;
+                --format)
+                    COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -f -W "$opts" -- "$cur") )
+            ;;
+        doctor)
+            COMPREPLY=( $(compgen -W "--format --check-updates" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
+            ;;
+        plugins)
+            COMPREPLY=( $(compgen -W "--format" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
+            ;;
+        compare)
+            local opts="--token-file --timeout --only-drift --format"
+            case "$prev" in
+                --token-file) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+    esac
+}
+
+complete -F _wtf_complete wtf
+complete -F _wtf_complete wtftools

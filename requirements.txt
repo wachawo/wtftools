@@ -1,0 +1,3 @@
+# Core wtftools has zero hard dependencies — only stdlib + standard Linux CLI.
+# psutil is optional; install for richer metrics (top processes, listening sockets).
+psutil>=5.9.0
