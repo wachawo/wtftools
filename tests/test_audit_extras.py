@@ -77,6 +77,7 @@ def test_since_hours_used_by_oom_check(monkeypatch):
     def fake_oom(hours):
         seen["hours"] = hours
         return []
+
     monkeypatch.setattr(audit.sysinfo, "get_oom_events", fake_oom)
     r = audit._check_oom_kills()
     assert seen["hours"] == 6

@@ -38,7 +38,8 @@ DEFAULT_CONFIG_PATHS = (
     "/etc/wtf/config.ini",
     os.path.join(
         os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-        "wtftools", "config.ini",
+        "wtftools",
+        "config.ini",
     ),
 )
 
@@ -46,6 +47,7 @@ DEFAULT_CONFIG_PATHS = (
 @dataclass
 class Config:
     """All runtime knobs in one place. Defaults match the hardcoded values."""
+
     disk_warn_pct: int = 85
     disk_fail_pct: int = 95
     mem_warn_pct: int = 85
@@ -106,8 +108,7 @@ def _split_list(value: str) -> List[str]:
     return [s.strip() for s in value.replace("\n", ",").split(",") if s.strip()]
 
 
-def _coerce(parser: configparser.ConfigParser, section: str, option: str,
-            current_value, cfg_attr: str, cfg: Config) -> None:
+def _coerce(parser: configparser.ConfigParser, section: str, option: str, current_value, cfg_attr: str, cfg: Config) -> None:
     """Read one config option and assign with the right numeric type."""
     if not parser.has_option(section, option):
         return
@@ -138,8 +139,7 @@ def load_config(paths: Optional[List[str]] = None) -> Config:
     try:
         parser.read(existing, encoding="utf-8")
     except (configparser.Error, OSError) as exc:
-        logger.warning(f"config: cannot read {existing}: {type(exc).__name__}: {exc}\n"
-                       f"{traceback.format_exc()}")
+        logger.warning(f"config: cannot read {existing}: {type(exc).__name__}: {exc}\n" f"{traceback.format_exc()}")
         return cfg
 
     threshold_map = [

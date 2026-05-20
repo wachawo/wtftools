@@ -54,9 +54,9 @@ logging.basicConfig(**LOGGING)
 
 STATUS_FILTERS = {
     "fail": ["fail"],
-    "warn": ["warn", "fail"],   # "warn" implies "everything not-OK"
+    "warn": ["warn", "fail"],  # "warn" implies "everything not-OK"
     "problems": ["warn", "fail"],
-    "problem": ["warn", "fail"],   # singular alias for plural form
+    "problem": ["warn", "fail"],  # singular alias for plural form
     "skip": ["skip"],
     "ok": ["ok"],
     "all": ["ok", "warn", "fail", "skip"],
@@ -110,6 +110,7 @@ def cmd_ports(args: argparse.Namespace) -> int:
         return 2
 
     import socket as _socket
+
     rows: List[dict] = []
     try:
         for conn in psutil.net_connections(kind="inet"):
@@ -123,8 +124,7 @@ def cmd_ports(args: argparse.Namespace) -> int:
             if args.proto != "all" and args.proto != proto:
                 continue
             addr = conn.laddr.ip
-            if args.public_only and (addr in ("127.0.0.1", "::1", "0.0.0.0", "::")
-                                     or addr.startswith("127.")):
+            if args.public_only and (addr in ("127.0.0.1", "::1", "0.0.0.0", "::") or addr.startswith("127.")):
                 # public_only means: exclude loopback specifically. We keep wildcard.
                 if addr.startswith("127."):
                     continue
@@ -138,14 +138,16 @@ def cmd_ports(args: argparse.Namespace) -> int:
                     user = proc.username()
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
-            rows.append({
-                "port": conn.laddr.port,
-                "proto": proto,
-                "addr": addr,
-                "pid": pid,
-                "user": user,
-                "command": name,
-            })
+            rows.append(
+                {
+                    "port": conn.laddr.port,
+                    "proto": proto,
+                    "addr": addr,
+                    "pid": pid,
+                    "user": user,
+                    "command": name,
+                }
+            )
     except Exception as exc:
         msg = f"failed to enumerate sockets: {type(exc).__name__}: {exc}"
         if args.format == "json":
@@ -164,15 +166,12 @@ def cmd_ports(args: argparse.Namespace) -> int:
     if not rows:
         print(colors.dim("  (none)"))
         return 0
-    print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20} {'PID':>7}  "
-          f"{'USER':<14} COMMAND")
+    print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20} {'PID':>7}  " f"{'USER':<14} COMMAND")
     for r in rows:
         addr = r["addr"] or "*"
         pid_s = str(r["pid"]) if r["pid"] else "-"
-        print(f"  {r['port']:>5}  {r['proto']:<5} {addr:<20} {pid_s:>7}  "
-              f"{(r['user'] or '-')[:14]:<14} {r['command']}")
+        print(f"  {r['port']:>5}  {r['proto']:<5} {addr:<20} {pid_s:>7}  " f"{(r['user'] or '-')[:14]:<14} {r['command']}")
     return 0
-
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -192,12 +191,10 @@ def cmd_diff(args: argparse.Namespace) -> int:
             print(colors.red("cannot read one or both snapshot files"))
             return 1
         # rebuild CheckResult list from new snapshot
-        new_results = [audit_mod.CheckResult(
-            name=r["name"], status=r["status"],
-            message=r.get("message", ""),
-            detail=r.get("detail", []) or []) for r in new_data.get("results", [])]
-        return _render_diff(args, old, new_results,
-                            old_path=old_path, new_path=new_path)
+        new_results = [
+            audit_mod.CheckResult(name=r["name"], status=r["status"], message=r.get("message", ""), detail=r.get("detail", []) or []) for r in new_data.get("results", [])
+        ]
+        return _render_diff(args, old, new_results, old_path=old_path, new_path=new_path)
 
     # Pick the snapshot to diff against: latest by default, or N back.
     paths = snapshot_mod.list_snapshots()
@@ -205,8 +202,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
         if args.format == "json":
             print(json.dumps({"diff": [], "reason": "no snapshots"}, indent=2))
         else:
-            print(colors.dim(
-                "no snapshots yet — run `wtf audit --save` to create one"))
+            print(colors.dim("no snapshots yet — run `wtf audit --save` to create one"))
         return 0
     idx = max(0, len(paths) - 1 - args.snapshot)
     chosen = paths[idx]
@@ -225,17 +221,21 @@ def cmd_diff(args: argparse.Namespace) -> int:
     return _render_diff(args, old, results, old_path=chosen)
 
 
-def _render_diff(args: argparse.Namespace, old: dict,
-                 new_results: List[audit_mod.CheckResult],
-                 old_path: Optional[str] = None,
-                 new_path: Optional[str] = None) -> int:
+def _render_diff(args: argparse.Namespace, old: dict, new_results: List[audit_mod.CheckResult], old_path: Optional[str] = None, new_path: Optional[str] = None) -> int:
     events = snapshot_mod.diff_snapshots(old, new_results)
     if args.format == "json":
-        print(json.dumps({
-            "old": old_path, "new": new_path,
-            "old_timestamp": old.get("timestamp"),
-            "changes": events,
-        }, indent=2, default=str))
+        print(
+            json.dumps(
+                {
+                    "old": old_path,
+                    "new": new_path,
+                    "old_timestamp": old.get("timestamp"),
+                    "changes": events,
+                },
+                indent=2,
+                default=str,
+            )
+        )
         return 0
     label = old.get("timestamp", "previous") if old_path else "previous"
     if old_path:
@@ -246,11 +246,11 @@ def _render_diff(args: argparse.Namespace, old: dict,
         return 0
     kind_marker = {
         "regression": colors.red("REG ", bold=True),
-        "worsened":   colors.yellow("WRSE", bold=True),
-        "new":        colors.cyan("NEW ", bold=True),
-        "improved":   colors.green("IMP ", bold=True),
-        "recovery":   colors.green("FIX ", bold=True),
-        "removed":    colors.dim("GONE"),
+        "worsened": colors.yellow("WRSE", bold=True),
+        "new": colors.cyan("NEW ", bold=True),
+        "improved": colors.green("IMP ", bold=True),
+        "recovery": colors.green("FIX ", bold=True),
+        "removed": colors.dim("GONE"),
     }
     name_width = max((len(e["name"]) for e in events), default=20)
     for ev in events:
@@ -262,8 +262,7 @@ def _render_diff(args: argparse.Namespace, old: dict,
         else:
             transition = f"{ev['old_status']:>4} → {ev['new_status']:<4}"
         msg = ev.get("new_message") or ev.get("old_message") or ""
-        print(f"  {marker} {ev['name'].ljust(name_width)}  "
-              f"{transition}   {colors.dim(msg)}")
+        print(f"  {marker} {ev['name'].ljust(name_width)}  " f"{transition}   {colors.dim(msg)}")
     return 0
 
 
@@ -278,12 +277,14 @@ def cmd_history(args: argparse.Namespace) -> int:
             counts = {"ok": 0, "warn": 0, "fail": 0, "skip": 0}
             for r in results:
                 counts[r.get("status", "skip")] = counts.get(r.get("status", "skip"), 0) + 1
-            payload.append({
-                "path": p,
-                "timestamp": data.get("timestamp"),
-                "host": data.get("host"),
-                "totals": counts,
-            })
+            payload.append(
+                {
+                    "path": p,
+                    "timestamp": data.get("timestamp"),
+                    "host": data.get("host"),
+                    "totals": counts,
+                }
+            )
         print(json.dumps(payload, indent=2, default=str))
         return 0
     if not paths:
@@ -293,7 +294,7 @@ def cmd_history(args: argparse.Namespace) -> int:
     print(colors.section("HISTORY"))
     print(colors.dim(f"  snapshot dir: {snapshot_mod.default_snapshot_dir()}"))
     print(colors.dim(f"  {len(paths)} snapshot(s) — newest first\n"))
-    for path in reversed(paths[-args.limit:]):
+    for path in reversed(paths[-args.limit :]):
         data = snapshot_mod.load_snapshot(path)
         if data is None:
             print(f"  {colors.red('(corrupt)')} {path}")
@@ -304,10 +305,7 @@ def cmd_history(args: argparse.Namespace) -> int:
         fail = sum(1 for r in results if r.get("status") == "fail")
         skip = sum(1 for r in results if r.get("status") == "skip")
         ts = data.get("timestamp", "?")
-        summary = (f"{colors.green(f'{ok} ok')} · "
-                   f"{colors.yellow(f'{warn} warn')} · "
-                   f"{colors.red(f'{fail} fail')} · "
-                   f"{colors.dim(f'{skip} skip')}")
+        summary = f"{colors.green(f'{ok} ok')} · " f"{colors.yellow(f'{warn} warn')} · " f"{colors.red(f'{fail} fail')} · " f"{colors.dim(f'{skip} skip')}"
         print(f"  {colors.cyan(ts):<35} {summary}  {colors.dim(os.path.basename(path))}")
     return 0
 
@@ -315,6 +313,7 @@ def cmd_history(args: argparse.Namespace) -> int:
 def cmd_info(args: argparse.Namespace) -> int:
     if args.format == "json":
         from wtftools.checks import sysinfo
+
         payload = {
             "hostname": sysinfo.get_hostname(),
             "os": sysinfo.get_os_release(),
@@ -384,8 +383,7 @@ def cmd_audit(args: argparse.Namespace) -> int:
         return _emit_brief(results)
     if not results:
         if args.format == "json":
-            print(json.dumps({"results": [], "summary": audit_mod.summarize([])},
-                             indent=2, default=str))
+            print(json.dumps({"results": [], "summary": audit_mod.summarize([])}, indent=2, default=str))
         else:
             print(colors.section("AUDIT"))
             print(colors.dim("  (no checks matched the filter)"))
@@ -414,6 +412,7 @@ def _emit_audit_to(args, results, sink) -> int:
         return _audit_exit_code(args, results)
     if args.format == "csv":
         import csv
+
         writer = csv.writer(sink.stream)
         writer.writerow(["name", "status", "message", "detail"])
         for r in results:
@@ -486,8 +485,7 @@ def _audit_text_lines(results, verbose: bool):
                 yield f"        {colors.dim('└')} {line}"
 
 
-def _audit_exit_code(args: argparse.Namespace,
-                     results: List[audit_mod.CheckResult]) -> int:
+def _audit_exit_code(args: argparse.Namespace, results: List[audit_mod.CheckResult]) -> int:
     failed = sum(1 for r in results if r.status == "fail")
     warns = sum(1 for r in results if r.status == "warn")
     if getattr(args, "exit_zero", False):
@@ -499,8 +497,7 @@ def _audit_exit_code(args: argparse.Namespace,
     return 0
 
 
-def _maybe_fire_alert(args: argparse.Namespace,
-                      results: List[audit_mod.CheckResult]) -> None:
+def _maybe_fire_alert(args: argparse.Namespace, results: List[audit_mod.CheckResult]) -> None:
     """Run the user's alert command when audit severity passes the threshold.
 
     The audit summary (text or JSON depending on --format) is piped into the
@@ -508,15 +505,12 @@ def _maybe_fire_alert(args: argparse.Namespace,
     notification client.
     """
     import subprocess
+
     totals = audit_mod.summarize(results)
     fail = totals.get("fail", 0)
     warn = totals.get("warn", 0)
     threshold = getattr(args, "alert_on", "fail")
-    should_fire = (
-        (threshold == "fail" and fail > 0) or
-        (threshold == "warn" and (fail > 0 or warn > 0)) or
-        (threshold == "any" and (fail + warn > 0))
-    )
+    should_fire = (threshold == "fail" and fail > 0) or (threshold == "warn" and (fail > 0 or warn > 0)) or (threshold == "any" and (fail + warn > 0))
     if not should_fire:
         return
 
@@ -531,8 +525,7 @@ def _maybe_fire_alert(args: argparse.Namespace,
     env["WTF_WARN_COUNT"] = str(warn)
     env["WTF_HOST"] = sysinfo.get_hostname()
     try:
-        subprocess.run(args.alert, shell=True, input=body, text=True,
-                       timeout=30, env=env, check=False)
+        subprocess.run(args.alert, shell=True, input=body, text=True, timeout=30, env=env, check=False)
     except subprocess.TimeoutExpired:
         logger.warning("alert command timed out")
     except Exception as exc:
@@ -544,8 +537,7 @@ def _emit_brief(results: List[audit_mod.CheckResult]) -> int:
     totals = audit_mod.summarize(results)
     problems = [r for r in results if r.status in ("fail", "warn")]
     if not problems:
-        print(colors.green(
-            f"wtf: all good · {totals['ok']} ok · {totals['skip']} skip", bold=True))
+        print(colors.green(f"wtf: all good · {totals['ok']} ok · {totals['skip']} skip", bold=True))
         return 0
 
     def _short(text: str, limit: int = 40) -> str:
@@ -578,14 +570,9 @@ def cmd_explain(args: argparse.Namespace) -> int:
         return 0
 
     deep = getattr(args, "deep", False)
-    suggestions = explain_mod.explain_results(results, include_ok=args.all,
-                                              deep=deep)
+    suggestions = explain_mod.explain_results(results, include_ok=args.all, deep=deep)
     if args.format == "json":
-        payload = [
-            {"name": s.name, "status": s.status, "message": s.message,
-             "advice": s.advice, "investigation": s.investigation}
-            for s in suggestions
-        ]
+        payload = [{"name": s.name, "status": s.status, "message": s.message, "advice": s.advice, "investigation": s.investigation} for s in suggestions]
         print(json.dumps(payload, indent=2, default=str))
         return 0
 
@@ -608,13 +595,11 @@ def cmd_explain(args: argparse.Namespace) -> int:
     return 0
 
 
-def _explain_via_llm(args: argparse.Namespace,
-                     results: List[audit_mod.CheckResult]) -> int:
+def _explain_via_llm(args: argparse.Namespace, results: List[audit_mod.CheckResult]) -> int:
     """Render the structured prompt, ship it through the chosen LLM backend."""
     host = sysinfo.get_hostname()
     prompt = explain_mod.render_prompt(results, host=host)
-    text, info = llm_mod.call_llm(args.llm, prompt, model=args.llm_model,
-                                  timeout=args.llm_timeout)
+    text, info = llm_mod.call_llm(args.llm, prompt, model=args.llm_model, timeout=args.llm_timeout)
     if text is None:
         msg = f"LLM call failed: {info}"
         if args.format == "json":
@@ -623,8 +608,7 @@ def _explain_via_llm(args: argparse.Namespace,
             print(colors.red(msg))
         return 2
     if args.format == "json":
-        print(json.dumps({"backend": args.llm, "via": info, "advice": text},
-                         indent=2))
+        print(json.dumps({"backend": args.llm, "via": info, "advice": text}, indent=2))
         return 0
     print(colors.section(f"EXPLAIN · {args.llm}"))
     if info:
@@ -645,11 +629,7 @@ def cmd_events(args: argparse.Namespace) -> int:
         payload = {
             "since_hours": args.since,
             "kinds": list(kinds) if kinds else list(events_mod.EVENT_KINDS),
-            "events": [
-                {"timestamp": e.timestamp, "iso": e.iso(),
-                 "kind": e.kind, "message": e.message, "detail": e.detail}
-                for e in events
-            ],
+            "events": [{"timestamp": e.timestamp, "iso": e.iso(), "kind": e.kind, "message": e.message, "detail": e.detail} for e in events],
         }
         print(json.dumps(payload, indent=2, default=str))
         return 0
@@ -660,12 +640,12 @@ def cmd_events(args: argparse.Namespace) -> int:
         return 0
 
     kind_icon = {
-        "reboot":      colors.cyan("⟲ ", bold=True),
-        "oom":         colors.red("✗ ", bold=True),
+        "reboot": colors.cyan("⟲ ", bold=True),
+        "oom": colors.red("✗ ", bold=True),
         "failed-unit": colors.red("✗ ", bold=True),
-        "kernel-err":  colors.yellow("⚠ ", bold=True),
-        "auth-fail":   colors.yellow("⚠ ", bold=True),
-        "login":       colors.dim("ⓘ "),
+        "kernel-err": colors.yellow("⚠ ", bold=True),
+        "auth-fail": colors.yellow("⚠ ", bold=True),
+        "login": colors.dim("ⓘ "),
     }
     kind_width = max((len(e.kind) for e in events), default=10)
     for e in events:
@@ -680,6 +660,7 @@ def cmd_events(args: argparse.Namespace) -> int:
 def cmd_logs(args: argparse.Namespace) -> int:
     """Recent ERROR-level (and worse) journal entries grouped by service."""
     import collections
+
     if not shutil.which("journalctl"):
         msg = "journalctl not available on this host"
         if args.format == "json":
@@ -688,8 +669,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
             print(colors.red(msg))
         return 2
     rc, out, _ = sysinfo.run(
-        ["journalctl", "-p", args.priority, "--since", args.since,
-         "-o", "json", "--no-pager", "-q"],
+        ["journalctl", "-p", args.priority, "--since", args.since, "-o", "json", "--no-pager", "-q"],
         timeout=20,
     )
     if rc != 0:
@@ -708,10 +688,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
             entry = json.loads(line)
         except (json.JSONDecodeError, ValueError):
             continue
-        unit = (entry.get("_SYSTEMD_UNIT")
-                or entry.get("SYSLOG_IDENTIFIER")
-                or entry.get("_COMM")
-                or "(unknown)")
+        unit = entry.get("_SYSTEMD_UNIT") or entry.get("SYSLOG_IDENTIFIER") or entry.get("_COMM") or "(unknown)"
         message = entry.get("MESSAGE", "")
         if isinstance(message, list):
             try:
@@ -721,8 +698,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
         by_unit[unit].append(str(message).strip())
 
     if args.format == "json":
-        payload = {"since": args.since, "priority": args.priority,
-                   "by_unit": dict(by_unit)}
+        payload = {"since": args.since, "priority": args.priority, "by_unit": dict(by_unit)}
         print(json.dumps(payload, indent=2))
         return 0
 
@@ -774,10 +750,8 @@ def cmd_services(args: argparse.Namespace) -> int:
     active = details.get("ActiveState", "?")
     sub = details.get("SubState", "?")
     result = details.get("Result", "?")
-    color_fn = colors.green if active == "active" else (
-        colors.red if active in ("failed",) else colors.yellow)
-    print(f"  state    : {color_fn(f'{active} ({sub})', bold=True)}  "
-          f"{colors.dim(f'· result={result}')}")
+    color_fn = colors.green if active == "active" else (colors.red if active in ("failed",) else colors.yellow)
+    print(f"  state    : {color_fn(f'{active} ({sub})', bold=True)}  " f"{colors.dim(f'· result={result}')}")
     if details.get("Description"):
         print(f"  desc     : {details['Description']}")
     if details.get("UnitFileState"):
@@ -823,6 +797,7 @@ def _ports_for_pid(pid_str: str) -> List[dict]:
         return []
     try:
         import psutil  # type: ignore
+
         result = []
         for conn in psutil.net_connections(kind="inet"):
             if conn.pid != pid:
@@ -846,8 +821,7 @@ def cmd_config(args: argparse.Namespace) -> int:
         cfg = config_mod.get_config()
         payload = {
             "search_paths": list(config_mod.DEFAULT_CONFIG_PATHS),
-            "effective": {k: (list(v) if isinstance(v, set) else v)
-                          for k, v in cfg.__dict__.items()},
+            "effective": {k: (list(v) if isinstance(v, set) else v) for k, v in cfg.__dict__.items()},
         }
         print(json.dumps(payload, indent=2, default=str))
         return 0
@@ -895,10 +869,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def _fetch_pypi_version(package: str = "wtftools", timeout: float = 3.0) -> Optional[str]:
     """Query PyPI for the latest published version. Returns None on failure."""
     import urllib.request
+
     try:
-        with urllib.request.urlopen(
-            f"https://pypi.org/pypi/{package}/json", timeout=timeout
-        ) as resp:
+        with urllib.request.urlopen(f"https://pypi.org/pypi/{package}/json", timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8", errors="replace"))
         return data.get("info", {}).get("version")
     except Exception:
@@ -924,19 +897,19 @@ def _gather_doctor_report(check_updates: bool = False) -> dict:
     items = []
 
     def add(name, present, detail, status_when_ok="ok", status_when_missing="warn"):
-        items.append({
-            "name": name,
-            "status": status_when_ok if present else status_when_missing,
-            "present": bool(present),
-            "detail": detail,
-        })
+        items.append(
+            {
+                "name": name,
+                "status": status_when_ok if present else status_when_missing,
+                "present": bool(present),
+                "detail": detail,
+            }
+        )
 
     py = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     items.append({"name": "python", "status": "ok", "present": True, "detail": py})
 
-    add("psutil", sysinfo.HAS_PSUTIL,
-        "available — richer top/sockets data" if sysinfo.HAS_PSUTIL
-        else "missing — install `python3-psutil` or `pip install wtftools[full]`")
+    add("psutil", sysinfo.HAS_PSUTIL, "available — richer top/sockets data" if sysinfo.HAS_PSUTIL else "missing — install `python3-psutil` or `pip install wtftools[full]`")
 
     for bin_name, hint in (
         ("systemctl", "systemd-based distro recommended; failed-units/enabled checks degrade without it"),
@@ -951,46 +924,50 @@ def _gather_doctor_report(check_updates: bool = False) -> dict:
         ("dmesg", "fallback OOM source"),
     ):
         path = shutil.which(bin_name)
-        items.append({
-            "name": bin_name,
-            "status": "ok" if path else "warn",
-            "present": bool(path),
-            "detail": path or f"missing — {hint}",
-        })
+        items.append(
+            {
+                "name": bin_name,
+                "status": "ok" if path else "warn",
+                "present": bool(path),
+                "detail": path or f"missing — {hint}",
+            }
+        )
 
-    for path, label in (("/etc/os-release", "OS metadata"),
-                        ("/proc/meminfo", "memory data"),
-                        ("/proc/loadavg", "load average"),
-                        ("/proc/stat", "iowait sampling")):
+    for path, label in (("/etc/os-release", "OS metadata"), ("/proc/meminfo", "memory data"), ("/proc/loadavg", "load average"), ("/proc/stat", "iowait sampling")):
         present = os.path.exists(path)
-        items.append({
-            "name": path,
-            "status": "ok" if present else "fail",
-            "present": present,
-            "detail": label if present else f"{label} not readable",
-        })
+        items.append(
+            {
+                "name": path,
+                "status": "ok" if present else "fail",
+                "present": present,
+                "detail": label if present else f"{label} not readable",
+            }
+        )
 
     if check_updates:
         latest = _fetch_pypi_version()
         if latest is None:
-            items.append({
-                "name": "pypi update check",
-                "status": "skip",
-                "present": False,
-                "detail": "could not reach PyPI",
-            })
+            items.append(
+                {
+                    "name": "pypi update check",
+                    "status": "skip",
+                    "present": False,
+                    "detail": "could not reach PyPI",
+                }
+            )
         else:
             try:
                 outdated = _version_tuple(latest) > _version_tuple(__version__)
             except Exception:
                 outdated = False
-            items.append({
-                "name": "pypi update check",
-                "status": "warn" if outdated else "ok",
-                "present": True,
-                "detail": (f"installed {__version__}, PyPI has {latest}"
-                           if outdated else f"up to date ({__version__})"),
-            })
+            items.append(
+                {
+                    "name": "pypi update check",
+                    "status": "warn" if outdated else "ok",
+                    "present": True,
+                    "detail": (f"installed {__version__}, PyPI has {latest}" if outdated else f"up to date ({__version__})"),
+                }
+            )
 
     return {"version": __version__, "platform": platform.platform(), "checks": items}
 
@@ -1082,13 +1059,15 @@ def cmd_crontab(args: argparse.Namespace) -> int:
             rows = r
             errors.extend(e)
             warnings.extend(w)
-        file_reports.append({
-            "file": path,
-            "is_system_crontab": is_system,
-            "rows": rows,
-            "errors": errors,
-            "warnings": warnings,
-        })
+        file_reports.append(
+            {
+                "file": path,
+                "is_system_crontab": is_system,
+                "rows": rows,
+                "errors": errors,
+                "warnings": warnings,
+            }
+        )
         total_rows += rows
         total_errors += len(errors)
         total_warnings += len(warnings)
@@ -1147,21 +1126,19 @@ def build_parser() -> argparse.ArgumentParser:
         description=__description__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"Project: {__url__}\n"
-               "Examples:\n"
-               "  wtf                       # default: short audit summary\n"
-               "  wtf info                  # detailed system snapshot\n"
-               "  wtf audit -v              # audit with extra detail per check\n"
-               "  wtf crontab               # check standard crontab locations\n"
-               "  wtf crontab -u myuser     # check a specific user's crontab\n"
-               "  wtf audit --format json   # machine-readable output\n",
+        "Examples:\n"
+        "  wtf                       # default: short audit summary\n"
+        "  wtf info                  # detailed system snapshot\n"
+        "  wtf audit -v              # audit with extra detail per check\n"
+        "  wtf crontab               # check standard crontab locations\n"
+        "  wtf crontab -u myuser     # check a specific user's crontab\n"
+        "  wtf audit --format json   # machine-readable output\n",
     )
     parser.add_argument("-V", "--version", action="version", version=f"wtftools {__version__}")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show extra detail")
     parser.add_argument("-q", "--quiet", action="store_true", help="Reduce logging output")
-    parser.add_argument("--config", metavar="PATH",
-                        help="Path to an extra wtftools config file (INI). Stacks on top "
-                             "of the default discovery paths.")
+    parser.add_argument("--config", metavar="PATH", help="Path to an extra wtftools config file (INI). Stacks on top " "of the default discovery paths.")
 
     subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
 
@@ -1171,173 +1148,121 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit = subparsers.add_parser("audit", help="Run health audit and show OK/WARN/FAIL")
     audit.add_argument("--format", choices=["text", "json", "prometheus", "csv", "plain", "html"], default="text")
-    audit.add_argument("--output", "-o", metavar="FILE",
-                       help="Write the audit to FILE instead of stdout (drops ANSI colors)")
+    audit.add_argument("--output", "-o", metavar="FILE", help="Write the audit to FILE instead of stdout (drops ANSI colors)")
     audit.add_argument("--strict", action="store_true", help="Exit non-zero on warnings too")
     audit.add_argument("--exit-zero", action="store_true", help="Always exit with code 0")
-    audit.add_argument("--check", action="append", metavar="NAME",
-                       help="Run only the named check (repeatable). See `--list-checks`.")
-    audit.add_argument("--only", choices=list(STATUS_FILTERS.keys()),
-                       help="Show only results with the given status (fail/warn/problems/skip/ok/all)")
-    audit.add_argument("--since", type=int, metavar="HOURS", default=24,
-                       help="Look-back window in hours for OOM/auth/kernel checks (default: 24)")
-    audit.add_argument("--list-checks", action="store_true",
-                       dest="list_checks", help="List all check short-names and exit")
-    audit.add_argument("--brief", "-b", action="store_true",
-                       help="One-line summary suitable for MOTD / SSH banners")
-    audit.add_argument("--ignore", action="append", metavar="NAME", default=[],
-                       help="Skip a check (short-name) or result-name (repeatable). "
-                            "e.g. --ignore swap  or  --ignore 'disk /mnt/Backup'")
-    audit.add_argument("--serial", action="store_true",
-                       help="Run checks sequentially (for debugging; default is parallel)")
-    audit.add_argument("--check-timeout", type=float, metavar="SECONDS",
-                       help="Per-check timeout in seconds (default: 10, overrides config)")
-    audit.add_argument("--alert", metavar="CMD",
-                       help="Shell command to invoke when FAIL results exist. "
-                            "Audit text is piped to stdin. "
-                            "Env: WTF_FAIL_COUNT, WTF_WARN_COUNT, WTF_HOST.")
-    audit.add_argument("--alert-on", choices=["fail", "warn", "any"], default="fail",
-                       help="When to fire --alert (default: only on FAIL)")
-    audit.add_argument("--save", action="store_true",
-                       help="Persist the audit result as a snapshot for history/diff")
+    audit.add_argument("--check", action="append", metavar="NAME", help="Run only the named check (repeatable). See `--list-checks`.")
+    audit.add_argument("--only", choices=list(STATUS_FILTERS.keys()), help="Show only results with the given status (fail/warn/problems/skip/ok/all)")
+    audit.add_argument("--since", type=int, metavar="HOURS", default=24, help="Look-back window in hours for OOM/auth/kernel checks (default: 24)")
+    audit.add_argument("--list-checks", action="store_true", dest="list_checks", help="List all check short-names and exit")
+    audit.add_argument("--brief", "-b", action="store_true", help="One-line summary suitable for MOTD / SSH banners")
+    audit.add_argument(
+        "--ignore",
+        action="append",
+        metavar="NAME",
+        default=[],
+        help="Skip a check (short-name) or result-name (repeatable). " "e.g. --ignore swap  or  --ignore 'disk /mnt/Backup'",
+    )
+    audit.add_argument("--serial", action="store_true", help="Run checks sequentially (for debugging; default is parallel)")
+    audit.add_argument("--check-timeout", type=float, metavar="SECONDS", help="Per-check timeout in seconds (default: 10, overrides config)")
+    audit.add_argument(
+        "--alert", metavar="CMD", help="Shell command to invoke when FAIL results exist. " "Audit text is piped to stdin. " "Env: WTF_FAIL_COUNT, WTF_WARN_COUNT, WTF_HOST."
+    )
+    audit.add_argument("--alert-on", choices=["fail", "warn", "any"], default="fail", help="When to fire --alert (default: only on FAIL)")
+    audit.add_argument("--save", action="store_true", help="Persist the audit result as a snapshot for history/diff")
     audit.set_defaults(func=cmd_audit)
 
-    top = subparsers.add_parser("top",
-                                help="Top processes (focused live snapshot)")
-    top.add_argument("--sort", choices=["cpu", "rss"], default="cpu",
-                     help="Sort key (default: cpu)")
+    top = subparsers.add_parser("top", help="Top processes (focused live snapshot)")
+    top.add_argument("--sort", choices=["cpu", "rss"], default="cpu", help="Sort key (default: cpu)")
     top.add_argument("--limit", type=int, default=10, help="Number to show (default: 10)")
     top.add_argument("--user", metavar="PREFIX", help="Filter by username prefix")
-    top.add_argument("--name", metavar="PATTERN",
-                     help="Filter by command-name substring (case-insensitive)")
+    top.add_argument("--name", metavar="PATTERN", help="Filter by command-name substring (case-insensitive)")
     top.add_argument("--format", choices=["text", "json"], default="text")
     top.set_defaults(func=cmd_top)
 
-    ports = subparsers.add_parser("ports",
-                                  help="Listening ports with owning process info")
-    ports.add_argument("--proto", choices=["tcp", "udp", "all"], default="tcp",
-                       help="Protocol filter (default: tcp)")
-    ports.add_argument("--public-only", action="store_true",
-                       help="Skip loopback addresses (127.x)")
+    ports = subparsers.add_parser("ports", help="Listening ports with owning process info")
+    ports.add_argument("--proto", choices=["tcp", "udp", "all"], default="tcp", help="Protocol filter (default: tcp)")
+    ports.add_argument("--public-only", action="store_true", help="Skip loopback addresses (127.x)")
     ports.add_argument("--format", choices=["text", "json"], default="text")
     ports.set_defaults(func=cmd_ports)
 
-    problems = subparsers.add_parser("problems",
-                                     help="Show only WARN+FAIL results (alias: audit --only problem)")
-    problems.add_argument("--check", action="append", metavar="NAME",
-                          help="Run only the named check (repeatable). See `--list-checks`.")
-    problems.add_argument("--ignore", action="append", metavar="NAME", default=[],
-                          help="Skip a check (short-name) or result-name")
-    problems.add_argument("--since", type=int, metavar="HOURS", default=24,
-                          help="Look-back window for OOM/auth/kernel checks")
-    problems.add_argument("--format", choices=["text", "json", "prometheus",
-                                               "csv", "plain", "html"],
-                          default="text")
-    problems.add_argument("--output", "-o", metavar="FILE",
-                          help="Write to FILE instead of stdout")
-    problems.add_argument("--strict", action="store_true",
-                          help="Exit non-zero on warnings too")
-    problems.add_argument("--exit-zero", action="store_true",
-                          help="Always exit with code 0")
-    problems.add_argument("--serial", action="store_true",
-                          help="Run checks sequentially")
-    problems.add_argument("--check-timeout", type=float, metavar="SECONDS",
-                          help="Per-check timeout in seconds")
-    problems.add_argument("--verbose", "-v", action="store_true",
-                          help="Show extra detail")
-    problems.set_defaults(func=cmd_problems, list_checks=False, brief=False,
-                          save=False, alert=None, alert_on="fail")
+    problems = subparsers.add_parser("problems", help="Show only WARN+FAIL results (alias: audit --only problem)")
+    problems.add_argument("--check", action="append", metavar="NAME", help="Run only the named check (repeatable). See `--list-checks`.")
+    problems.add_argument("--ignore", action="append", metavar="NAME", default=[], help="Skip a check (short-name) or result-name")
+    problems.add_argument("--since", type=int, metavar="HOURS", default=24, help="Look-back window for OOM/auth/kernel checks")
+    problems.add_argument("--format", choices=["text", "json", "prometheus", "csv", "plain", "html"], default="text")
+    problems.add_argument("--output", "-o", metavar="FILE", help="Write to FILE instead of stdout")
+    problems.add_argument("--strict", action="store_true", help="Exit non-zero on warnings too")
+    problems.add_argument("--exit-zero", action="store_true", help="Always exit with code 0")
+    problems.add_argument("--serial", action="store_true", help="Run checks sequentially")
+    problems.add_argument("--check-timeout", type=float, metavar="SECONDS", help="Per-check timeout in seconds")
+    problems.add_argument("--verbose", "-v", action="store_true", help="Show extra detail")
+    problems.set_defaults(func=cmd_problems, list_checks=False, brief=False, save=False, alert=None, alert_on="fail")
 
-    diff = subparsers.add_parser("diff",
-                                 help="Compare current audit (or a snapshot) against a stored snapshot")
-    diff.add_argument("--snapshot", type=int, default=0, metavar="N",
-                      help="Compare against the Nth-most-recent snapshot "
-                           "(0=latest, 1=one before, …). Default: 0.")
-    diff.add_argument("--against", nargs=2, metavar=("OLD", "NEW"),
-                      help="Diff two snapshot files directly, no live audit")
+    diff = subparsers.add_parser("diff", help="Compare current audit (or a snapshot) against a stored snapshot")
+    diff.add_argument("--snapshot", type=int, default=0, metavar="N", help="Compare against the Nth-most-recent snapshot " "(0=latest, 1=one before, …). Default: 0.")
+    diff.add_argument("--against", nargs=2, metavar=("OLD", "NEW"), help="Diff two snapshot files directly, no live audit")
     diff.add_argument("--format", choices=["text", "json"], default="text")
     diff.set_defaults(func=cmd_diff)
 
-    history = subparsers.add_parser("history",
-                                    help="List saved audit snapshots")
-    history.add_argument("--limit", type=int, default=20,
-                         help="Number of most-recent snapshots to show (default: 20)")
+    history = subparsers.add_parser("history", help="List saved audit snapshots")
+    history.add_argument("--limit", type=int, default=20, help="Number of most-recent snapshots to show (default: 20)")
     history.add_argument("--format", choices=["text", "json"], default="text")
     history.set_defaults(func=cmd_history)
 
-    explain = subparsers.add_parser("explain",
-                                    help="Suggest actions for current audit findings")
-    explain.add_argument("--check", action="append", metavar="NAME",
-                         help="Limit to specific checks")
-    explain.add_argument("--ignore", action="append", metavar="NAME", default=[],
-                         help="Skip a check or result-name")
-    explain.add_argument("--since", type=int, default=24, metavar="HOURS",
-                         help="Look-back window for time-bounded checks (default: 24)")
-    explain.add_argument("--all", action="store_true",
-                         help="Also explain OK results (default: only WARN/FAIL)")
-    explain.add_argument("--deep", action="store_true",
-                         help="Run dynamic investigation per finding (du -d1 on the "
-                              "filling mount, docker system df, container/log sizes). "
-                              "Slower; opt-in.")
-    explain.add_argument("--prompt", action="store_true",
-                         help="Print an LLM-ready prompt instead of built-in advice. "
-                              "Pipe it: `wtf explain --prompt | claude` or `| ollama run llama3`.")
-    explain.add_argument("--llm", choices=["ollama", "claude", "openai", "auto"],
-                         help="Call an LLM directly with the structured prompt and "
-                              "print its response. ollama needs the binary; "
-                              "claude/openai need the matching Python SDK + API key env.")
-    explain.add_argument("--llm-model", metavar="MODEL",
-                         help="Override default model name for --llm")
-    explain.add_argument("--llm-timeout", type=int, default=60, metavar="SECONDS",
-                         help="LLM call timeout (default: 60s)")
+    explain = subparsers.add_parser("explain", help="Suggest actions for current audit findings")
+    explain.add_argument("--check", action="append", metavar="NAME", help="Limit to specific checks")
+    explain.add_argument("--ignore", action="append", metavar="NAME", default=[], help="Skip a check or result-name")
+    explain.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window for time-bounded checks (default: 24)")
+    explain.add_argument("--all", action="store_true", help="Also explain OK results (default: only WARN/FAIL)")
+    explain.add_argument(
+        "--deep", action="store_true", help="Run dynamic investigation per finding (du -d1 on the " "filling mount, docker system df, container/log sizes). " "Slower; opt-in."
+    )
+    explain.add_argument(
+        "--prompt", action="store_true", help="Print an LLM-ready prompt instead of built-in advice. " "Pipe it: `wtf explain --prompt | claude` or `| ollama run llama3`."
+    )
+    explain.add_argument(
+        "--llm",
+        choices=["ollama", "claude", "openai", "auto"],
+        help="Call an LLM directly with the structured prompt and " "print its response. ollama needs the binary; " "claude/openai need the matching Python SDK + API key env.",
+    )
+    explain.add_argument("--llm-model", metavar="MODEL", help="Override default model name for --llm")
+    explain.add_argument("--llm-timeout", type=int, default=60, metavar="SECONDS", help="LLM call timeout (default: 60s)")
     explain.add_argument("--format", choices=["text", "json"], default="text")
-    explain.add_argument("--serial", action="store_true",
-                         help="Run audit sequentially (passes through to underlying audit)")
-    explain.add_argument("--check-timeout", type=float, metavar="SECONDS",
-                         help="Per-check timeout in seconds (passes through to audit)")
+    explain.add_argument("--serial", action="store_true", help="Run audit sequentially (passes through to underlying audit)")
+    explain.add_argument("--check-timeout", type=float, metavar="SECONDS", help="Per-check timeout in seconds (passes through to audit)")
     explain.set_defaults(func=cmd_explain, only=None)
 
     doctor = subparsers.add_parser("doctor", help="Self-diagnostic: which tools/files wtf can use")
     doctor.add_argument("--format", choices=["text", "json"], default="text")
-    doctor.add_argument("--check-updates", action="store_true",
-                        help="Query PyPI for a newer wtftools version (network call)")
+    doctor.add_argument("--check-updates", action="store_true", help="Query PyPI for a newer wtftools version (network call)")
     doctor.set_defaults(func=cmd_doctor)
 
-    events = subparsers.add_parser("events",
-                                   help="Chronological timeline: reboots, OOM kills, failed units, kernel errors")
-    events.add_argument("--since", type=int, default=24, metavar="HOURS",
-                        help="Look-back window in hours (default: 24)")
-    events.add_argument("--kind", action="append", metavar="KIND",
-                        choices=list(events_mod.EVENT_KINDS),
-                        help="Filter to one kind (repeatable). Choices: " +
-                             ", ".join(events_mod.EVENT_KINDS))
-    events.add_argument("--limit", type=int, default=0,
-                        help="Max events to show (0 = unlimited)")
+    events = subparsers.add_parser("events", help="Chronological timeline: reboots, OOM kills, failed units, kernel errors")
+    events.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window in hours (default: 24)")
+    events.add_argument(
+        "--kind", action="append", metavar="KIND", choices=list(events_mod.EVENT_KINDS), help="Filter to one kind (repeatable). Choices: " + ", ".join(events_mod.EVENT_KINDS)
+    )
+    events.add_argument("--limit", type=int, default=0, help="Max events to show (0 = unlimited)")
     events.add_argument("--format", choices=["text", "json"], default="text")
     events.set_defaults(func=cmd_events)
 
     logs = subparsers.add_parser("logs", help="Recent ERROR-level journal entries grouped by service")
-    logs.add_argument("--since", default="1 hour ago",
-                      help="journalctl --since value (default: '1 hour ago')")
-    logs.add_argument("--priority", "-p", default="err",
-                      help="journalctl priority filter (default: 'err' = err+crit+alert+emerg)")
-    logs.add_argument("--units", type=int, default=10,
-                      help="Number of top units to show (default: 10)")
-    logs.add_argument("--lines", "-n", type=int, default=5,
-                      help="Lines per unit (default: 5)")
+    logs.add_argument("--since", default="1 hour ago", help="journalctl --since value (default: '1 hour ago')")
+    logs.add_argument("--priority", "-p", default="err", help="journalctl priority filter (default: 'err' = err+crit+alert+emerg)")
+    logs.add_argument("--units", type=int, default=10, help="Number of top units to show (default: 10)")
+    logs.add_argument("--lines", "-n", type=int, default=5, help="Lines per unit (default: 5)")
     logs.add_argument("--format", choices=["text", "json"], default="text")
     logs.set_defaults(func=cmd_logs)
 
     services = subparsers.add_parser("services", help="Drilldown for one systemd service")
     services.add_argument("name", help="Service unit name (e.g. nginx or nginx.service)")
-    services.add_argument("-n", "--lines", type=int, default=20,
-                          help="Recent journal lines to show (default: 20)")
+    services.add_argument("-n", "--lines", type=int, default=20, help="Recent journal lines to show (default: 20)")
     services.add_argument("--format", choices=["text", "json"], default="text")
     services.set_defaults(func=cmd_services)
 
     cfg = subparsers.add_parser("config", help="Show or generate the wtftools config")
-    cfg.add_argument("--example", action="store_true",
-                     help="Print a fully-commented example config and exit")
+    cfg.add_argument("--example", action="store_true", help="Print a fully-commented example config and exit")
     cfg.add_argument("--format", choices=["text", "json"], default="text")
     cfg.set_defaults(func=cmd_config)
 

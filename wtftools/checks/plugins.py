@@ -39,7 +39,8 @@ DEFAULT_PLUGIN_DIRS = (
     "/etc/wtftools/checks.d",
     os.path.join(
         os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-        "wtftools", "checks.d",
+        "wtftools",
+        "checks.d",
     ),
 )
 
@@ -47,6 +48,7 @@ DEFAULT_PLUGIN_DIRS = (
 @dataclass
 class PluginResult:
     """Outcome of running a single plugin (consumed by audit.py)."""
+
     name: str
     status: str
     message: str
@@ -90,8 +92,7 @@ def run_plugin(path: str, timeout: int = PLUGIN_TIMEOUT_SECONDS) -> PluginResult
     """Execute a single plugin script and convert its result into a PluginResult."""
     name = _plugin_name(path)
     try:
-        proc = subprocess.run([path], capture_output=True, text=True,
-                              timeout=timeout, check=False)
+        proc = subprocess.run([path], capture_output=True, text=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
         return PluginResult(name, "fail", f"plugin timed out after {timeout}s", [])
     except PermissionError:

@@ -47,8 +47,8 @@ def test_check_result_reexport():
 def test_run_audit_reexport(monkeypatch):
     """`from wtftools import run_audit` must work and behave like the submodule."""
     from wtftools import audit as audit_mod
-    monkeypatch.setattr(audit_mod, "_all_check_callables",
-                        lambda: {"only": lambda: audit_mod.CheckResult("x", "ok", "")})
+
+    monkeypatch.setattr(audit_mod, "_all_check_callables", lambda: {"only": lambda: audit_mod.CheckResult("x", "ok", "")})
     results = wtftools.run_audit()
     assert len(results) == 1
     assert results[0].name == "x"
@@ -84,11 +84,10 @@ def test_lazy_imports_dont_load_submodules_eagerly():
     """
     import importlib
     import sys
+
     # Re-import fresh
     for mod in list(sys.modules):
-        if mod.startswith("wtftools.") and mod not in (
-            "wtftools",   # we keep the top-level
-        ):
+        if mod.startswith("wtftools.") and mod not in ("wtftools",):  # we keep the top-level
             del sys.modules[mod]
     sys.modules.pop("wtftools", None)
     importlib.import_module("wtftools")

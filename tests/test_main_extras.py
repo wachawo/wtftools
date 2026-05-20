@@ -42,6 +42,7 @@ def test_audit_list_checks():
 def test_audit_check_specific(monkeypatch):
     def fake_mem():
         return audit.CheckResult("memory", "ok", "fine")
+
     monkeypatch.setitem(audit.CHECK_REGISTRY, "memory", fake_mem)
     rc, out = _capture(["audit", "--check", "memory"])
     assert rc == 0
@@ -49,10 +50,8 @@ def test_audit_check_specific(monkeypatch):
 
 
 def test_audit_check_multiple(monkeypatch):
-    monkeypatch.setitem(audit.CHECK_REGISTRY, "memory",
-                        lambda: audit.CheckResult("memory", "ok", "x"))
-    monkeypatch.setitem(audit.CHECK_REGISTRY, "swap",
-                        lambda: audit.CheckResult("swap", "warn", "y"))
+    monkeypatch.setitem(audit.CHECK_REGISTRY, "memory", lambda: audit.CheckResult("memory", "ok", "x"))
+    monkeypatch.setitem(audit.CHECK_REGISTRY, "swap", lambda: audit.CheckResult("swap", "warn", "y"))
     rc, out = _capture(["audit", "--check", "memory", "--check", "swap"])
     assert rc == 0
     assert "memory" in out and "swap" in out
@@ -65,11 +64,15 @@ def test_audit_check_unknown():
 
 
 def test_audit_only_fail(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "ok", ""),
-        audit.CheckResult("b", "fail", "boom"),
-        audit.CheckResult("c", "warn", "meh"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "ok", ""),
+            audit.CheckResult("b", "fail", "boom"),
+            audit.CheckResult("c", "warn", "meh"),
+        ],
+    )
     rc, out = _capture(["audit", "--only", "fail"])
     assert "boom" in out
     assert "meh" not in out
@@ -77,20 +80,28 @@ def test_audit_only_fail(monkeypatch):
 
 
 def test_audit_only_problem(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "ok", ""),
-        audit.CheckResult("b", "fail", "f"),
-        audit.CheckResult("c", "warn", "w"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "ok", ""),
+            audit.CheckResult("b", "fail", "f"),
+            audit.CheckResult("c", "warn", "w"),
+        ],
+    )
     rc, out = _capture(["audit", "--only", "problem"])
     assert "f" in out and "w" in out
     assert "fine" not in out
 
 
 def test_audit_only_empty(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "ok", "fine"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "ok", "fine"),
+        ],
+    )
     rc, out = _capture(["audit", "--only", "fail"])
     assert "no checks matched" in out
 
@@ -105,9 +116,7 @@ def test_audit_only_json_empty(monkeypatch):
 def test_audit_since_passed_to_module(monkeypatch):
     set_hours = []
     monkeypatch.setattr(audit, "set_since_hours", lambda h: set_hours.append(h))
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", "")
-    ])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "")])
     _capture(["audit", "--since", "6"])
     assert set_hours == [6]
 
@@ -116,9 +125,7 @@ def test_audit_since_passed_to_module(monkeypatch):
 
 
 def test_status_filters_dict_has_expected_keys():
-    assert set(main.STATUS_FILTERS.keys()) == {
-        "fail", "warn", "problems", "problem", "skip", "ok", "all"
-    }
+    assert set(main.STATUS_FILTERS.keys()) == {"fail", "warn", "problems", "problem", "skip", "ok", "all"}
 
 
 def test_gather_doctor_report_handles_missing_psutil(monkeypatch):
@@ -131,8 +138,7 @@ def test_gather_doctor_report_handles_missing_psutil(monkeypatch):
 
 def test_gather_doctor_report_missing_proc_file(monkeypatch):
     real_exists = main.os.path.exists
-    monkeypatch.setattr(main.os.path, "exists",
-                        lambda p: False if p == "/proc/meminfo" else real_exists(p))
+    monkeypatch.setattr(main.os.path, "exists", lambda p: False if p == "/proc/meminfo" else real_exists(p))
     report = main._gather_doctor_report()
     meminfo = next(c for c in report["checks"] if c["name"] == "/proc/meminfo")
     assert meminfo["status"] == "fail"

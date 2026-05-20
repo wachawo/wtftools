@@ -19,6 +19,7 @@ def _capture(argv):
 
 # ---- restart loops ----
 
+
 def test_get_service_restart_counts_none(monkeypatch):
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, "", ""))
     assert sysinfo.get_service_restart_counts() == []
@@ -26,10 +27,7 @@ def test_get_service_restart_counts_none(monkeypatch):
 
 def test_get_service_restart_counts_parses(monkeypatch):
     list_out = "ssh.service loaded active running OpenSSH\nnginx.service loaded active running nginx\n"
-    show_out = (
-        "Id=ssh.service\nNRestarts=0\n\n"
-        "Id=nginx.service\nNRestarts=12\n"
-    )
+    show_out = "Id=ssh.service\nNRestarts=0\n\n" "Id=nginx.service\nNRestarts=12\n"
 
     def fake_run(cmd, **_):
         if "list-units" in cmd:
@@ -69,21 +67,20 @@ def test_check_restart_loops_ok(monkeypatch):
 
 def test_check_restart_loops_warn(monkeypatch):
     monkeypatch.setattr(audit.shutil, "which", lambda _: "/bin/systemctl")
-    monkeypatch.setattr(audit.sysinfo, "get_service_restart_counts",
-                        lambda threshold: [{"name": "x.service", "restarts": 4}])
+    monkeypatch.setattr(audit.sysinfo, "get_service_restart_counts", lambda threshold: [{"name": "x.service", "restarts": 4}])
     r = audit._check_restart_loops()
     assert r.status == "warn"
 
 
 def test_check_restart_loops_fail(monkeypatch):
     monkeypatch.setattr(audit.shutil, "which", lambda _: "/bin/systemctl")
-    monkeypatch.setattr(audit.sysinfo, "get_service_restart_counts",
-                        lambda threshold: [{"name": "x.service", "restarts": 50}])
+    monkeypatch.setattr(audit.sysinfo, "get_service_restart_counts", lambda threshold: [{"name": "x.service", "restarts": 50}])
     r = audit._check_restart_loops()
     assert r.status == "fail"
 
 
 # ---- network errors ----
+
 
 def test_get_network_errors_returns_list(monkeypatch):
     monkeypatch.setattr(sysinfo.os.path, "isdir", lambda p: True)
@@ -117,8 +114,10 @@ def test_get_network_errors_no_sysfs(monkeypatch):
 
 def test_get_network_errors_listdir_error(monkeypatch):
     monkeypatch.setattr(sysinfo.os.path, "isdir", lambda p: True)
+
     def boom(_):
         raise OSError
+
     monkeypatch.setattr(sysinfo.os, "listdir", boom)
     assert sysinfo.get_network_errors() == []
 
@@ -129,39 +128,44 @@ def test_check_network_errors_ok(monkeypatch):
 
 
 def test_check_network_errors_minor(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_network_errors",
-                        lambda: [{"iface": "eth0", "rx_errors": 1, "tx_errors": 0,
-                                  "rx_dropped": 1, "tx_dropped": 0, "total": 2}])
+    monkeypatch.setattr(audit.sysinfo, "get_network_errors", lambda: [{"iface": "eth0", "rx_errors": 1, "tx_errors": 0, "rx_dropped": 1, "tx_dropped": 0, "total": 2}])
     r = audit._check_network_errors()
     assert r.status == "ok"
 
 
 def test_check_network_errors_severe(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_network_errors",
-                        lambda: [{"iface": "eth0", "rx_errors": 1500, "tx_errors": 0,
-                                  "rx_dropped": 0, "tx_dropped": 0, "total": 1500}])
+    monkeypatch.setattr(audit.sysinfo, "get_network_errors", lambda: [{"iface": "eth0", "rx_errors": 1500, "tx_errors": 0, "rx_dropped": 0, "tx_dropped": 0, "total": 1500}])
     r = audit._check_network_errors()
     assert r.status == "warn"
 
 
 # ---- brief mode ----
 
+
 def test_brief_all_good(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "ok", ""),
-        audit.CheckResult("b", "ok", ""),
-        audit.CheckResult("c", "skip", ""),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "ok", ""),
+            audit.CheckResult("b", "ok", ""),
+            audit.CheckResult("c", "skip", ""),
+        ],
+    )
     rc, out = _capture(["audit", "--brief"])
     assert rc == 0
     assert "all good" in out
 
 
 def test_brief_with_fail(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "fail", "boom message"),
-        audit.CheckResult("b", "warn", "watch me"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "fail", "boom message"),
+            audit.CheckResult("b", "warn", "watch me"),
+        ],
+    )
     rc, out = _capture(["audit", "--brief"])
     assert rc == 2
     assert "fail" in out
@@ -169,36 +173,44 @@ def test_brief_with_fail(monkeypatch):
 
 
 def test_brief_with_only_warns(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "warn", "soft"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "warn", "soft"),
+        ],
+    )
     rc, _ = _capture(["audit", "--brief"])
     assert rc == 1
 
 
 def test_brief_truncates_long_messages(monkeypatch):
     long = "x" * 200
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("n", "fail", long),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("n", "fail", long),
+        ],
+    )
     _, out = _capture(["audit", "--brief"])
     assert "…" in out
 
 
 def test_brief_more_than_three_problems(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult(f"a{i}", "warn", "x") for i in range(5)
-    ])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult(f"a{i}", "warn", "x") for i in range(5)])
     _, out = _capture(["audit", "--brief"])
     assert "+2 more" in out
 
 
 # ---- plugins integration ----
 
+
 def test_audit_includes_plugins(monkeypatch, tmp_path):
     p = tmp_path / "myplugin.sh"
     p.write_text("#!/bin/sh\necho 'hello'\nexit 0\n")
     import os
+
     os.chmod(str(p), 0o755)
     monkeypatch.setattr(plugins_mod, "DEFAULT_PLUGIN_DIRS", (str(tmp_path),))
     results = audit.run_audit(names=["plugin:myplugin"])
@@ -209,6 +221,7 @@ def test_list_check_names_includes_plugins(monkeypatch, tmp_path):
     p = tmp_path / "p.sh"
     p.write_text("#!/bin/sh\nexit 0\n")
     import os
+
     os.chmod(str(p), 0o755)
     monkeypatch.setattr(plugins_mod, "DEFAULT_PLUGIN_DIRS", (str(tmp_path),))
     names = audit.list_check_names()

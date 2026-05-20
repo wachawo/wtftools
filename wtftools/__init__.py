@@ -19,6 +19,7 @@ versions without a notice. Import the submodules directly if you need them.
 try:
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import version as _pkg_version
+
     try:
         __version__ = _pkg_version("wtftools")
     except PackageNotFoundError:
@@ -49,5 +50,6 @@ def __getattr__(name):
     """Lazy re-export of the audit module's stable surface."""
     if name in ("CheckResult", "run_audit", "summarize", "list_check_names"):
         from wtftools import audit
+
         return getattr(audit, name)
     raise AttributeError(f"module 'wtftools' has no attribute {name!r}")

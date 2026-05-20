@@ -47,11 +47,9 @@ def render_info() -> str:
     out.append("")
     out.append(colors.section("MEMORY"))
     mem = sysinfo.get_memory_summary()
-    out.append(f"  ram     : {_bar(mem['percent'])}  "
-               f"{sysinfo.format_bytes(mem['used'])} / {sysinfo.format_bytes(mem['total'])}")
+    out.append(f"  ram     : {_bar(mem['percent'])}  " f"{sysinfo.format_bytes(mem['used'])} / {sysinfo.format_bytes(mem['total'])}")
     if mem["swap_total"]:
-        out.append(f"  swap    : {_bar(mem['swap_percent'])}  "
-                   f"{sysinfo.format_bytes(mem['swap_used'])} / {sysinfo.format_bytes(mem['swap_total'])}")
+        out.append(f"  swap    : {_bar(mem['swap_percent'])}  " f"{sysinfo.format_bytes(mem['swap_used'])} / {sysinfo.format_bytes(mem['swap_total'])}")
     else:
         out.append(f"  swap    : {colors.dim('not configured')}")
 
@@ -63,22 +61,18 @@ def render_info() -> str:
     else:
         for disk in disks:
             target = disk["target"]
-            label = (target if len(target) <= 16 else "…" + target[-15:])
-            out.append(f"  {label:<16} {_bar(disk['percent'])}  "
-                       f"{sysinfo.format_bytes(disk['used'])} / {sysinfo.format_bytes(disk['total'])}  "
-                       f"{colors.dim(disk['fstype'])}")
+            label = target if len(target) <= 16 else "…" + target[-15:]
+            out.append(f"  {label:<16} {_bar(disk['percent'])}  " f"{sysinfo.format_bytes(disk['used'])} / {sysinfo.format_bytes(disk['total'])}  " f"{colors.dim(disk['fstype'])}")
 
     out.append("")
     out.append(colors.section("TOP BY CPU"))
     for proc in sysinfo.get_top_processes(by="cpu", limit=5):
-        out.append(f"  {proc['cpu_percent']:5.1f}%  {str(proc.get('user',''))[:12]:<12} "
-                   f"{proc['pid']:>7}  {proc['name']}")
+        out.append(f"  {proc['cpu_percent']:5.1f}%  {str(proc.get('user',''))[:12]:<12} " f"{proc['pid']:>7}  {proc['name']}")
 
     out.append("")
     out.append(colors.section("TOP BY RAM"))
     for proc in sysinfo.get_top_processes(by="rss", limit=5):
-        out.append(f"  {sysinfo.format_bytes(proc.get('rss', 0)):>8}  "
-                   f"{str(proc.get('user',''))[:12]:<12} {proc['pid']:>7}  {proc['name']}")
+        out.append(f"  {sysinfo.format_bytes(proc.get('rss', 0)):>8}  " f"{str(proc.get('user',''))[:12]:<12} {proc['pid']:>7}  {proc['name']}")
 
     out.append("")
     out.append(colors.section("NETWORK"))
@@ -90,7 +84,8 @@ def render_info() -> str:
     ports = sysinfo.get_listening_ports()
     if ports:
         unique_ports = sorted({p["port"] for p in ports})
-        out.append(f"  {colors.dim('listening tcp:')} {', '.join(str(p) for p in unique_ports[:20])}"
-                   + (colors.dim(f"  (+{len(unique_ports)-20} more)") if len(unique_ports) > 20 else ""))
+        out.append(
+            f"  {colors.dim('listening tcp:')} {', '.join(str(p) for p in unique_ports[:20])}" + (colors.dim(f"  (+{len(unique_ports)-20} more)") if len(unique_ports) > 20 else "")
+        )
 
     return "\n".join(out)

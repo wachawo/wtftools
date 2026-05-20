@@ -79,8 +79,8 @@ def test_section_with_width():
 
 def test_section_default_width():
     import os as _os
-    with mock.patch("wtftools.colors.shutil.get_terminal_size",
-                    return_value=_os.terminal_size((80, 24))):
+
+    with mock.patch("wtftools.colors.shutil.get_terminal_size", return_value=_os.terminal_size((80, 24))):
         out = colors.section("HELLO")
     assert "HELLO" in out
 

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CheckResult:
     """Outcome of a single audit check."""
+
     name: str
     status: str  # ok | warn | fail | skip
     message: str
@@ -246,12 +247,8 @@ def _check_enabled_inactive() -> CheckResult:
         return CheckResult("enabled but down", "ok", "all enabled services are running")
     rendered = [f"{u['name']} (ActiveState={u['state']}, Result={u['result']})" for u in units]
     if any(u["state"] == "failed" for u in units):
-        return CheckResult("enabled but down", "fail",
-                           f"{len(units)} enabled service(s) not running",
-                           detail=rendered)
-    return CheckResult("enabled but down", "warn",
-                       f"{len(units)} enabled service(s) not running",
-                       detail=rendered)
+        return CheckResult("enabled but down", "fail", f"{len(units)} enabled service(s) not running", detail=rendered)
+    return CheckResult("enabled but down", "warn", f"{len(units)} enabled service(s) not running", detail=rendered)
 
 
 def _check_reboot_required() -> CheckResult:
@@ -286,25 +283,21 @@ def _check_time_sync() -> CheckResult:
         return CheckResult("time sync", "ok", msg)
     if status["ntp_active"]:
         return CheckResult("time sync", "warn", "NTP active but not synchronized" + suffix)
-    return CheckResult("time sync", "fail",
-                       "NTP disabled and clock not synchronized" + suffix)
+    return CheckResult("time sync", "fail", "NTP disabled and clock not synchronized" + suffix)
 
 
 def _check_fail2ban() -> CheckResult:
     jails = sysinfo.get_fail2ban_jails()
     if jails is None:
-        return CheckResult("fail2ban", "skip",
-                           "fail2ban-client not installed / daemon down")
+        return CheckResult("fail2ban", "skip", "fail2ban-client not installed / daemon down")
     if not jails:
         return CheckResult("fail2ban", "ok", "active, no jails configured")
     banned_now = sum(j["banned"] for j in jails)
     banned_total = sum(j["total"] for j in jails)
-    detail = [f"{j['name']}: {j['banned']} banned now / {j['total']} total"
-              for j in jails]
+    detail = [f"{j['name']}: {j['banned']} banned now / {j['total']} total" for j in jails]
     # Active bans are informational, not a problem. We surface them so the
     # SRE knows fail2ban is actually doing something.
-    msg = (f"{banned_now} IP(s) currently banned across "
-           f"{len(jails)} jail(s)  · {banned_total} total since boot")
+    msg = f"{banned_now} IP(s) currently banned across " f"{len(jails)} jail(s)  · {banned_total} total since boot"
     return CheckResult("fail2ban", "ok", msg, detail=detail)
 
 
@@ -359,36 +352,26 @@ def _check_smart() -> CheckResult:
     """Per-disk SMART health via smartctl."""
     result = sysinfo.get_smart_status()
     if result is None:
-        return CheckResult("disk SMART", "skip",
-                           "smartctl not installed (apt install smartmontools)")
+        return CheckResult("disk SMART", "skip", "smartctl not installed (apt install smartmontools)")
     if not result:
         return CheckResult("disk SMART", "skip", "no SMART-capable disks found")
     failed = [r for r in result if r["passed"] is False]
     detail = [
-        f"{r['device']}: " + ("PASSED" if r["passed"] else
-                              ("FAILED — replace soon" if r["passed"] is False else "unknown"))
-        + (f" ({r['message']})" if r["message"] else "")
+        f"{r['device']}: " + ("PASSED" if r["passed"] else ("FAILED — replace soon" if r["passed"] is False else "unknown")) + (f" ({r['message']})" if r["message"] else "")
         for r in result
     ]
     if failed:
-        return CheckResult("disk SMART", "fail",
-                           f"{len(failed)} disk(s) reporting SMART failure",
-                           detail=detail)
-    return CheckResult("disk SMART", "ok",
-                       f"all {len(result)} disk(s) passing SMART",
-                       detail=detail)
+        return CheckResult("disk SMART", "fail", f"{len(failed)} disk(s) reporting SMART failure", detail=detail)
+    return CheckResult("disk SMART", "ok", f"all {len(result)} disk(s) passing SMART", detail=detail)
 
 
 def _check_temperatures() -> CheckResult:
     cfg = config_mod.get_config()
     temps = sysinfo.get_temperatures()
     if not temps:
-        return CheckResult("hw temperatures", "skip",
-                           "no /sys/class/hwmon sensors found")
+        return CheckResult("hw temperatures", "skip", "no /sys/class/hwmon sensors found")
     hottest = max(temps, key=lambda t: t["celsius"])
-    summary = (f"max {hottest['celsius']}°C "
-               f"({hottest['sensor']}/{hottest['label']})  "
-               f"· {len(temps)} sensor(s)")
+    summary = f"max {hottest['celsius']}°C " f"({hottest['sensor']}/{hottest['label']})  " f"· {len(temps)} sensor(s)"
     detail = [f"{t['celsius']:5.1f}°C  {t['sensor']}/{t['label']}" for t in temps]
     if hottest["celsius"] >= cfg.temp_fail_c:
         return CheckResult("hw temperatures", "fail", summary, detail=detail)
@@ -407,16 +390,11 @@ def _check_dns() -> CheckResult:
         results.append((host, sysinfo.resolve_hostname(host, timeout=cfg.dns_probe_timeout)))
     succeeded = [(h, ms) for h, ms in results if ms is not None]
     failed = [h for h, ms in results if ms is None]
-    detail = ([f"{h}: {ms:.0f}ms" for h, ms in succeeded] +
-              [f"{h}: FAILED (timeout/error)" for h in failed])
+    detail = [f"{h}: {ms:.0f}ms" for h, ms in succeeded] + [f"{h}: FAILED (timeout/error)" for h in failed]
     if not succeeded:
-        return CheckResult("dns resolution", "fail",
-                           f"{len(failed)} probe(s) failed (no DNS reachable)",
-                           detail=detail)
+        return CheckResult("dns resolution", "fail", f"{len(failed)} probe(s) failed (no DNS reachable)", detail=detail)
     if failed:
-        return CheckResult("dns resolution", "warn",
-                           f"{len(failed)}/{len(hosts)} probe(s) failed",
-                           detail=detail)
+        return CheckResult("dns resolution", "warn", f"{len(failed)}/{len(hosts)} probe(s) failed", detail=detail)
     slowest = max(ms for _, ms in succeeded)
     msg = f"all {len(hosts)} resolved (slowest: {slowest:.0f}ms)"
     return CheckResult("dns resolution", "ok", msg)
@@ -425,25 +403,20 @@ def _check_dns() -> CheckResult:
 def _check_docker() -> CheckResult:
     problems = sysinfo.get_docker_problem_containers()
     if problems is None:
-        return CheckResult("docker", "skip",
-                           "docker not installed or daemon unreachable")
+        return CheckResult("docker", "skip", "docker not installed or daemon unreachable")
     if not problems:
         return CheckResult("docker", "ok", "no unhealthy/restarting containers")
     detail = [f"{c['name']}: {c['problem']} ({c['status']})" for c in problems]
     has_unhealthy = any(c["problem"] == "unhealthy" for c in problems)
     status = "fail" if has_unhealthy else "warn"
-    return CheckResult("docker", status,
-                       f"{len(problems)} container(s) unhealthy/restarting",
-                       detail=detail)
+    return CheckResult("docker", status, f"{len(problems)} container(s) unhealthy/restarting", detail=detail)
 
 
 def _check_readonly_mounts() -> CheckResult:
     mounts = sysinfo.get_readonly_mounts()
     if not mounts:
         return CheckResult("read-only mounts", "ok", "none unexpected")
-    return CheckResult("read-only mounts", "fail",
-                       f"{len(mounts)} unexpectedly read-only mount(s)",
-                       detail=mounts)
+    return CheckResult("read-only mounts", "fail", f"{len(mounts)} unexpectedly read-only mount(s)", detail=mounts)
 
 
 def _check_stuck_processes() -> CheckResult:
@@ -451,12 +424,8 @@ def _check_stuck_processes() -> CheckResult:
     if not stuck:
         return CheckResult("D-state processes", "ok", "none")
     if len(stuck) >= 5:
-        return CheckResult("D-state processes", "fail",
-                           f"{len(stuck)} stuck process(es)",
-                           detail=[f"pid={p['pid']} {p['name']}" for p in stuck[:5]])
-    return CheckResult("D-state processes", "warn",
-                       f"{len(stuck)} stuck process(es)",
-                       detail=[f"pid={p['pid']} {p['name']}" for p in stuck])
+        return CheckResult("D-state processes", "fail", f"{len(stuck)} stuck process(es)", detail=[f"pid={p['pid']} {p['name']}" for p in stuck[:5]])
+    return CheckResult("D-state processes", "warn", f"{len(stuck)} stuck process(es)", detail=[f"pid={p['pid']} {p['name']}" for p in stuck])
 
 
 def _check_iowait() -> CheckResult:
@@ -494,25 +463,19 @@ def _check_restart_loops() -> CheckResult:
         return CheckResult("restart loops", "ok", "no services restarting frequently")
     detail = [f"{r['name']} (NRestarts={r['restarts']})" for r in restarts]
     if any(r["restarts"] >= cfg.restart_fail_threshold for r in restarts):
-        return CheckResult("restart loops", "fail",
-                           f"{len(restarts)} service(s) restart-looping", detail=detail)
-    return CheckResult("restart loops", "warn",
-                       f"{len(restarts)} service(s) with multiple restarts", detail=detail)
+        return CheckResult("restart loops", "fail", f"{len(restarts)} service(s) restart-looping", detail=detail)
+    return CheckResult("restart loops", "warn", f"{len(restarts)} service(s) with multiple restarts", detail=detail)
 
 
 def _check_network_errors() -> CheckResult:
     errors = sysinfo.get_network_errors()
     if not errors:
         return CheckResult("network errors", "ok", "no rx/tx errors or drops")
-    detail = [f"{e['iface']}: rx_err={e['rx_errors']} tx_err={e['tx_errors']} "
-              f"rx_drop={e['rx_dropped']} tx_drop={e['tx_dropped']}" for e in errors]
+    detail = [f"{e['iface']}: rx_err={e['rx_errors']} tx_err={e['tx_errors']} " f"rx_drop={e['rx_dropped']} tx_drop={e['tx_dropped']}" for e in errors]
     severe = [e for e in errors if e["total"] >= 1000]
     if severe:
-        return CheckResult("network errors", "warn",
-                           f"{len(severe)} interface(s) with high error counts (≥1000)",
-                           detail=detail)
-    return CheckResult("network errors", "ok",
-                       "minor counters present (below threshold)", detail=detail)
+        return CheckResult("network errors", "warn", f"{len(severe)} interface(s) with high error counts (≥1000)", detail=detail)
+    return CheckResult("network errors", "ok", "minor counters present (below threshold)", detail=detail)
 
 
 def _check_psi() -> List[CheckResult]:
@@ -523,8 +486,7 @@ def _check_psi() -> List[CheckResult]:
         data = sysinfo.get_pressure(resource)
         name = f"PSI {resource}"
         if data is None:
-            results.append(CheckResult(name, "skip",
-                                       "no /proc/pressure (kernel <4.20 or psi=0)"))
+            results.append(CheckResult(name, "skip", "no /proc/pressure (kernel <4.20 or psi=0)"))
             continue
         avg10 = data.get("some", {}).get("avg10", 0.0)
         msg = f"some avg10={avg10:.1f}%"
@@ -540,8 +502,7 @@ def _check_psi() -> List[CheckResult]:
 def _check_kernel_taint() -> CheckResult:
     val = sysinfo.get_kernel_taint()
     if val is None:
-        return CheckResult("kernel taint", "skip",
-                           "cannot read /proc/sys/kernel/tainted")
+        return CheckResult("kernel taint", "skip", "cannot read /proc/sys/kernel/tainted")
     if val == 0:
         return CheckResult("kernel taint", "ok", "clean")
     flags = sysinfo.decode_kernel_taint(val)
@@ -560,8 +521,7 @@ def _check_cert_expiry() -> CheckResult:
     cfg = config_mod.get_config()
     certs = sysinfo.get_certificate_expirations()
     if not certs:
-        return CheckResult("cert expiry", "skip",
-                           "no certs found or openssl unavailable")
+        return CheckResult("cert expiry", "skip", "no certs found or openssl unavailable")
     soonest = certs[0]
     detail = [f"{c['days_left']:>4}d  {c['path']}" for c in certs[:10]]
     msg = f"soonest: {soonest['path']} in {soonest['days_left']}d  ({len(certs)} cert(s) scanned)"
@@ -594,11 +554,10 @@ def _check_journal_disk() -> CheckResult:
     bytes_used = sysinfo.get_journal_disk_usage()
     if bytes_used is None:
         return CheckResult("journal disk", "skip", "journalctl unavailable")
-    gb = bytes_used / (1024 ** 3)
+    gb = bytes_used / (1024**3)
     msg = f"{sysinfo.format_bytes(bytes_used)} used by journald"
     if gb >= cfg.journal_fail_gb:
-        return CheckResult("journal disk", "fail",
-                           msg + f" (tip: `journalctl --vacuum-size={int(cfg.journal_warn_gb)}G`)")
+        return CheckResult("journal disk", "fail", msg + f" (tip: `journalctl --vacuum-size={int(cfg.journal_warn_gb)}G`)")
     if gb >= cfg.journal_warn_gb:
         return CheckResult("journal disk", "warn", msg)
     return CheckResult("journal disk", "ok", msg)
@@ -664,27 +623,23 @@ CHECK_REGISTRY: Dict[str, CheckFn] = {
 }
 
 
-def render_html(results: List[CheckResult],
-                host: Optional[str] = None,
-                timestamp: Optional[str] = None) -> str:
+def render_html(results: List[CheckResult], host: Optional[str] = None, timestamp: Optional[str] = None) -> str:
     """Self-contained HTML for the audit. Inline CSS so it survives email/ticket paste."""
     from datetime import datetime, timezone
     from html import escape as _esc
+
     ts = timestamp or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     host = host or "?"
     totals = summarize(results)
 
-    color = {"ok": "#5cb85c", "warn": "#f0ad4e",
-             "fail": "#d9534f", "skip": "#999"}
+    color = {"ok": "#5cb85c", "warn": "#f0ad4e", "fail": "#d9534f", "skip": "#999"}
     rows = []
     for r in results:
         c = color.get(r.status, "#999")
         detail_html = ""
         if r.detail:
             items = "".join(f"<li>{_esc(d)}</li>" for d in r.detail)
-            detail_html = (f"<details><summary style='cursor:pointer;color:#888'>"
-                           f"{len(r.detail)} detail line(s)</summary>"
-                           f"<ul style='margin:4px 0'>{items}</ul></details>")
+            detail_html = f"<details><summary style='cursor:pointer;color:#888'>" f"{len(r.detail)} detail line(s)</summary>" f"<ul style='margin:4px 0'>{items}</ul></details>"
         rows.append(
             "<tr style='border-bottom:1px solid #eee'>"
             f"<td style='background:{c};color:#fff;font-weight:600;"
@@ -716,9 +671,7 @@ def render_html(results: List[CheckResult],
         f"<h2 style='margin:0 0 4px 0'>wtf audit · {_esc(host)}</h2>"
         f"<div style='color:#888;font-size:13px;margin-bottom:16px'>"
         f"{_esc(ts)} · {summary_html}</div>"
-        "<table style='width:100%;border-collapse:collapse;font-size:14px'>"
-        + "".join(rows) +
-        "</table></body></html>\n"
+        "<table style='width:100%;border-collapse:collapse;font-size:14px'>" + "".join(rows) + "</table></body></html>\n"
     )
 
 
@@ -747,14 +700,17 @@ def render_prometheus(results: List[CheckResult]) -> str:
         lines.append(f'wtf_summary_total{{status="{status_name}"}} {totals.get(status_name, 0)}')
     return "\n".join(lines) + "\n"
 
+
 DEFAULT_CHECKS: List[CheckFn] = list(CHECK_REGISTRY.values())
 
 
 def _plugin_to_check(path: str) -> CheckFn:
     """Wrap a plugin path as a CheckFn returning CheckResult."""
+
     def _run() -> CheckResult:
         pr = plugins_mod.run_plugin(path)
         return CheckResult(f"plugin:{pr.name}", pr.status, pr.message, detail=list(pr.detail))
+
     return _run
 
 
@@ -772,8 +728,7 @@ def list_check_names() -> List[str]:
     return list(_all_check_callables().keys())
 
 
-def run_audit(names: Optional[List[str]] = None,
-              ignore: Optional[List[str]] = None) -> List[CheckResult]:
+def run_audit(names: Optional[List[str]] = None, ignore: Optional[List[str]] = None) -> List[CheckResult]:
     """Run all audit checks (built-ins + plugins) or a filtered subset by name.
 
     `names` filters by short keys from CHECK_REGISTRY or `plugin:<name>`.
@@ -840,6 +795,7 @@ def _run_funcs_parallel(funcs: List[CheckFn], workers: int, timeout: float) -> L
     """Parallel execution preserving submission order, with per-check timeout."""
     from concurrent.futures import ThreadPoolExecutor
     from concurrent.futures import TimeoutError as FuturesTimeoutError
+
     results: List[CheckResult] = []
     with ThreadPoolExecutor(max_workers=max(1, int(workers))) as pool:
         futures = [(fn, pool.submit(fn)) for fn in funcs]
@@ -848,13 +804,11 @@ def _run_funcs_parallel(funcs: List[CheckFn], workers: int, timeout: float) -> L
                 outcome = fut.result(timeout=timeout)
             except FuturesTimeoutError:
                 logger.warning(f"audit check {fn.__name__} timed out after {timeout}s")
-                results.append(CheckResult(fn.__name__.lstrip("_"), "skip",
-                                           f"timeout (>{timeout:.0f}s)"))
+                results.append(CheckResult(fn.__name__.lstrip("_"), "skip", f"timeout (>{timeout:.0f}s)"))
                 continue
             except Exception as exc:
                 logger.warning(f"audit check {fn.__name__} failed: {type(exc).__name__}: {exc}")
-                results.append(CheckResult(fn.__name__.lstrip("_"), "skip",
-                                           f"check error: {exc}"))
+                results.append(CheckResult(fn.__name__.lstrip("_"), "skip", f"check error: {exc}"))
                 continue
             if isinstance(outcome, list):
                 results.extend(outcome)

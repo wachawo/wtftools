@@ -54,8 +54,7 @@ def ensure_dir(path: str) -> bool:
         return False
 
 
-def save_snapshot(results: List[CheckResult], host: str,
-                  directory: Optional[str] = None) -> Optional[str]:
+def save_snapshot(results: List[CheckResult], host: str, directory: Optional[str] = None) -> Optional[str]:
     """Persist a snapshot. Returns the path written, or None on failure."""
     directory = directory or default_snapshot_dir()
     if not ensure_dir(directory):
@@ -101,11 +100,7 @@ def list_snapshots(directory: Optional[str] = None) -> List[str]:
     if not os.path.isdir(directory):
         return []
     try:
-        return sorted(
-            os.path.join(directory, f)
-            for f in os.listdir(directory)
-            if f.endswith(".json")
-        )
+        return sorted(os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(".json"))
     except OSError:
         return []
 
@@ -116,8 +111,7 @@ def load_snapshot(path: str) -> Optional[Dict[str, Any]]:
         with open(path, encoding="utf-8") as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        logger.warning(f"cannot load snapshot {path}: {type(exc).__name__}: {exc}\n"
-                       f"{traceback.format_exc()}")
+        logger.warning(f"cannot load snapshot {path}: {type(exc).__name__}: {exc}\n" f"{traceback.format_exc()}")
         return None
 
 
@@ -157,11 +151,16 @@ def diff_snapshots(old: Dict[str, Any], new_results: List[CheckResult]) -> List[
     events: List[Dict[str, Any]] = []
     for name, new in new_map.items():
         if name not in old_map:
-            events.append({
-                "name": name, "kind": "new",
-                "old_status": None, "new_status": new["status"],
-                "old_message": None, "new_message": new["message"],
-            })
+            events.append(
+                {
+                    "name": name,
+                    "kind": "new",
+                    "old_status": None,
+                    "new_status": new["status"],
+                    "old_message": None,
+                    "new_message": new["message"],
+                }
+            )
             continue
         old = old_map[name]
         if old["status"] == new["status"]:
@@ -171,27 +170,34 @@ def diff_snapshots(old: Dict[str, Any], new_results: List[CheckResult]) -> List[
         old_sev = severity(old["status"])
         new_sev = severity(new["status"])
         if new_sev > old_sev:
-            kind = "regression" if (new["status"] == "fail" and old["status"] in ("ok", "skip")) \
-                   else "worsened"
+            kind = "regression" if (new["status"] == "fail" and old["status"] in ("ok", "skip")) else "worsened"
         else:
-            kind = "recovery" if (old["status"] == "fail" and new["status"] in ("ok", "skip")) \
-                   else "improved"
-        events.append({
-            "name": name, "kind": kind,
-            "old_status": old["status"], "new_status": new["status"],
-            "old_message": old["message"], "new_message": new["message"],
-        })
+            kind = "recovery" if (old["status"] == "fail" and new["status"] in ("ok", "skip")) else "improved"
+        events.append(
+            {
+                "name": name,
+                "kind": kind,
+                "old_status": old["status"],
+                "new_status": new["status"],
+                "old_message": old["message"],
+                "new_message": new["message"],
+            }
+        )
 
     for name, old in old_map.items():
         if name not in new_map:
-            events.append({
-                "name": name, "kind": "removed",
-                "old_status": old["status"], "new_status": None,
-                "old_message": old["message"], "new_message": None,
-            })
+            events.append(
+                {
+                    "name": name,
+                    "kind": "removed",
+                    "old_status": old["status"],
+                    "new_status": None,
+                    "old_message": old["message"],
+                    "new_message": None,
+                }
+            )
 
     # Sort: regressions first, then worsened, then new, then improved, etc.
-    kind_order = {"regression": 0, "worsened": 1, "new": 2, "improved": 3,
-                  "recovery": 4, "removed": 5}
+    kind_order = {"regression": 0, "worsened": 1, "new": 2, "improved": 3, "recovery": 4, "removed": 5}
     events.sort(key=lambda e: kind_order.get(e["kind"], 99))
     return events

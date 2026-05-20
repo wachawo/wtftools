@@ -14,6 +14,7 @@ from wtftools import plugin_sdk
 
 # ---------- result() — non-terminating ----------
 
+
 def test_result_ok():
     buf = io.StringIO()
     with redirect_stdout(buf):
@@ -52,12 +53,16 @@ def test_result_coerces_detail_to_strings():
 
 # ---------- ok/warn/fail/skip — terminating ----------
 
-@pytest.mark.parametrize("fn, status, code", [
-    (plugin_sdk.ok, "ok", plugin_sdk.EXIT_OK),
-    (plugin_sdk.warn, "warn", plugin_sdk.EXIT_WARN),
-    (plugin_sdk.fail, "fail", plugin_sdk.EXIT_FAIL),
-    (plugin_sdk.skip, "skip", plugin_sdk.EXIT_SKIP),
-])
+
+@pytest.mark.parametrize(
+    "fn, status, code",
+    [
+        (plugin_sdk.ok, "ok", plugin_sdk.EXIT_OK),
+        (plugin_sdk.warn, "warn", plugin_sdk.EXIT_WARN),
+        (plugin_sdk.fail, "fail", plugin_sdk.EXIT_FAIL),
+        (plugin_sdk.skip, "skip", plugin_sdk.EXIT_SKIP),
+    ],
+)
 def test_terminating_helpers(fn, status, code):
     buf = io.StringIO()
     with redirect_stdout(buf), pytest.raises(SystemExit) as exc:
@@ -88,6 +93,7 @@ def test_helpers_no_detail():
 
 # ---------- end-to-end via subprocess (real plugin script) ----------
 
+
 def _write_plugin(tmp_path, code: str) -> str:
     """Write a Python plugin to tmp_path/plugin.py, chmod +x, return path."""
     path = tmp_path / "plugin.py"
@@ -97,12 +103,15 @@ def _write_plugin(tmp_path, code: str) -> str:
 
 
 def test_plugin_subprocess_ok(tmp_path):
-    path = _write_plugin(tmp_path, (
-        "import sys\n"
-        f"sys.path.insert(0, {repr(os.path.dirname(os.path.dirname(os.path.abspath(plugin_sdk.__file__))))})\n"
-        "from wtftools.plugin_sdk import ok\n"
-        "ok('all good')\n"
-    ))
+    path = _write_plugin(
+        tmp_path,
+        (
+            "import sys\n"
+            f"sys.path.insert(0, {repr(os.path.dirname(os.path.dirname(os.path.abspath(plugin_sdk.__file__))))})\n"
+            "from wtftools.plugin_sdk import ok\n"
+            "ok('all good')\n"
+        ),
+    )
     result = subprocess.run([path], capture_output=True, text=True, timeout=5)
     assert result.returncode == 0
     data = json.loads(result.stdout.strip())
@@ -111,12 +120,15 @@ def test_plugin_subprocess_ok(tmp_path):
 
 
 def test_plugin_subprocess_fail(tmp_path):
-    path = _write_plugin(tmp_path, (
-        "import sys\n"
-        f"sys.path.insert(0, {repr(os.path.dirname(os.path.dirname(os.path.abspath(plugin_sdk.__file__))))})\n"
-        "from wtftools.plugin_sdk import fail\n"
-        "fail('broken!', detail=['line1', 'line2'])\n"
-    ))
+    path = _write_plugin(
+        tmp_path,
+        (
+            "import sys\n"
+            f"sys.path.insert(0, {repr(os.path.dirname(os.path.dirname(os.path.abspath(plugin_sdk.__file__))))})\n"
+            "from wtftools.plugin_sdk import fail\n"
+            "fail('broken!', detail=['line1', 'line2'])\n"
+        ),
+    )
     result = subprocess.run([path], capture_output=True, text=True, timeout=5)
     assert result.returncode == 2
     data = json.loads(result.stdout.strip())
@@ -127,12 +139,16 @@ def test_plugin_subprocess_fail(tmp_path):
 def test_plugin_subprocess_integration_with_loader(tmp_path):
     """Spin up the plugin loader against a real Python plugin built with the SDK."""
     from wtftools.checks import plugins
-    plugin_path = _write_plugin(tmp_path, (
-        "import sys\n"
-        f"sys.path.insert(0, {repr(os.path.dirname(os.path.dirname(os.path.abspath(plugin_sdk.__file__))))})\n"
-        "from wtftools.plugin_sdk import warn\n"
-        "warn('soft warning', detail=['useful context'])\n"
-    ))
+
+    plugin_path = _write_plugin(
+        tmp_path,
+        (
+            "import sys\n"
+            f"sys.path.insert(0, {repr(os.path.dirname(os.path.dirname(os.path.abspath(plugin_sdk.__file__))))})\n"
+            "from wtftools.plugin_sdk import warn\n"
+            "warn('soft warning', detail=['useful context'])\n"
+        ),
+    )
     pr = plugins.run_plugin(plugin_path)
     assert pr.status == "warn"
     assert pr.message == "soft warning"

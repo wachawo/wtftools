@@ -60,9 +60,13 @@ def test_cmd_audit_json():
 
 
 def test_cmd_audit_verbose_renders_detail(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "fail", "boom", detail=["d1", "d2"]),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "fail", "boom", detail=["d1", "d2"]),
+        ],
+    )
     rc, out = _capture(["-v", "audit"])
     assert "d1" in out and "d2" in out
 
@@ -212,6 +216,7 @@ def test_quiet_sets_logging(monkeypatch):
 def test_keyboard_interrupt(monkeypatch):
     def boom(args):
         raise KeyboardInterrupt
+
     monkeypatch.setattr(main, "cmd_audit", boom)
     rc = main.main(["audit"])
     assert rc == 130
@@ -235,7 +240,6 @@ def test_cmd_crontab_with_S_and_U_flags(tmp_path, monkeypatch):
 
 
 def test_cmd_audit_runs_default_when_no_subcommand(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
     rc, _ = _capture([])
     assert rc == 2

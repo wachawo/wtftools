@@ -24,6 +24,7 @@ def _capture(argv):
 
 # ---- hw temperatures ----
 
+
 def test_get_temperatures_no_hwmon(monkeypatch):
     monkeypatch.setattr(sysinfo.os.path, "isdir", lambda p: False)
     assert sysinfo.get_temperatures() == []
@@ -31,8 +32,10 @@ def test_get_temperatures_no_hwmon(monkeypatch):
 
 def test_get_temperatures_listdir_error(monkeypatch):
     monkeypatch.setattr(sysinfo.os.path, "isdir", lambda p: True)
+
     def boom(_):
         raise OSError
+
     monkeypatch.setattr(sysinfo.os, "listdir", boom)
     assert sysinfo.get_temperatures() == []
 
@@ -106,20 +109,18 @@ def test_check_temperatures_states(monkeypatch):
     monkeypatch.setattr(audit.sysinfo, "get_temperatures", lambda: [])
     assert audit._check_temperatures().status == "skip"
 
-    monkeypatch.setattr(audit.sysinfo, "get_temperatures",
-                        lambda: [{"sensor": "cpu", "label": "core", "celsius": 50.0}])
+    monkeypatch.setattr(audit.sysinfo, "get_temperatures", lambda: [{"sensor": "cpu", "label": "core", "celsius": 50.0}])
     assert audit._check_temperatures().status == "ok"
 
-    monkeypatch.setattr(audit.sysinfo, "get_temperatures",
-                        lambda: [{"sensor": "cpu", "label": "core", "celsius": 80.0}])
+    monkeypatch.setattr(audit.sysinfo, "get_temperatures", lambda: [{"sensor": "cpu", "label": "core", "celsius": 80.0}])
     assert audit._check_temperatures().status == "warn"
 
-    monkeypatch.setattr(audit.sysinfo, "get_temperatures",
-                        lambda: [{"sensor": "cpu", "label": "core", "celsius": 95.0}])
+    monkeypatch.setattr(audit.sysinfo, "get_temperatures", lambda: [{"sensor": "cpu", "label": "core", "celsius": 95.0}])
     assert audit._check_temperatures().status == "fail"
 
 
 # ---- DNS check ----
+
 
 def test_resolve_hostname_success(monkeypatch):
     monkeypatch.setattr("socket.gethostbyname", lambda host: "1.2.3.4")
@@ -131,6 +132,7 @@ def test_resolve_hostname_success(monkeypatch):
 def test_resolve_hostname_failure(monkeypatch):
     def boom(host):
         raise socket.gaierror("no DNS")
+
     monkeypatch.setattr("socket.gethostbyname", boom)
     assert sysinfo.resolve_hostname("nx.example") is None
 
@@ -138,12 +140,14 @@ def test_resolve_hostname_failure(monkeypatch):
 def test_resolve_hostname_timeout(monkeypatch):
     def boom(host):
         raise socket.timeout("timed out")
+
     monkeypatch.setattr("socket.gethostbyname", boom)
     assert sysinfo.resolve_hostname("slow.example", timeout=0.1) is None
 
 
 def test_check_dns_no_hosts(monkeypatch):
     from wtftools import config
+
     config.set_config(config.Config(dns_probe_hosts=""))
     assert audit._check_dns().status == "skip"
     config.set_config(config.Config())
@@ -176,14 +180,16 @@ def test_check_dns_partial(monkeypatch):
 
 # ---- wtf top ----
 
+
 def test_cmd_top_text(monkeypatch):
-    monkeypatch.setattr(sysinfo, "get_top_processes",
-                        lambda by, limit: [
-                            {"pid": 1, "user": "root", "cpu_percent": 50.0,
-                             "rss": 1024, "name": "init"},
-                            {"pid": 2, "user": "alice", "cpu_percent": 10.0,
-                             "rss": 2048, "name": "bash"},
-                        ])
+    monkeypatch.setattr(
+        sysinfo,
+        "get_top_processes",
+        lambda by, limit: [
+            {"pid": 1, "user": "root", "cpu_percent": 50.0, "rss": 1024, "name": "init"},
+            {"pid": 2, "user": "alice", "cpu_percent": 10.0, "rss": 2048, "name": "bash"},
+        ],
+    )
     rc, out = _capture(["top"])
     assert rc == 0
     assert "TOP" in out
@@ -192,9 +198,7 @@ def test_cmd_top_text(monkeypatch):
 
 
 def test_cmd_top_json(monkeypatch):
-    monkeypatch.setattr(sysinfo, "get_top_processes",
-                        lambda by, limit: [{"pid": 1, "user": "u", "cpu_percent": 5.0,
-                                            "rss": 100, "name": "x"}])
+    monkeypatch.setattr(sysinfo, "get_top_processes", lambda by, limit: [{"pid": 1, "user": "u", "cpu_percent": 5.0, "rss": 100, "name": "x"}])
     rc, out = _capture(["top", "--format", "json"])
     data = json.loads(out)
     assert len(data) == 1
@@ -202,11 +206,14 @@ def test_cmd_top_json(monkeypatch):
 
 
 def test_cmd_top_filter_by_user(monkeypatch):
-    monkeypatch.setattr(sysinfo, "get_top_processes",
-                        lambda by, limit: [
-                            {"pid": 1, "user": "root", "cpu_percent": 50.0, "rss": 0, "name": "a"},
-                            {"pid": 2, "user": "alice", "cpu_percent": 10.0, "rss": 0, "name": "b"},
-                        ])
+    monkeypatch.setattr(
+        sysinfo,
+        "get_top_processes",
+        lambda by, limit: [
+            {"pid": 1, "user": "root", "cpu_percent": 50.0, "rss": 0, "name": "a"},
+            {"pid": 2, "user": "alice", "cpu_percent": 10.0, "rss": 0, "name": "b"},
+        ],
+    )
     rc, out = _capture(["top", "--user", "alice"])
     assert "alice" in out
     assert " root " not in out.split("ALICE")[-1] if "ALICE" in out else True
@@ -215,11 +222,14 @@ def test_cmd_top_filter_by_user(monkeypatch):
 
 
 def test_cmd_top_filter_by_name(monkeypatch):
-    monkeypatch.setattr(sysinfo, "get_top_processes",
-                        lambda by, limit: [
-                            {"pid": 1, "user": "u", "cpu_percent": 5.0, "rss": 0, "name": "redis-server"},
-                            {"pid": 2, "user": "u", "cpu_percent": 5.0, "rss": 0, "name": "memcached"},
-                        ])
+    monkeypatch.setattr(
+        sysinfo,
+        "get_top_processes",
+        lambda by, limit: [
+            {"pid": 1, "user": "u", "cpu_percent": 5.0, "rss": 0, "name": "redis-server"},
+            {"pid": 2, "user": "u", "cpu_percent": 5.0, "rss": 0, "name": "memcached"},
+        ],
+    )
     rc, out = _capture(["top", "--name", "redis"])
     assert "redis" in out
     assert "memcached" not in out
@@ -237,12 +247,14 @@ def test_cmd_top_sort_rss(monkeypatch):
     def fake(by, limit):
         captured["by"] = by
         return []
+
     monkeypatch.setattr(sysinfo, "get_top_processes", fake)
     _capture(["top", "--sort", "rss"])
     assert captured["by"] == "rss"
 
 
 # ---- wtf ports ----
+
 
 def test_cmd_ports_no_psutil(monkeypatch):
     """Hard to test without breaking everything — verify error message at least."""
@@ -368,11 +380,16 @@ def test_cmd_ports_json(monkeypatch):
 
 # ---- CSV format ----
 
+
 def test_audit_csv(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("uptime", "ok", "3d", detail=[]),
-        audit.CheckResult("swap", "fail", "99%", detail=["very bad"]),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("uptime", "ok", "3d", detail=[]),
+            audit.CheckResult("swap", "fail", "99%", detail=["very bad"]),
+        ],
+    )
     rc, out = _capture(["audit", "--format", "csv"])
     assert "name,status,message,detail" in out
     assert "uptime,ok,3d," in out
@@ -381,6 +398,7 @@ def test_audit_csv(monkeypatch):
 
 
 # ---- registry sanity ----
+
 
 def test_new_checks_in_registry():
     names = audit.list_check_names()

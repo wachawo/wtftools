@@ -20,6 +20,7 @@ def _capture(argv):
 
 # ---- LLM bridge ----
 
+
 def test_ollama_no_binary(monkeypatch):
     monkeypatch.setattr(llm.shutil, "which", lambda _: None)
     text, err = llm.call_ollama("hi")
@@ -47,8 +48,10 @@ def test_ollama_nonzero_exit(monkeypatch):
 
 def test_ollama_timeout(monkeypatch):
     monkeypatch.setattr(llm.shutil, "which", lambda _: "/usr/bin/ollama")
+
     def boom(*a, **kw):
         raise llm.subprocess.TimeoutExpired(cmd="ollama", timeout=60)
+
     monkeypatch.setattr(llm.subprocess, "run", boom)
     text, err = llm.call_ollama("prompt")
     assert text is None
@@ -57,8 +60,7 @@ def test_ollama_timeout(monkeypatch):
 
 def test_ollama_generic_exception(monkeypatch):
     monkeypatch.setattr(llm.shutil, "which", lambda _: "/usr/bin/ollama")
-    monkeypatch.setattr(llm.subprocess, "run",
-                        mock.Mock(side_effect=OSError("boom")))
+    monkeypatch.setattr(llm.subprocess, "run", mock.Mock(side_effect=OSError("boom")))
     text, err = llm.call_ollama("prompt")
     assert text is None
     assert "OSError" in err
@@ -196,9 +198,11 @@ def test_call_llm_unknown_backend():
 
 def test_call_llm_dispatch(monkeypatch):
     captured = {}
+
     def fake_ollama(prompt, model=None, timeout=60):
         captured["called"] = True
         return "ok", None
+
     monkeypatch.setitem(llm._BACKENDS, "ollama", fake_ollama)
     text, info = llm.call_llm("ollama", "hi")
     assert text == "ok"
@@ -207,6 +211,7 @@ def test_call_llm_dispatch(monkeypatch):
 def test_call_llm_auto_first_succeeds(monkeypatch):
     def fake_ok(prompt, model=None, timeout=60):
         return "ok-output", None
+
     monkeypatch.setitem(llm._BACKENDS, "ollama", fake_ok)
     text, info = llm.call_llm("auto", "hi")
     assert text == "ok-output"
@@ -214,12 +219,9 @@ def test_call_llm_auto_first_succeeds(monkeypatch):
 
 
 def test_call_llm_auto_falls_through(monkeypatch):
-    monkeypatch.setitem(llm._BACKENDS, "ollama",
-                        lambda p, model=None, timeout=60: (None, "no ollama"))
-    monkeypatch.setitem(llm._BACKENDS, "claude",
-                        lambda p, model=None, timeout=60: (None, "no claude"))
-    monkeypatch.setitem(llm._BACKENDS, "openai",
-                        lambda p, model=None, timeout=60: (None, "no openai"))
+    monkeypatch.setitem(llm._BACKENDS, "ollama", lambda p, model=None, timeout=60: (None, "no ollama"))
+    monkeypatch.setitem(llm._BACKENDS, "claude", lambda p, model=None, timeout=60: (None, "no claude"))
+    monkeypatch.setitem(llm._BACKENDS, "openai", lambda p, model=None, timeout=60: (None, "no openai"))
     text, err = llm.call_llm("auto", "hi")
     assert text is None
     assert "no LLM backend available" in err
@@ -227,37 +229,44 @@ def test_call_llm_auto_falls_through(monkeypatch):
 
 # ---- CLI integration of --llm ----
 
+
 def test_cli_explain_llm_success(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("swap", "fail", "99%"),
-    ])
-    monkeypatch.setattr(main.llm_mod, "call_llm",
-                        lambda backend, prompt, model=None, timeout=None:
-                        ("diagnosis text", "via ollama"))
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("swap", "fail", "99%"),
+        ],
+    )
+    monkeypatch.setattr(main.llm_mod, "call_llm", lambda backend, prompt, model=None, timeout=None: ("diagnosis text", "via ollama"))
     rc, out = _capture(["explain", "--llm", "ollama"])
     assert rc == 0
     assert "diagnosis text" in out
 
 
 def test_cli_explain_llm_failure(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("swap", "fail", "99%"),
-    ])
-    monkeypatch.setattr(main.llm_mod, "call_llm",
-                        lambda backend, prompt, model=None, timeout=None:
-                        (None, "api error"))
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("swap", "fail", "99%"),
+        ],
+    )
+    monkeypatch.setattr(main.llm_mod, "call_llm", lambda backend, prompt, model=None, timeout=None: (None, "api error"))
     rc, out = _capture(["explain", "--llm", "claude"])
     assert rc == 2
     assert "api error" in out
 
 
 def test_cli_explain_llm_json(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "fail", "y"),
-    ])
-    monkeypatch.setattr(main.llm_mod, "call_llm",
-                        lambda backend, prompt, model=None, timeout=None:
-                        ("answer", "via ollama"))
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "fail", "y"),
+        ],
+    )
+    monkeypatch.setattr(main.llm_mod, "call_llm", lambda backend, prompt, model=None, timeout=None: ("answer", "via ollama"))
     rc, out = _capture(["explain", "--llm", "ollama", "--format", "json"])
     data = json.loads(out)
     assert data["backend"] == "ollama"
@@ -265,18 +274,21 @@ def test_cli_explain_llm_json(monkeypatch):
 
 
 def test_cli_explain_llm_json_error(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "fail", "y"),
-    ])
-    monkeypatch.setattr(main.llm_mod, "call_llm",
-                        lambda backend, prompt, model=None, timeout=None:
-                        (None, "key missing"))
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "fail", "y"),
+        ],
+    )
+    monkeypatch.setattr(main.llm_mod, "call_llm", lambda backend, prompt, model=None, timeout=None: (None, "key missing"))
     rc, out = _capture(["explain", "--llm", "openai", "--format", "json"])
     data = json.loads(out)
     assert "error" in data
 
 
 # ---- HTML output ----
+
 
 def test_render_html_basic():
     results = [
@@ -309,9 +321,13 @@ def test_render_html_escapes():
 
 
 def test_audit_html_via_cli(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", "y"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "ok", "y"),
+        ],
+    )
     rc, out = _capture(["audit", "--format", "html"])
     assert "<!doctype html>" in out
     assert "<table" in out
@@ -319,10 +335,15 @@ def test_audit_html_via_cli(monkeypatch):
 
 # ---- --output flag ----
 
+
 def test_audit_output_to_file(monkeypatch, tmp_path):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", "fine"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "ok", "fine"),
+        ],
+    )
     target = tmp_path / "audit.txt"
     rc, out = _capture(["audit", "--output", str(target)])
     assert rc == 0
@@ -334,9 +355,13 @@ def test_audit_output_to_file(monkeypatch, tmp_path):
 
 
 def test_audit_output_html_file(monkeypatch, tmp_path):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", "fine"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "ok", "fine"),
+        ],
+    )
     target = tmp_path / "audit.html"
     rc, _ = _capture(["audit", "--format", "html", "--output", str(target)])
     assert rc == 0
@@ -345,14 +370,14 @@ def test_audit_output_html_file(monkeypatch, tmp_path):
 
 
 def test_audit_output_unwritable(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", "")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "")])
     rc, out = _capture(["audit", "--output", "/nonexistent/dir/x.txt"])
     assert rc == 1
     assert "cannot write" in out
 
 
 # ---- fail2ban check ----
+
 
 def test_get_fail2ban_no_binary(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: None)
@@ -367,21 +392,14 @@ def test_get_fail2ban_daemon_down(monkeypatch):
 
 def test_get_fail2ban_no_jails(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: "/usr/bin/fail2ban-client")
-    monkeypatch.setattr(sysinfo, "run",
-                        lambda cmd, **_: (0, "Status\n|- Number of jail:\t0\n", ""))
+    monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, "Status\n|- Number of jail:\t0\n", ""))
     assert sysinfo.get_fail2ban_jails() == []
 
 
 def test_get_fail2ban_parses_jails(monkeypatch):
     list_out = "Status\n|- Number of jail:\t2\n`- Jail list:\tsshd, recidive\n"
-    sshd_out = ("Status for the jail: sshd\n"
-                "|- Currently failed: 3\n"
-                "|- Total failed:     50\n"
-                "`- Currently banned: 2\n"
-                "   Total banned:     17\n")
-    recidive_out = ("Status for the jail: recidive\n"
-                    "`- Currently banned: 0\n"
-                    "   Total banned:     5\n")
+    sshd_out = "Status for the jail: sshd\n" "|- Currently failed: 3\n" "|- Total failed:     50\n" "`- Currently banned: 2\n" "   Total banned:     17\n"
+    recidive_out = "Status for the jail: recidive\n" "`- Currently banned: 0\n" "   Total banned:     5\n"
 
     def fake_run(cmd, **_):
         if cmd[-1] == "status":
@@ -428,8 +446,7 @@ def test_check_fail2ban_no_jails(monkeypatch):
 
 
 def test_check_fail2ban_active(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_fail2ban_jails",
-                        lambda: [{"name": "sshd", "banned": 3, "total": 100}])
+    monkeypatch.setattr(audit.sysinfo, "get_fail2ban_jails", lambda: [{"name": "sshd", "banned": 3, "total": 100}])
     r = audit._check_fail2ban()
     assert r.status == "ok"
     assert "3 IP(s)" in r.message

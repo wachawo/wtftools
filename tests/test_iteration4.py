@@ -74,6 +74,7 @@ def test_check_psi_skip(monkeypatch):
 
 # ---- kernel taint ----
 
+
 def test_get_kernel_taint_zero(monkeypatch):
     monkeypatch.setattr(sysinfo, "read_file", lambda _: "0\n")
     assert sysinfo.get_kernel_taint() == 0
@@ -136,6 +137,7 @@ def test_check_kernel_taint_skip(monkeypatch):
 
 # ---- cert expiry ----
 
+
 def test_get_cert_expirations_no_openssl(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: None)
     assert sysinfo.get_certificate_expirations() == []
@@ -178,6 +180,7 @@ def test_parse_cert_expiry_days_failure(monkeypatch):
 def test_parse_cert_expiry_days_parses(monkeypatch):
     # 2 days in the future at the time of running
     from datetime import datetime, timedelta, timezone
+
     future = (datetime.now(timezone.utc) + timedelta(days=42)).strftime("%b %d %H:%M:%S %Y GMT")
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, f"notAfter={future}", ""))
     days = sysinfo._parse_cert_expiry_days("/any")
@@ -194,20 +197,18 @@ def test_check_cert_expiry_states(monkeypatch):
     monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations", lambda: [])
     assert audit._check_cert_expiry().status == "skip"
 
-    monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations",
-                        lambda: [{"path": "/x", "days_left": 100}])
+    monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations", lambda: [{"path": "/x", "days_left": 100}])
     assert audit._check_cert_expiry().status == "ok"
 
-    monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations",
-                        lambda: [{"path": "/x", "days_left": 15}])
+    monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations", lambda: [{"path": "/x", "days_left": 15}])
     assert audit._check_cert_expiry().status == "warn"
 
-    monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations",
-                        lambda: [{"path": "/x", "days_left": 3}])
+    monkeypatch.setattr(audit.sysinfo, "get_certificate_expirations", lambda: [{"path": "/x", "days_left": 3}])
     assert audit._check_cert_expiry().status == "fail"
 
 
 # ---- wtf logs ----
+
 
 def test_cmd_logs_no_journalctl(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda _: None)
@@ -270,7 +271,7 @@ def test_cmd_logs_message_as_byte_list(monkeypatch):
 
 def test_cmd_logs_malformed_lines_skipped(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda _: "/bin/journalctl")
-    out_text = "not json\n{\"_SYSTEMD_UNIT\":\"good.service\",\"MESSAGE\":\"ok\"}\n"
+    out_text = 'not json\n{"_SYSTEMD_UNIT":"good.service","MESSAGE":"ok"}\n'
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, out_text, ""))
     rc, out = _capture(["logs"])
     assert rc == 0
@@ -279,9 +280,11 @@ def test_cmd_logs_malformed_lines_skipped(monkeypatch):
 
 # ---- parallel exec / timeout ----
 
+
 def test_run_funcs_parallel_preserves_order(monkeypatch):
     def make(name):
         return lambda: audit.CheckResult(name, "ok", "x")
+
     config.set_config(config.Config(parallel_workers=4, check_timeout_seconds=5))
     funcs = [make(f"c{i}") for i in range(6)]
     results = audit._run_funcs(funcs)
@@ -350,14 +353,14 @@ def test_cli_serial_flag(monkeypatch):
 
 
 def test_cli_check_timeout_flag(monkeypatch):
-    monkeypatch.setattr(audit, "_run_funcs",
-                        lambda funcs: [audit.CheckResult("x", "ok", "")])
+    monkeypatch.setattr(audit, "_run_funcs", lambda funcs: [audit.CheckResult("x", "ok", "")])
     _capture(["audit", "--check-timeout", "2.5", "--check", "uptime"])
     assert config.get_config().check_timeout_seconds == 2.5
     config.set_config(config.Config())
 
 
 # ---- new checks appear in CHECK_REGISTRY ----
+
 
 def test_new_checks_registered():
     names = audit.list_check_names()

@@ -21,6 +21,7 @@ def _capture(argv):
 
 # ---- snapshot module ----
 
+
 def test_default_snapshot_dir_env_override(monkeypatch):
     monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", "/tmp/wtf-test-snapshots-xyz")
     assert snapshot.default_snapshot_dir() == "/tmp/wtf-test-snapshots-xyz"
@@ -74,24 +75,22 @@ def test_save_snapshot_dir_failure(monkeypatch):
 
 def test_save_snapshot_write_failure(tmp_path, monkeypatch):
     """Write error should be swallowed and reported as None."""
+
     def boom(*a, **kw):
         raise OSError("disk full")
+
     monkeypatch.setattr("builtins.open", boom)
-    result = snapshot.save_snapshot([audit.CheckResult("a", "ok", "x")],
-                                    host="h", directory=str(tmp_path))
+    result = snapshot.save_snapshot([audit.CheckResult("a", "ok", "x")], host="h", directory=str(tmp_path))
     assert result is None
 
 
 def test_rotate_keeps_newest(tmp_path):
     # Create 5 files; rotate to keep 3.
-    for ts in ("20260101T000000Z", "20260101T010000Z", "20260101T020000Z",
-               "20260101T030000Z", "20260101T040000Z"):
+    for ts in ("20260101T000000Z", "20260101T010000Z", "20260101T020000Z", "20260101T030000Z", "20260101T040000Z"):
         (tmp_path / f"{ts}.json").write_text("{}")
     snapshot._rotate(str(tmp_path), keep=3)
     remaining = sorted(os.listdir(str(tmp_path)))
-    assert remaining == ["20260101T020000Z.json",
-                         "20260101T030000Z.json",
-                         "20260101T040000Z.json"]
+    assert remaining == ["20260101T020000Z.json", "20260101T030000Z.json", "20260101T040000Z.json"]
 
 
 def test_rotate_no_op_when_below_limit(tmp_path):
@@ -181,6 +180,7 @@ def test_diff_snapshots_unchanged_skipped():
 
 # ---- docker ----
 
+
 def test_get_docker_no_docker(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: None)
     assert sysinfo.get_docker_problem_containers() is None
@@ -201,9 +201,7 @@ def test_get_docker_all_healthy(monkeypatch):
 
 def test_get_docker_unhealthy(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: "/usr/bin/docker")
-    out = ("api\tUp 3 hours (unhealthy)\trunning\n"
-           "loop\tRestarting (1) 5 seconds ago\trestarting\n"
-           "ok\tUp 1 day (healthy)\trunning\n")
+    out = "api\tUp 3 hours (unhealthy)\trunning\n" "loop\tRestarting (1) 5 seconds ago\trestarting\n" "ok\tUp 1 day (healthy)\trunning\n"
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, out, ""))
     bad = sysinfo.get_docker_problem_containers()
     assert len(bad) == 2
@@ -222,22 +220,19 @@ def test_check_docker_ok(monkeypatch):
 
 
 def test_check_docker_warn(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_docker_problem_containers",
-                        lambda: [{"name": "loop", "problem": "restarting",
-                                  "status": "Restarting", "state": "restarting"}])
+    monkeypatch.setattr(audit.sysinfo, "get_docker_problem_containers", lambda: [{"name": "loop", "problem": "restarting", "status": "Restarting", "state": "restarting"}])
     r = audit._check_docker()
     assert r.status == "warn"
 
 
 def test_check_docker_fail(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_docker_problem_containers",
-                        lambda: [{"name": "api", "problem": "unhealthy",
-                                  "status": "Up (unhealthy)", "state": "running"}])
+    monkeypatch.setattr(audit.sysinfo, "get_docker_problem_containers", lambda: [{"name": "api", "problem": "unhealthy", "status": "Up (unhealthy)", "state": "running"}])
     r = audit._check_docker()
     assert r.status == "fail"
 
 
 # ---- NTP drift via chrony ----
+
 
 def test_chrony_offset_no_chrony(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: None)
@@ -246,9 +241,7 @@ def test_chrony_offset_no_chrony(monkeypatch):
 
 def test_chrony_offset_parses(monkeypatch):
     monkeypatch.setattr(sysinfo.shutil, "which", lambda _: "/usr/bin/chronyc")
-    out = ("Reference ID    : 192.168.1.1 (timeserver)\n"
-           "System time     : 0.000123456 seconds slow of NTP time\n"
-           "Last offset     : +0.000123 seconds\n")
+    out = "Reference ID    : 192.168.1.1 (timeserver)\n" "System time     : 0.000123456 seconds slow of NTP time\n" "Last offset     : +0.000123 seconds\n"
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, out, ""))
     offset = sysinfo.get_chrony_offset()
     assert offset is not None
@@ -275,8 +268,7 @@ def test_chrony_offset_failure(monkeypatch):
 
 
 def test_check_time_sync_drift_warn(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": True, "ntp_active": True, "source": ""})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": True, "ntp_active": True, "source": ""})
     monkeypatch.setattr(audit.sysinfo, "get_chrony_offset", lambda: 0.150)  # 150ms
     r = audit._check_time_sync()
     assert r.status == "warn"
@@ -284,16 +276,14 @@ def test_check_time_sync_drift_warn(monkeypatch):
 
 
 def test_check_time_sync_drift_fail(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": True, "ntp_active": True, "source": ""})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": True, "ntp_active": True, "source": ""})
     monkeypatch.setattr(audit.sysinfo, "get_chrony_offset", lambda: 2.5)  # 2.5s
     r = audit._check_time_sync()
     assert r.status == "fail"
 
 
 def test_check_time_sync_drift_ok(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": True, "ntp_active": True, "source": ""})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": True, "ntp_active": True, "source": ""})
     monkeypatch.setattr(audit.sysinfo, "get_chrony_offset", lambda: 0.001)
     r = audit._check_time_sync()
     assert r.status == "ok"
@@ -301,6 +291,7 @@ def test_check_time_sync_drift_ok(monkeypatch):
 
 
 # ---- prometheus output ----
+
 
 def test_render_prometheus_format():
     results = [
@@ -324,9 +315,13 @@ def test_render_prometheus_escapes_quotes():
 
 
 def test_cli_prometheus_format(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", ""),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "ok", ""),
+        ],
+    )
     rc, out = _capture(["audit", "--format", "prometheus"])
     assert "wtf_check_status" in out
     assert rc == 0
@@ -336,10 +331,10 @@ def test_cli_prometheus_format(monkeypatch):
 # (one-shot CLI scope). Diff functionality lives on as `wtf diff` standalone;
 # tested separately in test_iteration8.py.
 
+
 def test_audit_save_writes_file(monkeypatch, tmp_path):
     monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "y")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "y")])
     rc, out = _capture(["audit", "--save", "--check", "uptime"])
     files = list(tmp_path.iterdir())
     assert len(files) == 1
@@ -356,8 +351,7 @@ def test_cmd_history_empty(monkeypatch, tmp_path):
 
 def test_cmd_history_lists(monkeypatch, tmp_path):
     monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    snapshot.save_snapshot([audit.CheckResult("x", "ok", "")],
-                           host="h", directory=str(tmp_path))
+    snapshot.save_snapshot([audit.CheckResult("x", "ok", "")], host="h", directory=str(tmp_path))
     rc, out = _capture(["history"])
     assert "HISTORY" in out
     assert "1 snapshot" in out
@@ -365,8 +359,7 @@ def test_cmd_history_lists(monkeypatch, tmp_path):
 
 def test_cmd_history_json(monkeypatch, tmp_path):
     monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    snapshot.save_snapshot([audit.CheckResult("x", "fail", "")],
-                           host="h", directory=str(tmp_path))
+    snapshot.save_snapshot([audit.CheckResult("x", "fail", "")], host="h", directory=str(tmp_path))
     rc, out = _capture(["history", "--format", "json"])
     data = json.loads(out)
     assert len(data) == 1
@@ -382,6 +375,7 @@ def test_cmd_history_corrupt_snapshot(monkeypatch, tmp_path):
 
 
 # ---- new registry entries ----
+
 
 def test_docker_in_registry():
     assert "docker" in audit.list_check_names()

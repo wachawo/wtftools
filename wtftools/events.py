@@ -32,16 +32,15 @@ EVENT_KINDS = ("reboot", "oom", "failed-unit", "kernel-err", "auth-fail", "login
 @dataclass
 class Event:
     """One event on the host timeline."""
-    timestamp: float            # unix epoch
-    kind: str                   # one of EVENT_KINDS
+
+    timestamp: float  # unix epoch
+    kind: str  # one of EVENT_KINDS
     message: str
     detail: str = ""
 
     def iso(self) -> str:
         try:
-            return datetime.fromtimestamp(self.timestamp, tz=timezone.utc) \
-                .astimezone() \
-                .strftime("%Y-%m-%d %H:%M:%S")
+            return datetime.fromtimestamp(self.timestamp, tz=timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
         except (OverflowError, OSError, ValueError):
             return "????-??-?? ??:??:??"
 
@@ -105,8 +104,7 @@ def _collect_oom(hours: int) -> List[Event]:
     if not shutil.which("journalctl"):
         return []
     rc, out, _ = run(
-        ["journalctl", "-k", "--since", _journal_since(hours),
-         "-o", "short-iso", "--no-pager", "-q"],
+        ["journalctl", "-k", "--since", _journal_since(hours), "-o", "short-iso", "--no-pager", "-q"],
         timeout=10,
     )
     if rc != 0 or not out:
@@ -115,8 +113,7 @@ def _collect_oom(hours: int) -> List[Event]:
     for epoch, rest in _parse_iso_lines(out):
         low = rest.lower()
         if "out of memory" in low or "killed process" in low or "oom-killer" in low:
-            events.append(Event(timestamp=epoch, kind="oom",
-                                message=rest[-180:].strip()))
+            events.append(Event(timestamp=epoch, kind="oom", message=rest[-180:].strip()))
     return events
 
 
@@ -124,17 +121,12 @@ def _collect_kernel_errors(hours: int) -> List[Event]:
     if not shutil.which("journalctl"):
         return []
     rc, out, _ = run(
-        ["journalctl", "-k", "-p", "err", "--since", _journal_since(hours),
-         "-o", "short-iso", "--no-pager", "-q"],
+        ["journalctl", "-k", "-p", "err", "--since", _journal_since(hours), "-o", "short-iso", "--no-pager", "-q"],
         timeout=10,
     )
     if rc != 0 or not out:
         return []
-    return [
-        Event(timestamp=epoch, kind="kernel-err",
-              message=rest[-180:].strip())
-        for epoch, rest in _parse_iso_lines(out)
-    ]
+    return [Event(timestamp=epoch, kind="kernel-err", message=rest[-180:].strip()) for epoch, rest in _parse_iso_lines(out)]
 
 
 def _collect_failed_units(hours: int) -> List[Event]:
@@ -144,15 +136,13 @@ def _collect_failed_units(hours: int) -> List[Event]:
     # JOB_RESULT=failed is the systemd-emitted line when a unit transitions
     # to failed state. Fall back to text-grep if the field-match is empty.
     rc, out, _ = run(
-        ["journalctl", "--since", _journal_since(hours),
-         "JOB_RESULT=failed", "-o", "short-iso", "--no-pager", "-q"],
+        ["journalctl", "--since", _journal_since(hours), "JOB_RESULT=failed", "-o", "short-iso", "--no-pager", "-q"],
         timeout=10,
     )
     events: List[Event] = []
     if rc == 0 and out:
         for epoch, rest in _parse_iso_lines(out):
-            events.append(Event(timestamp=epoch, kind="failed-unit",
-                                message=rest.strip()))
+            events.append(Event(timestamp=epoch, kind="failed-unit", message=rest.strip()))
     return events
 
 
@@ -160,9 +150,7 @@ def _collect_auth_failures(hours: int) -> List[Event]:
     if not shutil.which("journalctl"):
         return []
     rc, out, _ = run(
-        ["journalctl", "--since", _journal_since(hours),
-         "-o", "short-iso", "--no-pager", "-q",
-         "_SYSTEMD_UNIT=ssh.service", "_SYSTEMD_UNIT=sshd.service"],
+        ["journalctl", "--since", _journal_since(hours), "-o", "short-iso", "--no-pager", "-q", "_SYSTEMD_UNIT=ssh.service", "_SYSTEMD_UNIT=sshd.service"],
         timeout=10,
     )
     if rc != 0 or not out:
@@ -171,8 +159,7 @@ def _collect_auth_failures(hours: int) -> List[Event]:
     for epoch, rest in _parse_iso_lines(out):
         low = rest.lower()
         if "failed password" in low or "invalid user" in low or "authentication failure" in low:
-            events.append(Event(timestamp=epoch, kind="auth-fail",
-                                message=rest.strip()))
+            events.append(Event(timestamp=epoch, kind="auth-fail", message=rest.strip()))
     return events
 
 
@@ -200,8 +187,7 @@ def _collect_reboots(hours: int) -> List[Event]:
             continue
         if epoch < cutoff:
             continue
-        events.append(Event(timestamp=epoch, kind="reboot",
-                            message=line.strip()))
+        events.append(Event(timestamp=epoch, kind="reboot", message=line.strip()))
     return events
 
 
@@ -230,6 +216,5 @@ def _collect_logins(hours: int) -> List[Event]:
             continue
         if epoch < cutoff:
             continue
-        events.append(Event(timestamp=epoch, kind="login",
-                            message=line.strip()))
+        events.append(Event(timestamp=epoch, kind="login", message=line.strip()))
     return events

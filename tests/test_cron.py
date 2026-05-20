@@ -15,15 +15,18 @@ def test_check_filename_valid():
     assert cron.check_filename("anacron") == ""
 
 
-@pytest.mark.parametrize("name,expected", [
-    ("", "empty"),
-    (".hidden", "starts with '.'"),
-    ("backup~", "ends with '~'"),
-    ("backup.sh", "contains '.'"),
-    ("backup#", "contains '#'"),
-    ("a,b", "contains ','"),
-    ("$weird", "outside [A-Za-z0-9_-]"),
-])
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("", "empty"),
+        (".hidden", "starts with '.'"),
+        ("backup~", "ends with '~'"),
+        ("backup.sh", "contains '.'"),
+        ("backup#", "contains '#'"),
+        ("a,b", "contains ','"),
+        ("$weird", "outside [A-Za-z0-9_-]"),
+    ],
+)
 def test_check_filename_invalid(name, expected):
     out = cron.check_filename(name)
     assert expected in out
@@ -37,11 +40,13 @@ def test_check_daemon_active():
 
 def test_check_daemon_inactive_fallback_to_crond():
     calls = []
+
     def fake_run(cmd, **_):
         calls.append(cmd[-1])
         if "crond" in cmd:
             return mock.Mock(returncode=3, stdout="inactive\n", stderr="")
         return mock.Mock(returncode=3, stdout="inactive\n", stderr="")
+
     with mock.patch("subprocess.run", side_effect=fake_run):
         errors = cron.check_daemon()
     assert errors and "not active" in errors[0]
@@ -126,21 +131,24 @@ def test_check_dangerous_commands():
     assert cron.check_dangerous_commands("/usr/bin/true") == []
 
 
-@pytest.mark.parametrize("value,field,min_val,max_val,ok", [
-    ("*", "minutes", 0, 59, True),
-    ("0", "minutes", 0, 59, True),
-    ("59", "minutes", 0, 59, True),
-    ("60", "minutes", 0, 59, False),
-    ("0-30", "minutes", 0, 59, True),
-    ("30-10", "minutes", 0, 59, False),
-    ("*/5", "minutes", 0, 59, True),
-    ("*/0", "minutes", 0, 59, False),
-    ("*/x", "minutes", 0, 59, False),
-    ("1,2,3", "minutes", 0, 59, True),
-    ("1,1,2", "minutes", 0, 59, False),
-    ("1,,2", "minutes", 0, 59, False),
-    ("99-200", "minutes", 0, 59, False),
-])
+@pytest.mark.parametrize(
+    "value,field,min_val,max_val,ok",
+    [
+        ("*", "minutes", 0, 59, True),
+        ("0", "minutes", 0, 59, True),
+        ("59", "minutes", 0, 59, True),
+        ("60", "minutes", 0, 59, False),
+        ("0-30", "minutes", 0, 59, True),
+        ("30-10", "minutes", 0, 59, False),
+        ("*/5", "minutes", 0, 59, True),
+        ("*/0", "minutes", 0, 59, False),
+        ("*/x", "minutes", 0, 59, False),
+        ("1,2,3", "minutes", 0, 59, True),
+        ("1,1,2", "minutes", 0, 59, False),
+        ("1,,2", "minutes", 0, 59, False),
+        ("99-200", "minutes", 0, 59, False),
+    ],
+)
 def test_validate_time_field_logic(value, field, min_val, max_val, ok):
     errors = cron.validate_time_field_logic(value, field, min_val, max_val)
     if ok:
@@ -178,6 +186,7 @@ def test_check_user_exists_subprocess(monkeypatch):
         if cmd[0] == "id":
             return mock.Mock(returncode=0, stdout="", stderr="")
         return mock.Mock(returncode=1, stdout="", stderr="")
+
     monkeypatch.setattr("subprocess.run", fake_run)
     assert cron.check_user_exists("anyone") is True
 
@@ -269,6 +278,7 @@ def test_check_file_with_continuation(tmp_path):
 def test_check_file_unreadable(monkeypatch):
     def boom(*a, **kw):
         raise OSError("cannot read")
+
     monkeypatch.setattr("builtins.open", boom)
     rows, errors, _ = cron.check_file("/nonexistent/zzz")
     assert rows == 0
@@ -278,6 +288,7 @@ def test_check_file_unreadable(monkeypatch):
 def test_get_crontab(monkeypatch):
     def fake_run(cmd, **_):
         return mock.Mock(returncode=0, stdout="0 5 * * * /bin/true\n", stderr="")
+
     monkeypatch.setattr("subprocess.run", fake_run)
     assert cron.get_crontab("alice") is not None
 
@@ -285,6 +296,7 @@ def test_get_crontab(monkeypatch):
 def test_get_crontab_none(monkeypatch):
     def fake_run(cmd, **_):
         return mock.Mock(returncode=1, stdout="", stderr="")
+
     monkeypatch.setattr("subprocess.run", fake_run)
     assert cron.get_crontab("noone") is None
 
@@ -296,8 +308,7 @@ def test_get_crontab_exception(monkeypatch):
 
 def test_find_user_crontab_in_spool(monkeypatch):
     real_exists = os.path.exists
-    monkeypatch.setattr(cron.os.path, "exists",
-                        lambda p: p == "/var/spool/cron/crontabs/alice" or real_exists(p))
+    monkeypatch.setattr(cron.os.path, "exists", lambda p: p == "/var/spool/cron/crontabs/alice" or real_exists(p))
     # cron.find_user_crontab calls os.path.exists on the candidate paths.
     # The patched version says the spool path exists, so it short-circuits.
     result = cron.find_user_crontab("alice")
@@ -345,20 +356,24 @@ def test_discover_default_targets(monkeypatch, tmp_path):
         if p == "/etc/crontab":
             return True
         return real_exists(p)
+
     def fake_isdir(p):
         if p == "/etc/cron.d":
             return True
         if p == "/var/spool/cron/crontabs":
             return False
         return real_isdir(p)
+
     def fake_listdir(p):
         if p == "/etc/cron.d":
             return ["valid", "bad.name"]
         return real_listdir(p)
+
     def fake_isfile(p):
         if p.startswith("/etc/"):
             return True
         return real_isfile(p)
+
     def fake_join(a, b):
         return f"{a}/{b}"
 

@@ -16,9 +16,9 @@ def test_format_bytes_units():
     assert sysinfo.format_bytes(1023) == "1023.0B"
     assert sysinfo.format_bytes(1024) == "1.0KB"
     assert sysinfo.format_bytes(1024 * 1024) == "1.0MB"
-    assert sysinfo.format_bytes(1024 ** 3) == "1.0GB"
-    assert sysinfo.format_bytes(1024 ** 4) == "1.0TB"
-    assert sysinfo.format_bytes(1024 ** 6) == "1.0EB"
+    assert sysinfo.format_bytes(1024**3) == "1.0GB"
+    assert sysinfo.format_bytes(1024**4) == "1.0TB"
+    assert sysinfo.format_bytes(1024**6) == "1.0EB"
 
 
 def test_format_duration_variants():
@@ -126,8 +126,7 @@ def test_get_meminfo():
 
 def test_get_memory_summary_stdlib_path(monkeypatch):
     monkeypatch.setattr(sysinfo, "HAS_PSUTIL", False)
-    sample = ("MemTotal:       1000 kB\nMemAvailable:   200 kB\nMemFree:        100 kB\n"
-              "SwapTotal:      500 kB\nSwapFree:       250 kB\n")
+    sample = "MemTotal:       1000 kB\nMemAvailable:   200 kB\nMemFree:        100 kB\n" "SwapTotal:      500 kB\nSwapFree:       250 kB\n"
     with mock.patch.object(sysinfo, "read_file", return_value=sample):
         mem = sysinfo.get_memory_summary()
     assert mem["total"] == 1000 * 1024
@@ -190,8 +189,7 @@ def test_get_disk_usage_ok(tmp_path):
 def test_get_disks_returns_list():
     fake_mounts = [{"target": "/x", "source": "/dev/sdx", "fstype": "ext4"}]
     fake_usage = {"total": 100, "used": 50, "free": 50, "percent": 50}
-    with mock.patch.object(sysinfo, "get_mounts", return_value=fake_mounts), \
-         mock.patch.object(sysinfo, "get_disk_usage", return_value=fake_usage):
+    with mock.patch.object(sysinfo, "get_mounts", return_value=fake_mounts), mock.patch.object(sysinfo, "get_disk_usage", return_value=fake_usage):
         disks = sysinfo.get_disks()
     assert len(disks) == 1
     assert disks[0]["target"] == "/x"
@@ -199,9 +197,9 @@ def test_get_disks_returns_list():
 
 
 def test_get_disks_skips_none_usage():
-    with mock.patch.object(sysinfo, "get_mounts",
-                           return_value=[{"target": "/x", "source": "s", "fstype": "ext4"}]), \
-         mock.patch.object(sysinfo, "get_disk_usage", return_value=None):
+    with mock.patch.object(sysinfo, "get_mounts", return_value=[{"target": "/x", "source": "s", "fstype": "ext4"}]), mock.patch.object(
+        sysinfo, "get_disk_usage", return_value=None
+    ):
         disks = sysinfo.get_disks()
     assert disks == []
 
@@ -256,6 +254,7 @@ def test_get_oom_events_dmesg_fallback():
         if cmd[0] == "journalctl":
             return (1, "", "fail")
         return (0, "oom-killer triggered\n", "")
+
     with mock.patch.object(sysinfo, "run", side_effect=side_effect):
         events = sysinfo.get_oom_events()
     assert len(events) == 1
@@ -317,14 +316,12 @@ def test_get_pending_updates_no_apt():
 
 def test_get_pending_updates_with_apt():
     out = "Listing... Done\nfoo/jammy 1.2.3 amd64 [upgradable]\nbar/jammy 0.1 amd64 [upgradable]\n"
-    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value="/usr/bin/apt"), \
-         mock.patch.object(sysinfo, "run", return_value=(0, out, "")):
+    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value="/usr/bin/apt"), mock.patch.object(sysinfo, "run", return_value=(0, out, "")):
         assert sysinfo.get_pending_updates() == 2
 
 
 def test_get_pending_updates_failure():
-    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value="/usr/bin/apt"), \
-         mock.patch.object(sysinfo, "run", return_value=(1, "", "")):
+    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value="/usr/bin/apt"), mock.patch.object(sysinfo, "run", return_value=(1, "", "")):
         assert sysinfo.get_pending_updates() == -1
 
 
@@ -363,6 +360,7 @@ def test_get_open_fds_valid():
         if path.endswith("file-max"):
             return "99999\n"
         return ""
+
     with mock.patch.object(sysinfo, "read_file", side_effect=mocked_read):
         used, total = sysinfo.get_open_fds()
     assert used == 1024
@@ -420,13 +418,15 @@ def test_get_network_interfaces_fallback_error(monkeypatch):
 
 def test_top_processes_psutil(monkeypatch):
     fake_psutil = mock.Mock()
-    fake_psutil.process_iter = mock.Mock(side_effect=[
-        [],  # first call (warmup)
-        [mock.Mock(info={"pid": 1, "name": "a", "username": "u",
-                         "cpu_percent": 5.0, "memory_info": mock.Mock(rss=1024)}),
-         mock.Mock(info={"pid": 2, "name": "b", "username": "u",
-                         "cpu_percent": 50.0, "memory_info": mock.Mock(rss=2048)})],
-    ])
+    fake_psutil.process_iter = mock.Mock(
+        side_effect=[
+            [],  # first call (warmup)
+            [
+                mock.Mock(info={"pid": 1, "name": "a", "username": "u", "cpu_percent": 5.0, "memory_info": mock.Mock(rss=1024)}),
+                mock.Mock(info={"pid": 2, "name": "b", "username": "u", "cpu_percent": 50.0, "memory_info": mock.Mock(rss=2048)}),
+            ],
+        ]
+    )
     monkeypatch.setattr(sysinfo, "HAS_PSUTIL", True)
     monkeypatch.setattr(sysinfo, "psutil", fake_psutil)
     procs = sysinfo.get_top_processes(by="cpu", limit=2)
@@ -570,8 +570,8 @@ def test_get_readonly_mounts_detected():
     sample = (
         "/dev/sda1 / ext4 rw,relatime 0 0\n"
         "/dev/sdb1 /mnt/data ext4 ro,relatime 0 0\n"
-        "/dev/loop1 /snap/foo squashfs ro 0 0\n"   # expected_ro → ignored
-        "/dev/loop2 /mnt/cd iso9660 ro 0 0\n"      # expected_ro → ignored
+        "/dev/loop1 /snap/foo squashfs ro 0 0\n"  # expected_ro → ignored
+        "/dev/loop2 /mnt/cd iso9660 ro 0 0\n"  # expected_ro → ignored
     )
     with mock.patch.object(sysinfo, "read_file", return_value=sample):
         result = sysinfo.get_readonly_mounts()
@@ -650,8 +650,10 @@ def test_get_pid_count(monkeypatch):
 
 def test_get_pid_count_listdir_error(monkeypatch):
     monkeypatch.setattr(sysinfo, "read_file", lambda _: "")
+
     def boom(_):
         raise OSError("denied")
+
     monkeypatch.setattr(sysinfo.os, "listdir", boom)
     count, pid_max = sysinfo.get_pid_count()
     assert count == 0

@@ -19,15 +19,7 @@ def test_load_missing_paths_returns_defaults():
 
 def test_load_thresholds(tmp_path):
     f = tmp_path / "cfg.ini"
-    f.write_text(
-        "[thresholds]\n"
-        "disk_warn = 70\n"
-        "disk_fail = 80\n"
-        "swap_warn = 10\n"
-        "load_warn = 0.5\n"
-        "load_fail = 1.5\n"
-        "tcp_retrans_warn = 2\n"
-    )
+    f.write_text("[thresholds]\n" "disk_warn = 70\n" "disk_fail = 80\n" "swap_warn = 10\n" "load_warn = 0.5\n" "load_fail = 1.5\n" "tcp_retrans_warn = 2\n")
     cfg = config.load_config([str(f)])
     assert cfg.disk_warn_pct == 70
     assert cfg.disk_fail_pct == 80
@@ -39,11 +31,7 @@ def test_load_thresholds(tmp_path):
 
 def test_load_ignore_lists(tmp_path):
     f = tmp_path / "cfg.ini"
-    f.write_text(
-        "[ignore]\n"
-        "checks = swap, updates\n"
-        "result_names = disk /mnt/Backup, disk /mnt/Video\n"
-    )
+    f.write_text("[ignore]\n" "checks = swap, updates\n" "result_names = disk /mnt/Backup, disk /mnt/Video\n")
     cfg = config.load_config([str(f)])
     assert cfg.ignored_checks == {"swap", "updates"}
     assert cfg.ignored_result_names == {"disk /mnt/Backup", "disk /mnt/Video"}
@@ -51,13 +39,7 @@ def test_load_ignore_lists(tmp_path):
 
 def test_load_ignore_multiline(tmp_path):
     f = tmp_path / "cfg.ini"
-    f.write_text(
-        "[ignore]\n"
-        "checks =\n"
-        "    swap\n"
-        "    updates\n"
-        "    pids\n"
-    )
+    f.write_text("[ignore]\n" "checks =\n" "    swap\n" "    updates\n" "    pids\n")
     cfg = config.load_config([str(f)])
     assert cfg.ignored_checks == {"swap", "updates", "pids"}
 
@@ -106,6 +88,7 @@ def test_coerce_handles_bool(tmp_path):
     cfg = config.Config()
     # Direct exercise of _coerce with a bool sentinel.
     import configparser as cp
+
     p = cp.ConfigParser()
     p.read_string("[s]\nf = true\n")
     cfg.__dict__["_test_bool"] = False

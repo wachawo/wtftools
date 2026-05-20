@@ -101,16 +101,19 @@ def test_check_tcp_retransmits_states(monkeypatch):
 
 # ---- wtf services ----
 
+
 def test_get_service_details_not_found(monkeypatch):
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, "", ""))
     assert sysinfo.get_service_details("nope") is None
 
 
 def test_get_service_details_parses(monkeypatch):
-    out = ("Id=nginx.service\nDescription=High-perf web\nActiveState=active\n"
-           "SubState=running\nResult=success\nMainPID=1234\nNRestarts=0\n"
-           "LoadState=loaded\nUnitFileState=enabled\nMemoryCurrent=8388608\n"
-           "TasksCurrent=4\n")
+    out = (
+        "Id=nginx.service\nDescription=High-perf web\nActiveState=active\n"
+        "SubState=running\nResult=success\nMainPID=1234\nNRestarts=0\n"
+        "LoadState=loaded\nUnitFileState=enabled\nMemoryCurrent=8388608\n"
+        "TasksCurrent=4\n"
+    )
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, out, ""))
     d = sysinfo.get_service_details("nginx")
     assert d is not None
@@ -125,8 +128,7 @@ def test_get_service_details_not_found_via_loadstate(monkeypatch):
 
 
 def test_get_service_journal(monkeypatch):
-    monkeypatch.setattr(sysinfo, "run",
-                        lambda cmd, **_: (0, "line1\nline2\n\nline3\n", ""))
+    monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, "line1\nline2\n\nline3\n", ""))
     out = sysinfo.get_service_journal("nginx")
     assert out == ["line1", "line2", "line3"]
 
@@ -153,12 +155,23 @@ def test_cmd_services_not_found(monkeypatch):
 
 def test_cmd_services_active(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda _: "/bin/systemctl")
-    monkeypatch.setattr(sysinfo, "get_service_details", lambda name: {
-        "Id": "nginx.service", "Description": "web", "ActiveState": "active",
-        "SubState": "running", "Result": "success", "MainPID": "1234",
-        "NRestarts": "0", "UnitFileState": "enabled", "MemoryCurrent": "1048576",
-        "TasksCurrent": "2", "FragmentPath": "/lib/systemd/system/nginx.service",
-    })
+    monkeypatch.setattr(
+        sysinfo,
+        "get_service_details",
+        lambda name: {
+            "Id": "nginx.service",
+            "Description": "web",
+            "ActiveState": "active",
+            "SubState": "running",
+            "Result": "success",
+            "MainPID": "1234",
+            "NRestarts": "0",
+            "UnitFileState": "enabled",
+            "MemoryCurrent": "1048576",
+            "TasksCurrent": "2",
+            "FragmentPath": "/lib/systemd/system/nginx.service",
+        },
+    )
     monkeypatch.setattr(sysinfo, "get_service_journal", lambda name, lines: ["log line 1"])
     monkeypatch.setattr(main, "_ports_for_pid", lambda pid: [{"port": 80, "addr": "0.0.0.0"}])
     rc, out = _capture(["services", "nginx"])
@@ -170,10 +183,18 @@ def test_cmd_services_active(monkeypatch):
 
 def test_cmd_services_failed(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda _: "/bin/systemctl")
-    monkeypatch.setattr(sysinfo, "get_service_details", lambda name: {
-        "Id": "x.service", "ActiveState": "failed", "SubState": "failed",
-        "Result": "exit-code", "MainPID": "0", "NRestarts": "5",
-    })
+    monkeypatch.setattr(
+        sysinfo,
+        "get_service_details",
+        lambda name: {
+            "Id": "x.service",
+            "ActiveState": "failed",
+            "SubState": "failed",
+            "Result": "exit-code",
+            "MainPID": "0",
+            "NRestarts": "5",
+        },
+    )
     monkeypatch.setattr(sysinfo, "get_service_journal", lambda name, lines: [])
     rc, out = _capture(["services", "x"])
     assert rc == 1
@@ -182,10 +203,17 @@ def test_cmd_services_failed(monkeypatch):
 
 def test_cmd_services_json(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda _: "/bin/systemctl")
-    monkeypatch.setattr(sysinfo, "get_service_details", lambda name: {
-        "Id": "x.service", "ActiveState": "active", "SubState": "running",
-        "Result": "success", "MainPID": "1",
-    })
+    monkeypatch.setattr(
+        sysinfo,
+        "get_service_details",
+        lambda name: {
+            "Id": "x.service",
+            "ActiveState": "active",
+            "SubState": "running",
+            "Result": "success",
+            "MainPID": "1",
+        },
+    )
     monkeypatch.setattr(sysinfo, "get_service_journal", lambda name, lines: ["L"])
     monkeypatch.setattr(main, "_ports_for_pid", lambda pid: [])
     rc, out = _capture(["services", "x", "--format", "json"])
@@ -215,11 +243,16 @@ def test_ports_for_pid_no_psutil(monkeypatch):
 
 # ---- --ignore flag ----
 
+
 def test_audit_ignore_short_name(monkeypatch):
-    monkeypatch.setattr(audit, "_all_check_callables", lambda: {
-        "memory": lambda: audit.CheckResult("memory", "ok", ""),
-        "swap": lambda: audit.CheckResult("swap", "fail", "boom"),
-    })
+    monkeypatch.setattr(
+        audit,
+        "_all_check_callables",
+        lambda: {
+            "memory": lambda: audit.CheckResult("memory", "ok", ""),
+            "swap": lambda: audit.CheckResult("swap", "fail", "boom"),
+        },
+    )
     results = audit.run_audit(ignore=["swap"])
     assert {r.name for r in results} == {"memory"}
 
@@ -230,6 +263,7 @@ def test_audit_ignore_result_name(monkeypatch):
             audit.CheckResult("disk /", "warn", "70%"),
             audit.CheckResult("disk /mnt/Backup", "fail", "98%"),
         ]
+
     monkeypatch.setattr(audit, "_all_check_callables", lambda: {"disks": disks})
     results = audit.run_audit(ignore=["disk /mnt/Backup"])
     names = [r.name for r in results]
@@ -240,25 +274,33 @@ def test_audit_ignore_result_name(monkeypatch):
 def test_audit_ignore_via_config(monkeypatch):
     cfg = config.Config(ignored_checks={"swap"})
     config.set_config(cfg)
-    monkeypatch.setattr(audit, "_all_check_callables", lambda: {
-        "memory": lambda: audit.CheckResult("memory", "ok", ""),
-        "swap": lambda: audit.CheckResult("swap", "fail", "boom"),
-    })
+    monkeypatch.setattr(
+        audit,
+        "_all_check_callables",
+        lambda: {
+            "memory": lambda: audit.CheckResult("memory", "ok", ""),
+            "swap": lambda: audit.CheckResult("swap", "fail", "boom"),
+        },
+    )
     results = audit.run_audit()
     assert {r.name for r in results} == {"memory"}
     config.set_config(config.Config())
 
 
 def test_cli_ignore_flag(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None:
-                        [audit.CheckResult("memory", "ok", "x")] if "swap" in (ignore or [])
-                        else [audit.CheckResult("memory", "ok", "x"), audit.CheckResult("swap", "fail", "y")])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: (
+            [audit.CheckResult("memory", "ok", "x")] if "swap" in (ignore or []) else [audit.CheckResult("memory", "ok", "x"), audit.CheckResult("swap", "fail", "y")]
+        ),
+    )
     rc, out = _capture(["audit", "--ignore", "swap"])
     assert "swap" not in out
 
 
 # ---- wtf config CLI ----
+
 
 def test_cmd_config_text():
     rc, out = _capture(["config"])
@@ -293,10 +335,10 @@ def test_global_config_flag(monkeypatch, tmp_path):
 
 # ---- thresholds actually applied ----
 
+
 def test_config_thresholds_used_by_memory_check(monkeypatch):
     config.set_config(config.Config(mem_warn_pct=10, mem_fail_pct=20))
-    monkeypatch.setattr(audit.sysinfo, "get_memory_summary",
-                        lambda: {"used": 15, "total": 100, "percent": 15})
+    monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: {"used": 15, "total": 100, "percent": 15})
     r = audit._check_memory()
     assert r.status == "warn"
     config.set_config(config.Config())
@@ -304,8 +346,7 @@ def test_config_thresholds_used_by_memory_check(monkeypatch):
 
 def test_config_thresholds_used_by_disk_check(monkeypatch):
     config.set_config(config.Config(disk_warn_pct=30, disk_fail_pct=70))
-    monkeypatch.setattr(audit.sysinfo, "get_disks",
-                        lambda: [{"target": "/", "used": 50, "total": 100, "percent": 50}])
+    monkeypatch.setattr(audit.sysinfo, "get_disks", lambda: [{"target": "/", "used": 50, "total": 100, "percent": 50}])
     results = audit._check_disks()
     assert results[0].status == "warn"
     config.set_config(config.Config())

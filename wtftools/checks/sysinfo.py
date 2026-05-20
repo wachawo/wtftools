@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import psutil  # type: ignore
+
     HAS_PSUTIL = True
 except Exception:
     HAS_PSUTIL = False
@@ -192,11 +193,34 @@ def get_memory_summary() -> Dict[str, int]:
 def get_mounts() -> List[Dict[str, str]]:
     """Read /proc/mounts. Filter out virtual / pseudo filesystems."""
     skip_fs = {
-        "proc", "sysfs", "devtmpfs", "devpts", "tmpfs", "cgroup", "cgroup2",
-        "pstore", "bpf", "tracefs", "debugfs", "fusectl", "configfs",
-        "hugetlbfs", "mqueue", "rpc_pipefs", "binfmt_misc", "autofs",
-        "securityfs", "selinuxfs", "fuse.gvfsd-fuse", "fuse.portal",
-        "fuse.snapfuse", "nsfs", "ramfs", "fuse.lxcfs", "overlay", "squashfs",
+        "proc",
+        "sysfs",
+        "devtmpfs",
+        "devpts",
+        "tmpfs",
+        "cgroup",
+        "cgroup2",
+        "pstore",
+        "bpf",
+        "tracefs",
+        "debugfs",
+        "fusectl",
+        "configfs",
+        "hugetlbfs",
+        "mqueue",
+        "rpc_pipefs",
+        "binfmt_misc",
+        "autofs",
+        "securityfs",
+        "selinuxfs",
+        "fuse.gvfsd-fuse",
+        "fuse.portal",
+        "fuse.snapfuse",
+        "nsfs",
+        "ramfs",
+        "fuse.lxcfs",
+        "overlay",
+        "squashfs",
     }
     content = read_file(PROC_MOUNTS)
     mounts: List[Dict[str, str]] = []
@@ -239,12 +263,14 @@ def get_disks() -> List[Dict[str, Any]]:
         usage = get_disk_usage(mount["target"])
         if usage is None:
             continue
-        result.append({
-            "target": mount["target"],
-            "source": mount["source"],
-            "fstype": mount["fstype"],
-            **usage,
-        })
+        result.append(
+            {
+                "target": mount["target"],
+                "source": mount["source"],
+                "fstype": mount["fstype"],
+                **usage,
+            }
+        )
     return result
 
 
@@ -260,13 +286,15 @@ def get_top_processes(by: str = "cpu", limit: int = 5) -> List[Dict[str, Any]]:
             for proc in psutil.process_iter(["pid", "name", "username", "cpu_percent", "memory_info"]):
                 info = proc.info
                 rss = info["memory_info"].rss if info.get("memory_info") else 0
-                procs.append({
-                    "pid": info.get("pid"),
-                    "name": (info.get("name") or "")[:32],
-                    "user": (info.get("username") or "")[:16],
-                    "cpu_percent": info.get("cpu_percent") or 0.0,
-                    "rss": rss,
-                })
+                procs.append(
+                    {
+                        "pid": info.get("pid"),
+                        "name": (info.get("name") or "")[:32],
+                        "user": (info.get("username") or "")[:16],
+                        "cpu_percent": info.get("cpu_percent") or 0.0,
+                        "rss": rss,
+                    }
+                )
             key = "cpu_percent" if by == "cpu" else "rss"
             procs.sort(key=lambda p: p[key], reverse=True)
             return procs[:limit]
@@ -343,8 +371,7 @@ def get_enabled_inactive_units(limit: int = 200) -> List[Dict[str, str]]:
     is unavailable or all enabled services are running fine.
     """
     rc, out, _ = run(
-        ["systemctl", "list-unit-files", "--type=service", "--state=enabled",
-         "--no-legend", "--no-pager"],
+        ["systemctl", "list-unit-files", "--type=service", "--state=enabled", "--no-legend", "--no-pager"],
         timeout=8,
     )
     if rc != 0 or not out:
@@ -390,12 +417,14 @@ def _maybe_collect_inactive(unit: Dict[str, str], out: List[Dict[str, str]]) -> 
     name = unit.get("Id")
     if not name:
         return
-    out.append({
-        "name": name,
-        "state": state or "unknown",
-        "sub": unit.get("SubState", ""),
-        "result": unit.get("Result", ""),
-    })
+    out.append(
+        {
+            "name": name,
+            "state": state or "unknown",
+            "sub": unit.get("SubState", ""),
+            "result": unit.get("Result", ""),
+        }
+    )
 
 
 def get_reboot_required() -> Optional[str]:
@@ -406,9 +435,7 @@ def get_reboot_required() -> Optional[str]:
     pkgs = read_file("/var/run/reboot-required.pkgs").strip()
     if pkgs:
         first = pkgs.splitlines()[:3]
-        return "reboot required ({} pkg(s)): {}".format(
-            len(pkgs.splitlines()), ", ".join(first)
-        )
+        return "reboot required ({} pkg(s)): {}".format(len(pkgs.splitlines()), ", ".join(first))
     return "reboot required"
 
 
@@ -484,6 +511,7 @@ def get_stuck_processes() -> List[Dict[str, Any]]:
 
 def get_iowait_percent(sample_seconds: float = 0.3) -> Optional[float]:
     """Sample /proc/stat twice and return iowait percent."""
+
     def _snapshot() -> Optional[List[int]]:
         line = read_file(PROC_STAT).splitlines()
         if not line:
@@ -519,8 +547,7 @@ def get_service_restart_counts(threshold: int = 3, limit: int = 200) -> List[Dic
     times. Returns name + count sorted descending.
     """
     rc, out, _ = run(
-        ["systemctl", "list-units", "--type=service", "--state=active",
-         "--no-legend", "--no-pager", "--plain"],
+        ["systemctl", "list-units", "--type=service", "--state=active", "--no-legend", "--no-pager", "--plain"],
         timeout=8,
     )
     if rc != 0 or not out:
@@ -596,14 +623,16 @@ def get_network_errors() -> List[Dict[str, Any]]:
         total = rx_err + tx_err + rx_drop + tx_drop
         if total <= 0:
             continue
-        results.append({
-            "iface": iface,
-            "rx_errors": rx_err,
-            "tx_errors": tx_err,
-            "rx_dropped": rx_drop,
-            "tx_dropped": tx_drop,
-            "total": total,
-        })
+        results.append(
+            {
+                "iface": iface,
+                "rx_errors": rx_err,
+                "tx_errors": tx_err,
+                "rx_dropped": rx_drop,
+                "tx_dropped": tx_drop,
+                "total": total,
+            }
+        )
     return results
 
 
@@ -614,10 +643,10 @@ def probe_http(url: str, timeout: float = 3.0) -> Dict[str, Any]:
     as success (status_code is the first response code we see).
     """
     from urllib.parse import urlparse
+
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
-        return {"url": url, "status_code": None, "latency_ms": None,
-                "error": f"unsupported scheme: {parsed.scheme}"}
+        return {"url": url, "status_code": None, "latency_ms": None, "error": f"unsupported scheme: {parsed.scheme}"}
     host = parsed.hostname or "localhost"
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     path = parsed.path or "/"
@@ -627,6 +656,7 @@ def probe_http(url: str, timeout: float = 3.0) -> Dict[str, Any]:
     started = time.monotonic()
     try:
         import http.client
+
         if parsed.scheme == "https":
             conn = http.client.HTTPSConnection(host, port, timeout=timeout)
         else:
@@ -635,27 +665,24 @@ def probe_http(url: str, timeout: float = 3.0) -> Dict[str, Any]:
             conn.request("HEAD", path)
             resp = conn.getresponse()
             latency = (time.monotonic() - started) * 1000.0
-            return {"url": url, "status_code": resp.status,
-                    "latency_ms": round(latency, 1), "error": None}
+            return {"url": url, "status_code": resp.status, "latency_ms": round(latency, 1), "error": None}
         finally:
             conn.close()
     except Exception as exc:
-        return {"url": url, "status_code": None, "latency_ms": None,
-                "error": f"{type(exc).__name__}: {exc}"}
+        return {"url": url, "status_code": None, "latency_ms": None, "error": f"{type(exc).__name__}: {exc}"}
 
 
 def probe_tcp(target: str, timeout: float = 3.0) -> Dict[str, Any]:
     """Open a TCP socket to host:port. Returns {target, latency_ms, error}."""
     import socket as _socket
+
     if ":" not in target:
-        return {"target": target, "latency_ms": None,
-                "error": "expected host:port"}
+        return {"target": target, "latency_ms": None, "error": "expected host:port"}
     host, _, port_s = target.rpartition(":")
     try:
         port = int(port_s)
     except ValueError:
-        return {"target": target, "latency_ms": None,
-                "error": f"invalid port: {port_s}"}
+        return {"target": target, "latency_ms": None, "error": f"invalid port: {port_s}"}
     started = time.monotonic()
     try:
         sock = _socket.create_connection((host.strip("[]"), port), timeout=timeout)
@@ -663,13 +690,13 @@ def probe_tcp(target: str, timeout: float = 3.0) -> Dict[str, Any]:
         latency = (time.monotonic() - started) * 1000.0
         return {"target": target, "latency_ms": round(latency, 1), "error": None}
     except Exception as exc:
-        return {"target": target, "latency_ms": None,
-                "error": f"{type(exc).__name__}: {exc}"}
+        return {"target": target, "latency_ms": None, "error": f"{type(exc).__name__}: {exc}"}
 
 
 def get_block_devices() -> List[str]:
     """Return /dev paths of physical block devices (excluding partitions / loops)."""
     import shutil
+
     if not shutil.which("lsblk"):
         return []
     rc, out, _ = run(["lsblk", "-dn", "-o", "NAME,TYPE"], timeout=5)
@@ -690,12 +717,14 @@ def get_smart_status() -> Optional[List[Dict[str, Any]]]:
     present but no block devices were found / accessible.
     """
     import shutil
+
     if not shutil.which("smartctl"):
         return None
     devices = get_block_devices()
     if not devices:
         return []
     import json as _json
+
     results: List[Dict[str, Any]] = []
     for dev in devices:
         rc, out, _ = run(["smartctl", "-H", "-j", dev], timeout=8)
@@ -713,12 +742,14 @@ def get_smart_status() -> Optional[List[Dict[str, Any]]]:
         if passed is None and rc != 0:
             # device probably doesn't support SMART; skip silently
             continue
-        results.append({
-            "device": dev,
-            "passed": bool(passed) if passed is not None else None,
-            "exit_code": rc,
-            "message": msg_text,
-        })
+        results.append(
+            {
+                "device": dev,
+                "passed": bool(passed) if passed is not None else None,
+                "exit_code": rc,
+                "message": msg_text,
+            }
+        )
     return results
 
 
@@ -762,11 +793,13 @@ def get_temperatures() -> List[Dict[str, Any]]:
                 continue
             label_path = os.path.join(hwmon_dir, f"temp{idx}_label")
             label = read_file(label_path).strip() if os.path.exists(label_path) else f"temp{idx}"
-            result.append({
-                "sensor": sensor_name,
-                "label": label,
-                "celsius": round(celsius, 1),
-            })
+            result.append(
+                {
+                    "sensor": sensor_name,
+                    "label": label,
+                    "celsius": round(celsius, 1),
+                }
+            )
     return result
 
 
@@ -778,6 +811,7 @@ def resolve_hostname(host: str, timeout: float = 2.0) -> Optional[float]:
     want to test whatever DNS the host itself is configured to use.
     """
     import socket
+
     old_timeout = socket.getdefaulttimeout()
     socket.setdefaulttimeout(timeout)
     started = time.monotonic()
@@ -797,6 +831,7 @@ def get_fail2ban_jails() -> Optional[List[Dict[str, Any]]]:
     fail2ban is up but has no jails configured (rare).
     """
     import shutil
+
     if not shutil.which("fail2ban-client"):
         return None
     rc, out, _ = run(["fail2ban-client", "status"], timeout=5)
@@ -842,6 +877,7 @@ def get_chrony_offset() -> Optional[float]:
     None if chrony is not the active NTP daemon or chronyc is unavailable.
     """
     import shutil
+
     if not shutil.which("chronyc"):
         return None
     rc, out, _ = run(["chronyc", "tracking"], timeout=5)
@@ -868,11 +904,11 @@ def get_docker_problem_containers() -> Optional[List[Dict[str, Any]]]:
     means docker is reachable and nothing is misbehaving.
     """
     import shutil
+
     if not shutil.which("docker"):
         return None
     rc, out, _ = run(
-        ["docker", "ps", "-a",
-         "--format", "{{.Names}}\t{{.Status}}\t{{.State}}"],
+        ["docker", "ps", "-a", "--format", "{{.Names}}\t{{.Status}}\t{{.State}}"],
         timeout=8,
     )
     if rc != 0:
@@ -895,12 +931,14 @@ def get_docker_problem_containers() -> Optional[List[Dict[str, Any]]]:
         # part of a restart-policy that should keep them alive — but discerning
         # that requires `docker inspect`. Skip exited containers for now.
         if problem:
-            problems.append({
-                "name": name,
-                "state": state,
-                "status": status,
-                "problem": problem,
-            })
+            problems.append(
+                {
+                    "name": name,
+                    "state": state,
+                    "status": status,
+                    "problem": problem,
+                }
+            )
     return problems
 
 
@@ -910,10 +948,8 @@ def get_conntrack_usage() -> Optional[Tuple[int, int]]:
     Path varies by distro/kernel — try the two known locations.
     """
     candidates = (
-        ("/proc/sys/net/netfilter/nf_conntrack_count",
-         "/proc/sys/net/netfilter/nf_conntrack_max"),
-        ("/proc/sys/net/nf_conntrack_count",
-         "/proc/sys/net/nf_conntrack_max"),
+        ("/proc/sys/net/netfilter/nf_conntrack_count", "/proc/sys/net/netfilter/nf_conntrack_max"),
+        ("/proc/sys/net/nf_conntrack_count", "/proc/sys/net/nf_conntrack_max"),
     )
     for count_path, max_path in candidates:
         count_raw = read_file(count_path).strip()
@@ -934,6 +970,7 @@ def get_top_paths_in(directory: str, limit: int = 10) -> List[Dict[str, Any]]:
     disk-fill warning fires. Bounded by 15s — on huge trees `du` can run long.
     """
     import shutil
+
     if not shutil.which("du") or not os.path.isdir(directory):
         return []
     # --block-size=1 → bytes, -d1 → only direct children.
@@ -957,15 +994,14 @@ def get_top_paths_in(directory: str, limit: int = 10) -> List[Dict[str, Any]]:
     return results[:limit]
 
 
-def get_largest_files(directory: str, limit: int = 5,
-                      min_size_mb: int = 100) -> List[Dict[str, Any]]:
+def get_largest_files(directory: str, limit: int = 5, min_size_mb: int = 100) -> List[Dict[str, Any]]:
     """Find regular files under `directory` larger than min_size_mb."""
     import shutil
+
     if not shutil.which("find") or not os.path.isdir(directory):
         return []
     rc, out, _ = run(
-        ["find", directory, "-xdev", "-type", "f",
-         "-size", f"+{min_size_mb}M", "-printf", "%s\t%p\n"],
+        ["find", directory, "-xdev", "-type", "f", "-size", f"+{min_size_mb}M", "-printf", "%s\t%p\n"],
         timeout=20,
     )
     if rc != 0 or not out:
@@ -987,11 +1023,11 @@ def get_largest_files(directory: str, limit: int = 5,
 def get_docker_disk_usage() -> Optional[List[Dict[str, str]]]:
     """`docker system df` parsed into rows. None if docker missing/unreachable."""
     import shutil
+
     if not shutil.which("docker"):
         return None
     rc, out, _ = run(
-        ["docker", "system", "df", "--format",
-         "{{.Type}}\t{{.TotalCount}}\t{{.Size}}\t{{.Reclaimable}}"],
+        ["docker", "system", "df", "--format", "{{.Type}}\t{{.TotalCount}}\t{{.Size}}\t{{.Reclaimable}}"],
         timeout=8,
     )
     if rc != 0 or not out:
@@ -1000,12 +1036,14 @@ def get_docker_disk_usage() -> Optional[List[Dict[str, str]]]:
     for line in out.splitlines():
         parts = line.split("\t")
         if len(parts) >= 4:
-            rows.append({
-                "type": parts[0],
-                "count": parts[1],
-                "size": parts[2],
-                "reclaimable": parts[3],
-            })
+            rows.append(
+                {
+                    "type": parts[0],
+                    "count": parts[1],
+                    "size": parts[2],
+                    "reclaimable": parts[3],
+                }
+            )
     return rows
 
 
@@ -1015,11 +1053,11 @@ def get_docker_container_sizes(limit: int = 10) -> Optional[List[Dict[str, str]]
     The `.Size` field reports `Rw+Vsize` — read-write layer plus base image.
     """
     import shutil
+
     if not shutil.which("docker"):
         return None
     rc, out, _ = run(
-        ["docker", "ps", "-as", "--format",
-         "{{.Names}}\t{{.Size}}\t{{.Image}}\t{{.Status}}"],
+        ["docker", "ps", "-as", "--format", "{{.Names}}\t{{.Size}}\t{{.Image}}\t{{.Status}}"],
         timeout=8,
     )
     if rc != 0 or not out:
@@ -1028,12 +1066,14 @@ def get_docker_container_sizes(limit: int = 10) -> Optional[List[Dict[str, str]]
     for line in out.splitlines():
         parts = line.split("\t")
         if len(parts) >= 4:
-            rows.append({
-                "name": parts[0],
-                "size": parts[1],
-                "image": parts[2],
-                "status": parts[3],
-            })
+            rows.append(
+                {
+                    "name": parts[0],
+                    "size": parts[1],
+                    "image": parts[2],
+                    "status": parts[3],
+                }
+            )
     return rows[:limit]
 
 
@@ -1045,6 +1085,7 @@ def get_docker_log_sizes(limit: int = 5) -> Optional[List[Dict[str, Any]]]:
     typically only root or the docker group.
     """
     import shutil
+
     if not shutil.which("docker"):
         return None
     rc, out, _ = run(["docker", "ps", "-aq"], timeout=5)
@@ -1054,8 +1095,7 @@ def get_docker_log_sizes(limit: int = 5) -> Optional[List[Dict[str, Any]]]:
     if not ids:
         return []
     rc, out, _ = run(
-        ["docker", "inspect", "--format",
-         "{{.Name}}\t{{.LogPath}}"] + ids,
+        ["docker", "inspect", "--format", "{{.Name}}\t{{.LogPath}}"] + ids,
         timeout=10,
     )
     if rc != 0 or not out:
@@ -1094,7 +1134,7 @@ def get_journal_disk_usage() -> Optional[int]:
         value = float(match.group(1))
     except ValueError:
         return None
-    multipliers = {"K": 1024, "M": 1024 ** 2, "G": 1024 ** 3, "T": 1024 ** 4}
+    multipliers = {"K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
     unit = match.group(2)
     return int(value * multipliers.get(unit, 1))
 
@@ -1175,6 +1215,7 @@ def get_certificate_expirations(
     Bounded by max_files to avoid runaway IO on misconfigured hosts.
     """
     import shutil
+
     if not shutil.which("openssl"):
         return []
     if roots is None:
@@ -1241,6 +1282,7 @@ def _parse_cert_expiry_days(path: str) -> Optional[int]:
     when = when.strip()
     try:
         from datetime import datetime, timezone
+
         dt = datetime.strptime(when, "%b %d %H:%M:%S %Y %Z")
         delta = dt.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)
         return delta.days
@@ -1299,22 +1341,42 @@ def get_service_details(unit: str) -> Optional[Dict[str, Any]]:
     """Drilldown info for a single systemd unit. None if not found."""
     if "." not in unit:
         unit = f"{unit}.service"
-    rc, out, _ = run(["systemctl", "show",
-                      "-p", "Id",
-                      "-p", "Description",
-                      "-p", "LoadState",
-                      "-p", "ActiveState",
-                      "-p", "SubState",
-                      "-p", "Result",
-                      "-p", "UnitFileState",
-                      "-p", "MainPID",
-                      "-p", "NRestarts",
-                      "-p", "MemoryCurrent",
-                      "-p", "TasksCurrent",
-                      "-p", "ActiveEnterTimestamp",
-                      "-p", "ExecMainStartTimestamp",
-                      "-p", "FragmentPath",
-                      unit], timeout=8)
+    rc, out, _ = run(
+        [
+            "systemctl",
+            "show",
+            "-p",
+            "Id",
+            "-p",
+            "Description",
+            "-p",
+            "LoadState",
+            "-p",
+            "ActiveState",
+            "-p",
+            "SubState",
+            "-p",
+            "Result",
+            "-p",
+            "UnitFileState",
+            "-p",
+            "MainPID",
+            "-p",
+            "NRestarts",
+            "-p",
+            "MemoryCurrent",
+            "-p",
+            "TasksCurrent",
+            "-p",
+            "ActiveEnterTimestamp",
+            "-p",
+            "ExecMainStartTimestamp",
+            "-p",
+            "FragmentPath",
+            unit,
+        ],
+        timeout=8,
+    )
     if rc != 0 or not out:
         return None
     data: Dict[str, str] = {}
@@ -1330,8 +1392,7 @@ def get_service_journal(unit: str, lines: int = 20) -> List[str]:
     """Recent journal lines for a single unit."""
     if "." not in unit:
         unit = f"{unit}.service"
-    rc, out, _ = run(["journalctl", "-u", unit, "-n", str(lines),
-                      "--no-pager", "-q"], timeout=8)
+    rc, out, _ = run(["journalctl", "-u", unit, "-n", str(lines), "--no-pager", "-q"], timeout=8)
     if rc != 0 or not out:
         return []
     return [line for line in out.splitlines() if line.strip()]
@@ -1401,11 +1462,13 @@ def get_listening_ports() -> List[Dict[str, Any]]:
                     continue
                 if not conn.laddr:
                     continue
-                ports.append({
-                    "addr": conn.laddr.ip,
-                    "port": conn.laddr.port,
-                    "pid": conn.pid,
-                })
+                ports.append(
+                    {
+                        "addr": conn.laddr.ip,
+                        "port": conn.laddr.port,
+                        "pid": conn.pid,
+                    }
+                )
             return ports
         except Exception:
             pass
@@ -1455,8 +1518,7 @@ def get_last_logins(limit: int = 5) -> List[str]:
 def get_failed_auth_count(hours: int = 24) -> int:
     """Count of failed authentication events in the recent window."""
     rc, out, _ = run(
-        ["journalctl", "_SYSTEMD_UNIT=ssh.service", "_SYSTEMD_UNIT=sshd.service",
-         "--since", f"{hours} hours ago", "--no-pager", "-q"],
+        ["journalctl", "_SYSTEMD_UNIT=ssh.service", "_SYSTEMD_UNIT=sshd.service", "--since", f"{hours} hours ago", "--no-pager", "-q"],
         timeout=8,
     )
     if rc != 0 or not out:

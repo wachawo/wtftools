@@ -45,26 +45,23 @@ def test_check_load_levels(monkeypatch):
 
 
 def test_check_memory(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_memory_summary",
-                        lambda: {"used": 100, "total": 1000, "percent": 10})
+    monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: {"used": 100, "total": 1000, "percent": 10})
     assert audit._check_memory().status == "ok"
-    monkeypatch.setattr(audit.sysinfo, "get_memory_summary",
-                        lambda: {"used": 900, "total": 1000, "percent": 90})
+    monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: {"used": 900, "total": 1000, "percent": 90})
     assert audit._check_memory().status == "warn"
-    monkeypatch.setattr(audit.sysinfo, "get_memory_summary",
-                        lambda: {"used": 990, "total": 1000, "percent": 96})
+    monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: {"used": 990, "total": 1000, "percent": 96})
     assert audit._check_memory().status == "fail"
 
 
 def test_check_swap_no_swap(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_memory_summary",
-                        lambda: {"swap_total": 0, "swap_used": 0, "swap_percent": 0})
+    monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: {"swap_total": 0, "swap_used": 0, "swap_percent": 0})
     assert audit._check_swap().status == "skip"
 
 
 def test_check_swap_states(monkeypatch):
     def with_pct(p):
         return {"swap_total": 100, "swap_used": p, "swap_percent": p}
+
     monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: with_pct(10))
     assert audit._check_swap().status == "ok"
     monkeypatch.setattr(audit.sysinfo, "get_memory_summary", lambda: with_pct(40))
@@ -88,10 +85,14 @@ def test_check_disks(monkeypatch):
 
 
 def test_check_inodes_only_problems(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_disks", lambda: [
-        {"target": "/", "used": 0, "total": 1, "percent": 0},
-        {"target": "/var", "used": 0, "total": 1, "percent": 0},
-    ])
+    monkeypatch.setattr(
+        audit.sysinfo,
+        "get_disks",
+        lambda: [
+            {"target": "/", "used": 0, "total": 1, "percent": 0},
+            {"target": "/var", "used": 0, "total": 1, "percent": 0},
+        ],
+    )
 
     def fake_statvfs(path):
         if path == "/":
@@ -106,9 +107,13 @@ def test_check_inodes_only_problems(monkeypatch):
 
 
 def test_check_inodes_oserror(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_disks", lambda: [
-        {"target": "/x", "used": 0, "total": 1, "percent": 0},
-    ])
+    monkeypatch.setattr(
+        audit.sysinfo,
+        "get_disks",
+        lambda: [
+            {"target": "/x", "used": 0, "total": 1, "percent": 0},
+        ],
+    )
     monkeypatch.setattr(audit.os, "statvfs", mock.Mock(side_effect=OSError))
     assert audit._check_inodes() == []
 
@@ -235,12 +240,10 @@ def test_check_enabled_inactive(monkeypatch):
     monkeypatch.setattr(audit.shutil, "which", lambda _: "/bin/systemctl")
     monkeypatch.setattr(audit.sysinfo, "get_enabled_inactive_units", lambda: [])
     assert audit._check_enabled_inactive().status == "ok"
-    monkeypatch.setattr(audit.sysinfo, "get_enabled_inactive_units",
-                        lambda: [{"name": "x.service", "state": "failed", "sub": "failed", "result": "exit-code"}])
+    monkeypatch.setattr(audit.sysinfo, "get_enabled_inactive_units", lambda: [{"name": "x.service", "state": "failed", "sub": "failed", "result": "exit-code"}])
     r = audit._check_enabled_inactive()
     assert r.status == "fail"
-    monkeypatch.setattr(audit.sysinfo, "get_enabled_inactive_units",
-                        lambda: [{"name": "x.service", "state": "inactive", "sub": "dead", "result": "success"}])
+    monkeypatch.setattr(audit.sysinfo, "get_enabled_inactive_units", lambda: [{"name": "x.service", "state": "inactive", "sub": "dead", "result": "success"}])
     r = audit._check_enabled_inactive()
     assert r.status == "warn"
 
@@ -253,17 +256,13 @@ def test_check_reboot_required(monkeypatch):
 
 
 def test_check_time_sync(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": None, "ntp_active": None, "source": "missing"})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": None, "ntp_active": None, "source": "missing"})
     assert audit._check_time_sync().status == "skip"
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": True, "ntp_active": True, "source": ""})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": True, "ntp_active": True, "source": ""})
     assert audit._check_time_sync().status == "ok"
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": False, "ntp_active": True, "source": ""})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": False, "ntp_active": True, "source": ""})
     assert audit._check_time_sync().status == "warn"
-    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status",
-                        lambda: {"synchronized": False, "ntp_active": False, "source": ""})
+    monkeypatch.setattr(audit.sysinfo, "get_time_sync_status", lambda: {"synchronized": False, "ntp_active": False, "source": ""})
     assert audit._check_time_sync().status == "fail"
 
 
@@ -277,11 +276,9 @@ def test_check_readonly_mounts(monkeypatch):
 def test_check_stuck_processes(monkeypatch):
     monkeypatch.setattr(audit.sysinfo, "get_stuck_processes", lambda: [])
     assert audit._check_stuck_processes().status == "ok"
-    monkeypatch.setattr(audit.sysinfo, "get_stuck_processes",
-                        lambda: [{"pid": 1, "name": "a"}])
+    monkeypatch.setattr(audit.sysinfo, "get_stuck_processes", lambda: [{"pid": 1, "name": "a"}])
     assert audit._check_stuck_processes().status == "warn"
-    monkeypatch.setattr(audit.sysinfo, "get_stuck_processes",
-                        lambda: [{"pid": i, "name": "a"} for i in range(6)])
+    monkeypatch.setattr(audit.sysinfo, "get_stuck_processes", lambda: [{"pid": i, "name": "a"} for i in range(6)])
     assert audit._check_stuck_processes().status == "fail"
 
 
@@ -310,6 +307,7 @@ def test_check_pid_count(monkeypatch):
 def test_run_audit_handles_exception(monkeypatch, caplog):
     def boom():
         raise RuntimeError("boom")
+
     monkeypatch.setattr(audit, "_all_check_callables", lambda: {"only": boom})
     with caplog.at_level(logging.WARNING):
         results = audit.run_audit()
@@ -320,6 +318,7 @@ def test_run_audit_handles_exception(monkeypatch, caplog):
 def test_run_audit_list_outcome(monkeypatch):
     def multi():
         return [audit.CheckResult("x", "ok", "1"), audit.CheckResult("y", "warn", "2")]
+
     monkeypatch.setattr(audit, "_all_check_callables", lambda: {"only": multi})
     results = audit.run_audit()
     assert len(results) == 2

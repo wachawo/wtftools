@@ -221,8 +221,7 @@ def check_user_exists(username: str) -> bool:
 def check_user(username: str) -> Tuple[List[str], List[str]]:
     errors: List[str] = []
     warnings: List[str] = []
-    if not username or username.startswith("#") or '"' in username or "@" in username or " " in username \
-            or not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]{0,31}$", username):
+    if not username or username.startswith("#") or '"' in username or "@" in username or " " in username or not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]{0,31}$", username):
         errors.append(f"invalid user format: '{username}'")
     elif platform.system().lower() != "windows" and not check_user_exists(username):
         warnings.append(f"user does not exist: '{username}'")
@@ -252,8 +251,7 @@ def check_special(keyword: str, parts: List[str], is_system_crontab: bool) -> Li
     return errors
 
 
-def check_line(line: str, line_number: int, file_name: str, file_path: Optional[str] = None,
-               is_system_crontab: bool = False) -> Tuple[List[str], List[str]]:
+def check_line(line: str, line_number: int, file_name: str, file_path: Optional[str] = None, is_system_crontab: bool = False) -> Tuple[List[str], List[str]]:
     errors: List[str] = []
     warnings: List[str] = []
 

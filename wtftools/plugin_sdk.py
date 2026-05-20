@@ -57,8 +57,7 @@ _EXIT_CODES: Mapping[str, int] = {
 }
 
 
-def result(status: str, message: str = "",
-           detail: Optional[List[str]] = None) -> None:
+def result(status: str, message: str = "", detail: Optional[List[str]] = None) -> None:
     """Emit a plugin result without exiting. Returns None.
 
     `status` must be one of: ok, warn, fail, skip. Anything else is treated

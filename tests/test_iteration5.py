@@ -19,6 +19,7 @@ def _capture(argv):
 
 # ---- conntrack ----
 
+
 def test_conntrack_first_location(monkeypatch):
     def fake_read(path):
         if path == "/proc/sys/net/netfilter/nf_conntrack_count":
@@ -26,6 +27,7 @@ def test_conntrack_first_location(monkeypatch):
         if path == "/proc/sys/net/netfilter/nf_conntrack_max":
             return "10000"
         return ""
+
     monkeypatch.setattr(sysinfo, "read_file", fake_read)
     usage = sysinfo.get_conntrack_usage()
     assert usage == (1000, 10000)
@@ -40,6 +42,7 @@ def test_conntrack_second_location(monkeypatch):
         if path == "/proc/sys/net/nf_conntrack_max":
             return "100"
         return ""
+
     monkeypatch.setattr(sysinfo, "read_file", fake_read)
     assert sysinfo.get_conntrack_usage() == (5, 100)
 
@@ -75,6 +78,7 @@ def test_check_conntrack_states(monkeypatch):
 
 # ---- journal disk ----
 
+
 def test_journal_disk_usage_parses_g(monkeypatch):
     out = "Archived and active journals take up 1.2G in the file system."
     monkeypatch.setattr(sysinfo, "run", lambda cmd, **_: (0, out, ""))
@@ -108,25 +112,24 @@ def test_check_journal_disk_states(monkeypatch):
     assert audit._check_journal_disk().status == "skip"
     monkeypatch.setattr(audit.sysinfo, "get_journal_disk_usage", lambda: 100_000_000)
     assert audit._check_journal_disk().status == "ok"
-    monkeypatch.setattr(audit.sysinfo, "get_journal_disk_usage", lambda: 5 * 1024 ** 3)
+    monkeypatch.setattr(audit.sysinfo, "get_journal_disk_usage", lambda: 5 * 1024**3)
     assert audit._check_journal_disk().status == "warn"
-    monkeypatch.setattr(audit.sysinfo, "get_journal_disk_usage", lambda: 20 * 1024 ** 3)
+    monkeypatch.setattr(audit.sysinfo, "get_journal_disk_usage", lambda: 20 * 1024**3)
     assert audit._check_journal_disk().status == "fail"
 
 
 # ---- --alert ----
 
+
 def test_alert_not_fired_when_no_fail(monkeypatch, tmp_path):
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
     sentinel = tmp_path / "alert.txt"
     rc, _ = _capture(["audit", "--alert", f"touch {sentinel}"])
     assert not sentinel.exists()
 
 
 def test_alert_fired_on_fail(monkeypatch, tmp_path):
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
     sentinel = tmp_path / "alert.txt"
     rc, _ = _capture(["audit", "--alert", f"cat > {sentinel}"])
     assert sentinel.exists()
@@ -136,21 +139,23 @@ def test_alert_fired_on_fail(monkeypatch, tmp_path):
 
 
 def test_alert_on_warn(monkeypatch, tmp_path):
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "warn", "soft")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "warn", "soft")])
     sentinel = tmp_path / "alert.txt"
     _capture(["audit", "--alert", f"touch {sentinel}", "--alert-on", "warn"])
     assert sentinel.exists()
 
 
 def test_alert_env_vars(monkeypatch, tmp_path):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("a", "fail", "x"),
-        audit.CheckResult("b", "warn", "y"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("a", "fail", "x"),
+            audit.CheckResult("b", "warn", "y"),
+        ],
+    )
     sentinel = tmp_path / "env.txt"
-    _capture(["audit", "--alert",
-              f"echo FAIL=$WTF_FAIL_COUNT WARN=$WTF_WARN_COUNT HOST=$WTF_HOST > {sentinel}"])
+    _capture(["audit", "--alert", f"echo FAIL=$WTF_FAIL_COUNT WARN=$WTF_WARN_COUNT HOST=$WTF_HOST > {sentinel}"])
     text = sentinel.read_text()
     assert "FAIL=1" in text
     assert "WARN=1" in text
@@ -160,11 +165,12 @@ def test_alert_env_vars(monkeypatch, tmp_path):
 def test_alert_timeout_handled(monkeypatch):
     """If the alert command hangs longer than the 30s budget, no crash."""
     import subprocess as sp
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
+
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
 
     def fake_run(*a, **kw):
         raise sp.TimeoutExpired(cmd="x", timeout=30)
+
     monkeypatch.setattr("subprocess.run", fake_run)
     rc, _ = _capture(["audit", "--alert", "sleep 99"])
     # cmd_audit returns 2 (FAIL exit code) regardless of alert outcome
@@ -172,6 +178,7 @@ def test_alert_timeout_handled(monkeypatch):
 
 
 # ---- wtf explain ----
+
 
 def test_suggest_swap():
     r = audit.CheckResult("swap", "fail", "99%")
@@ -233,17 +240,20 @@ def test_render_prompt_without_host():
 
 
 def test_cmd_explain_no_problems(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
     rc, out = _capture(["explain"])
     assert rc == 0
     assert "nothing to explain" in out
 
 
 def test_cmd_explain_with_problems(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("swap", "fail", "99%"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("swap", "fail", "99%"),
+        ],
+    )
     rc, out = _capture(["explain"])
     assert rc == 0
     assert "EXPLAIN" in out
@@ -252,9 +262,13 @@ def test_cmd_explain_with_problems(monkeypatch):
 
 
 def test_cmd_explain_prompt_mode(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("swap", "fail", "99%"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("swap", "fail", "99%"),
+        ],
+    )
     rc, out = _capture(["explain", "--prompt"])
     assert rc == 0
     assert "senior SRE" in out  # PROMPT_PREAMBLE leaked
@@ -262,9 +276,13 @@ def test_cmd_explain_prompt_mode(monkeypatch):
 
 
 def test_cmd_explain_json(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("swap", "fail", "x"),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("swap", "fail", "x"),
+        ],
+    )
     rc, out = _capture(["explain", "--format", "json"])
     data = json.loads(out)
     assert len(data) == 1
@@ -273,15 +291,20 @@ def test_cmd_explain_json(monkeypatch):
 
 
 def test_cmd_explain_all_includes_ok(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", ""),
-    ])
+    monkeypatch.setattr(
+        audit,
+        "run_audit",
+        lambda names=None, ignore=None: [
+            audit.CheckResult("x", "ok", ""),
+        ],
+    )
     rc, out = _capture(["explain", "--all"])
     assert rc == 0
     assert "x" in out
 
 
 # ---- registry sanity ----
+
 
 def test_new_checks_in_registry():
     names = audit.list_check_names()

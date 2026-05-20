@@ -27,13 +27,11 @@ logger = logging.getLogger(__name__)
 
 # Sensible defaults; can be overridden via --llm-model.
 DEFAULT_OLLAMA_MODEL = os.environ.get("WTFTOOLS_OLLAMA_MODEL", "llama3.1")
-DEFAULT_CLAUDE_MODEL = os.environ.get("WTFTOOLS_CLAUDE_MODEL",
-                                      "claude-haiku-4-5-20251001")
+DEFAULT_CLAUDE_MODEL = os.environ.get("WTFTOOLS_CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 DEFAULT_OPENAI_MODEL = os.environ.get("WTFTOOLS_OPENAI_MODEL", "gpt-4o-mini")
 
 
-def call_ollama(prompt: str, model: Optional[str] = None,
-                timeout: int = 60) -> Tuple[Optional[str], Optional[str]]:
+def call_ollama(prompt: str, model: Optional[str] = None, timeout: int = 60) -> Tuple[Optional[str], Optional[str]]:
     """Run a local model via the ollama CLI. Returns (text, error)."""
     if not shutil.which("ollama"):
         return None, "ollama binary not found in PATH"
@@ -41,8 +39,11 @@ def call_ollama(prompt: str, model: Optional[str] = None,
     try:
         result = subprocess.run(
             ["ollama", "run", chosen],
-            input=prompt, text=True, capture_output=True,
-            timeout=timeout, check=False,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return None, f"ollama timed out after {timeout}s"
@@ -54,8 +55,7 @@ def call_ollama(prompt: str, model: Optional[str] = None,
     return result.stdout, None
 
 
-def call_claude(prompt: str, model: Optional[str] = None,
-                timeout: int = 30) -> Tuple[Optional[str], Optional[str]]:
+def call_claude(prompt: str, model: Optional[str] = None, timeout: int = 30) -> Tuple[Optional[str], Optional[str]]:
     """Use Anthropic SDK if installed and ANTHROPIC_API_KEY is set."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -75,13 +75,11 @@ def call_claude(prompt: str, model: Optional[str] = None,
         text = "".join(getattr(b, "text", "") for b in response.content)
         return text, None
     except Exception as exc:
-        logger.debug(f"claude call failed: {type(exc).__name__}: {exc}\n"
-                     f"{traceback.format_exc()}")
+        logger.debug(f"claude call failed: {type(exc).__name__}: {exc}\n" f"{traceback.format_exc()}")
         return None, f"claude API error: {type(exc).__name__}: {exc}"
 
 
-def call_openai(prompt: str, model: Optional[str] = None,
-                timeout: int = 30) -> Tuple[Optional[str], Optional[str]]:
+def call_openai(prompt: str, model: Optional[str] = None, timeout: int = 30) -> Tuple[Optional[str], Optional[str]]:
     """Use OpenAI SDK if installed and OPENAI_API_KEY is set."""
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -99,8 +97,7 @@ def call_openai(prompt: str, model: Optional[str] = None,
         )
         return response.choices[0].message.content, None
     except Exception as exc:
-        logger.debug(f"openai call failed: {type(exc).__name__}: {exc}\n"
-                     f"{traceback.format_exc()}")
+        logger.debug(f"openai call failed: {type(exc).__name__}: {exc}\n" f"{traceback.format_exc()}")
         return None, f"openai API error: {type(exc).__name__}: {exc}"
 
 
@@ -111,8 +108,7 @@ _BACKENDS = {
 }
 
 
-def call_llm(backend: str, prompt: str, model: Optional[str] = None,
-             timeout: Optional[int] = None) -> Tuple[Optional[str], Optional[str]]:
+def call_llm(backend: str, prompt: str, model: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Optional[str], Optional[str]]:
     """Dispatch to the named backend, or try them all when backend == 'auto'."""
     if backend == "auto":
         # Try cheapest/most-local first.

@@ -111,7 +111,7 @@ def test_run_plugin_json_contract(tmp_path):
 
 
 def test_run_plugin_invalid_json_falls_back_to_exit_code(tmp_path):
-    body = '#!/bin/sh\necho \'{ broken json\'\nexit 2\n'
+    body = "#!/bin/sh\necho '{ broken json'\nexit 2\n"
     p = tmp_path / "j.sh"
     _make_plugin(p, body)
     result = plugins.run_plugin(str(p))
