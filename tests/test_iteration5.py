@@ -4,7 +4,6 @@
 
 import io
 import json
-import os
 from contextlib import redirect_stdout
 
 from wtftools import audit, explain, main
@@ -290,6 +289,5 @@ def test_new_checks_in_registry():
     assert "journal-disk" in names
 
 
-def test_man_page_exists():
-    assert os.path.exists(os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "wtf.1"))
+# NB: a hand-written wtf.1 used to exist but kept drifting from the CLI.
+# Removed in favor of `wtf --help` as the single source of truth.
