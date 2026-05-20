@@ -55,7 +55,8 @@ logging.basicConfig(**LOGGING)
 STATUS_FILTERS = {
     "fail": ["fail"],
     "warn": ["warn", "fail"],   # "warn" implies "everything not-OK"
-    "problem": ["warn", "fail"],
+    "problems": ["warn", "fail"],
+    "problem": ["warn", "fail"],   # singular alias for plural form
     "skip": ["skip"],
     "ok": ["ok"],
     "all": ["ok", "warn", "fail", "skip"],
@@ -861,12 +862,12 @@ def cmd_config(args: argparse.Namespace) -> int:
 
 
 def cmd_problems(args: argparse.Namespace) -> int:
-    """Alias for `wtf audit --only problem` — show WARN+FAIL results only.
+    """Alias for `wtf audit --only problems` — show WARN+FAIL results only.
 
     This is the most common audit invocation during an incident, surfaced as
     its own subcommand for typing comfort.
     """
-    args.only = "problem"
+    args.only = "problems"
     return cmd_audit(args)
 
 
@@ -1170,7 +1171,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--check", action="append", metavar="NAME",
                        help="Run only the named check (repeatable). See `--list-checks`.")
     audit.add_argument("--only", choices=list(STATUS_FILTERS.keys()),
-                       help="Show only results with the given status (fail/warn/problem/skip/ok/all)")
+                       help="Show only results with the given status (fail/warn/problems/skip/ok/all)")
     audit.add_argument("--since", type=int, metavar="HOURS", default=24,
                        help="Look-back window in hours for OOM/auth/kernel checks (default: 24)")
     audit.add_argument("--list-checks", action="store_true",

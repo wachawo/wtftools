@@ -26,7 +26,7 @@ _wtf_complete() {
             local opts="--format --strict --exit-zero --check --only --since --list-checks --brief -b --ignore --serial --check-timeout --alert --alert-on --save --output -o"
             case "$prev" in
                 --format)   COMPREPLY=( $(compgen -W "text json prometheus csv plain html" -- "$cur") ); return 0 ;;
-                --only)     COMPREPLY=( $(compgen -W "fail warn problem skip ok all" -- "$cur") ); return 0 ;;
+                --only)     COMPREPLY=( $(compgen -W "fail warn problems problem skip ok all" -- "$cur") ); return 0 ;;
                 --alert-on) COMPREPLY=( $(compgen -W "fail warn any" -- "$cur") ); return 0 ;;
                 --output|-o) COMPREPLY=( $(compgen -f -- "$cur") ); return 0 ;;
                 --check|--ignore)

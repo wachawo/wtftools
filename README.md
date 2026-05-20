@@ -27,7 +27,7 @@ $ wtf
 | command             | what it does                                                |
 |---------------------|-------------------------------------------------------------|
 | `wtf` / `wtf audit` | green/yellow/red checklist: what is OK and what is not      |
-| `wtf problems`      | alias for `audit --only problem` — show WARN+FAIL only       |
+| `wtf problems`      | alias for `audit --only problems` — show WARN+FAIL only      |
 | `wtf explain`       | per-check actionable advice; `--llm` to pipe to LLM          |
 | `wtf info`          | one-page snapshot: host, uptime, load, mem, disks, top, net |
 | `wtf top`           | focused process top: sort by cpu/rss, filter user/name      |

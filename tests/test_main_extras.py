@@ -116,7 +116,9 @@ def test_audit_since_passed_to_module(monkeypatch):
 
 
 def test_status_filters_dict_has_expected_keys():
-    assert set(main.STATUS_FILTERS.keys()) == {"fail", "warn", "problem", "skip", "ok", "all"}
+    assert set(main.STATUS_FILTERS.keys()) == {
+        "fail", "warn", "problems", "problem", "skip", "ok", "all"
+    }
 
 
 def test_gather_doctor_report_handles_missing_psutil(monkeypatch):
