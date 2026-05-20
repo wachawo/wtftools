@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "wtftools"
-dynamic = ["version"]
+version = "0.0.0"
 description = "One command to see what is going on with your Linux server right now."
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
+requires-python = ">=3.8"
 authors = [{ name = "Aleksandr Pimenov", email = "wachawo@gmail.com" }]
 maintainers = [{ name = "Aleksandr Pimenov", email = "wachawo@gmail.com" }]
 keywords = ["devops", "sre", "linux", "diagnostics", "monitoring", "cron", "system", "audit", "cli"]
@@ -15,9 +16,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: System Administrators",
     "Intended Audience :: Developers",
-    "Topic :: System :: Systems Administration",
-    "Topic :: System :: Monitoring",
-    "Topic :: Utilities",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -26,8 +24,10 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Systems Administration",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
 ]
-requires-python = ">=3.8"
 dependencies = []
 
 [project.optional-dependencies]
@@ -41,18 +41,15 @@ dev = [
     "stdeb>=0.10.0",
 ]
 
-[project.scripts]
-wtf = "wtftools.main:main"
-wtftools = "wtftools.main:main"
-
 [project.urls]
 Homepage = "https://github.com/wachawo/wtftools"
-Repository = "https://github.com/wachawo/wtftools"
+Repository = "https://github.com/wachawo/wtftools.git"
 Documentation = "https://github.com/wachawo/wtftools#readme"
 "Bug Reports" = "https://github.com/wachawo/wtftools/issues"
 
-[tool.setuptools.dynamic]
-version = { attr = "wtftools.__version__" }
+[project.scripts]
+wtf = "wtftools.main:main"
+wtftools = "wtftools.main:main"
 
 [tool.setuptools.packages.find]
 include = ["wtftools*"]
@@ -63,9 +60,35 @@ include-package-data = true
 [tool.setuptools.data-files]
 "share/bash-completion/completions" = ["scripts/wtf.bash-completion"]
 
+[tool.black]
+line-length = 180
+target-version = ["py38"]
+
+[tool.ruff]
+line-length = 180
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "SIM"]
+# E501  — long lines (we cap via line-length, but keep some tables/URLs)
+# UP009 — UTF-8 encoding declaration is intentional per project style
+# B008  — function-call-in-default-arg is OK for our config defaults
+# SIM105 — try/except/pass is sometimes clearer than contextlib.suppress
+# B011  — `assert False` inside try/except is a fine pytest pattern
+# SIM102/SIM108 — stylistic; keep the explicit-branch versions
+ignore = ["E501", "UP009", "B008", "SIM105", "B011", "SIM102", "SIM108"]
+exclude = [".git", ".venv", "__pycache__", "build", "dist"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+required_plugins = ["pytest-cov"]
 addopts = "-v --tb=short --cov=wtftools --cov-report=term-missing --cov-fail-under=80"
 
 [tool.coverage.run]
@@ -81,16 +104,4 @@ exclude_lines = [
     "if HAS_PSUTIL:",
 ]
 show_missing = true
-
-[tool.ruff]
-line-length = 180
-lint.select = ["E","F","I","UP","B","SIM","C4"]
-# E501 — long lines (handled by line-length=180 above for the few we keep)
-# UP009 — UTF-8 encoding declaration is intentional per project style
-#         (`rules/python.md`: every file starts with shebang + encoding + docstring).
-# B008  — function-call-in-default-arg is OK for our config defaults pattern.
-# SIM105 — `try/except/pass` is sometimes clearer than `contextlib.suppress`.
-# B011  — `assert False` inside `try: ... except` is a fine pytest pattern.
-# SIM102/SIM108 — stylistic; we keep the more-explicit branch versions.
-lint.ignore = ["E501", "UP009", "B008", "SIM105", "B011", "SIM102", "SIM108"]
-exclude = [".git", ".venv", "__pycache__", "build", "dist"]
+skip_empty = true

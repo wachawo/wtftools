@@ -14,7 +14,19 @@ sysinfo, plugins, daemon) lives in submodules and may change between
 versions without a notice. Import the submodules directly if you need them.
 """
 
-__version__ = "0.0.0"
+# Version is the single-source-of-truth in pyproject.toml. We read it back via
+# importlib.metadata so `wtftools.__version__` continues to work for embedders.
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+    try:
+        __version__ = _pkg_version("wtftools")
+    except PackageNotFoundError:
+        # Source checkout without an editable install; fall through to dev tag.
+        __version__ = "0+unknown"
+except ImportError:
+    __version__ = "0+unknown"
+
 __description__ = "One command to summarize what is happening on your Linux server right now."
 __url__ = "https://github.com/wachawo/wtftools"
 __author__ = "Aleksandr Pimenov"
