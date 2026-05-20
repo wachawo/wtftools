@@ -81,9 +81,9 @@ exit 0         # ok
 
 Exit codes: `0=ok / 1=warn / 2=fail / 77=skip`. stdout becomes the message.
 
-See `examples/plugins/` for five production-ready examples (TLS cert probe,
-PostgreSQL connection count, Redis memory, disk-write latency, HTTP health).
-Full guide in [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md).
+Python plugins can `from wtftools.plugin_sdk import ok, warn, fail, skip`
+for boilerplate-free output — each helper prints structured JSON and exits
+with the right code.
 
 ## Cheat sheet
 

@@ -139,28 +139,5 @@ def test_plugin_subprocess_integration_with_loader(tmp_path):
     assert "useful context" in pr.detail
 
 
-# ---------- PLUGIN_GUIDE.md present and useful ----------
-
-def test_plugin_guide_exists():
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(here, "docs", "PLUGIN_GUIDE.md")
-    assert os.path.exists(path), "docs/PLUGIN_GUIDE.md must ship in the repo"
-    with open(path, encoding="utf-8") as f:
-        body = f.read()
-    # Sanity: covers both contracts and both languages
-    for snippet in ["Exit-code contract", "JSON contract",
-                    "#!/usr/bin/env bash", "#!/usr/bin/env python3",
-                    "plugin_sdk", "discovery"]:
-        assert snippet in body, f"PLUGIN_GUIDE.md should mention `{snippet}`"
-
-
-def test_python_plugin_example_present():
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(here, "examples", "plugins", "check-http-health.py")
-    assert os.path.exists(path)
-    with open(path, encoding="utf-8") as f:
-        body = f.read()
-    assert "from wtftools.plugin_sdk" in body
-    # NB: ship-time executable bit (chmod +x) is a deploy step documented in
-    # PLUGIN_GUIDE.md; we don't assert it in tests because git tarball
-    # extraction sometimes drops the mode.
+# NB: docs/PLUGIN_GUIDE.md and examples/plugins/ were removed from the
+# repo — short inline guidance lives in README.md «## Plugins» now.

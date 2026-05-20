@@ -191,12 +191,18 @@ JSON line on stdout:
 {"status": "warn", "message": "TLS expires in 7 days", "detail": ["host=example.com"]}
 ```
 
-See `examples/plugins/` for five production-ready examples
-and [docs/PLUGIN_GUIDE.md](docs/PLUGIN_GUIDE.md) for the full author guide.
+Python plugins can use `wtftools.plugin_sdk` for boilerplate-free
+`ok() / warn() / fail() / skip()` calls instead of hand-rolling the JSON
+output:
 
-**Writing your own?** Python plugins can use
-`wtftools.plugin_sdk` for boilerplate-free `ok() / warn() / fail() / skip()`
-calls instead of hand-rolling the JSON.
+```python
+#!/usr/bin/env python3
+from wtftools.plugin_sdk import ok, warn, fail, skip
+# … gather your data …
+if pct >= 90: fail(f"{pct}% used")
+if pct >= 70: warn(f"{pct}% used")
+ok(f"{pct}% used")
+```
 
 ## Compatibility
 
