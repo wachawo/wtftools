@@ -23,7 +23,7 @@ Initial public release. Highlights:
   detection (`wtf compare`), both with `--watch` and `--run-now`.
 - **LLM bridge** for `wtf explain --llm ollama|claude|openai|auto`.
 - Distribution: PyPI, debian packaging, Docker image, systemd unit,
-  bundled MOTD installer, bash completion, man page, GitHub Actions
+  bundled MOTD installer, bash completion, GitHub Actions
   release workflow.
 - **724 tests, 92.6 % coverage.**
 
@@ -256,10 +256,7 @@ Initial public release. Highlights:
   connections when the table fills; ≥70% WARN, ≥90% FAIL (configurable).
 - **`journal-disk` check** — parses `journalctl --disk-usage`. ≥4GB WARN,
   ≥16GB FAIL (configurable). Includes a vacuum-size hint in the message.
-- **man page** (`wtf.1`) — full reference for `man wtf`. Lists every
-  subcommand, every audit flag, exit codes, config locations, examples.
-  Installed at `share/man/man1/` via `pyproject.toml [tool.setuptools.data-files]`.
-- pyproject now also installs the bash-completion file system-wide.
+- pyproject installs the bash-completion file system-wide.
 
 ### Added (earlier in this Unreleased cycle)
 - **Parallel check execution** — checks now run on a `ThreadPoolExecutor`

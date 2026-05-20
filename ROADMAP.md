@@ -29,7 +29,6 @@
 - ✓ Multi-host fleet snapshot diff (через `wtf diff --against`)
 
 ### Обвязка
-- ✓ Man page (`wtf.1`)
 - ✓ Bash completion со всеми subcommands и динамическим дополнением
 - ✓ JSON Schema для `audit-v1.json` и `fleet-v1.json`
 - ✓ GitHub Actions: CI (3.10/3.11/3.12) + release workflow (PyPI + GHCR на tag)

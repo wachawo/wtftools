@@ -124,6 +124,6 @@ latency).
 
 ## Next steps
 
-- Full reference: `man wtf` or `README.md`
+- Full reference: `wtf --help` and `README.md`
 - Architecture / configuration: `README.md` sections «Config», «Plugins», «Daemon mode»
 - Contribute: `CONTRIBUTING.md`

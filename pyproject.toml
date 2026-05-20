@@ -62,7 +62,6 @@ include = ["wtftools*"]
 include-package-data = true
 
 [tool.setuptools.data-files]
-"share/man/man1" = ["wtf.1"]
 "share/bash-completion/completions" = ["scripts/wtf.bash-completion"]
 
 [tool.pytest.ini_options]
