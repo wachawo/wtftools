@@ -7,7 +7,17 @@ git clone https://github.com/wachawo/wtftools
 cd wtftools
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,full]"
+pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
+
+The last line wires up `.pre-commit-config.yaml`:
+- **on `git commit`** — fast checks (ruff, trailing whitespace, YAML/TOML/JSON
+  syntax, merge-conflict markers, large files, mixed line endings).
+- **on `git push`** — full `pytest` suite with the 80 % coverage gate.
+
+Both must pass before code reaches GitHub, so CI never sees a broken commit.
+The venv must be active so `pytest` is on `PATH` when the pre-push hook
+fires.
 
 ## Running tests
 

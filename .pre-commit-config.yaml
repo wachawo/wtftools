@@ -1,0 +1,52 @@
+# Run on every commit:  pre-commit run --all-files
+# Run on every push:     pre-commit run --all-files --hook-stage pre-push
+#
+# Install once per clone:
+#   pip install pre-commit
+#   pre-commit install --hook-type pre-commit --hook-type pre-push
+#
+# After that, `git commit` triggers the fast checks (ruff + whitespace + YAML
+# validation) and `git push` triggers the test suite. Both have to pass before
+# the change reaches GitHub, so CI never sees a broken commit.
+
+repos:
+  # Cheap built-in checks (~ms each).
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: check-executables-have-shebangs
+      # NB: we deliberately ship a shebang on every .py file
+      # (rules/python.md), so `check-shebang-scripts-are-executable` is
+      # incompatible with the project style — disabled.
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Lint — matches the rules in pyproject.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Local hooks that need the project's own venv (so ruff/pytest see our deps).
+  - repo: local
+    hooks:
+      # Full test suite runs on `git push` only — too slow for every commit.
+      - id: pytest
+        name: pytest (suite + coverage gate)
+        # NB: needs `pytest` in PATH — install dev deps in your active env:
+        #   pip install -e ".[dev,full]"
+        # so the hook picks them up. Pre-push only (too slow for every commit).
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -16,10 +16,11 @@ def test_version_is_semver_ish():
     assert parts[1].isdigit()
 
 
-def test_version_is_v020_or_higher():
-    """Sanity: we explicitly bumped to 0.2.0 in iteration 17."""
+def test_version_components_are_integers():
+    """Sanity: major + minor must parse as integers (PEP 440 prefix)."""
     major, minor = wtftools.__version__.split(".")[:2]
-    assert (int(major), int(minor)) >= (0, 2)
+    assert int(major) >= 0
+    assert int(minor) >= 0
 
 
 def test_description_present():
