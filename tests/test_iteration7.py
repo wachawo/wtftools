@@ -361,53 +361,9 @@ def test_cmd_ports_json(monkeypatch):
     assert data == []
 
 
-# ---- wtf motd-install ----
-
-def test_motd_install_no_target_dir(monkeypatch):
-    monkeypatch.setattr(main.os.path, "isdir", lambda p: False)
-    rc, out = _capture(["motd-install"])
-    assert rc == 2
-    assert "does not exist" in out
-
-
-def test_motd_install_permission_error(monkeypatch, tmp_path):
-    monkeypatch.setattr(main.os.path, "isdir", lambda p: True)
-
-    def boom(*a, **kw):
-        raise PermissionError
-    monkeypatch.setattr("builtins.open", boom)
-    rc, out = _capture(["motd-install", "--path", str(tmp_path / "99-wtf")])
-    assert rc == 2
-    assert "sudo" in out
-
-
-def test_motd_install_writes_file(tmp_path):
-    target = tmp_path / "99-wtf-brief"
-    rc, out = _capture(["motd-install", "--path", str(target)])
-    assert rc == 0
-    assert target.exists()
-    assert "exec" in target.read_text()
-    # Should be executable
-    assert os.access(str(target), os.X_OK)
-
-
-def test_motd_install_json(tmp_path):
-    target = tmp_path / "99-wtf-brief"
-    rc, out = _capture(["motd-install", "--path", str(target), "--format", "json"])
-    data = json.loads(out)
-    assert data["status"] == "installed"
-    assert data["target"] == str(target)
-
-
-def test_motd_install_oserror(monkeypatch, tmp_path):
-    monkeypatch.setattr(main.os.path, "isdir", lambda p: True)
-
-    def boom(*a, **kw):
-        raise OSError("disk full")
-    monkeypatch.setattr("builtins.open", boom)
-    rc, out = _capture(["motd-install", "--path", str(tmp_path / "x")])
-    assert rc == 1
-    assert "disk full" in out
+# NB: `wtf motd-install` was removed in v0.1.0 cleanup. To install the
+# brief banner manually: `sudo cp <…> /etc/update-motd.d/99-wtf-brief`
+# with a `#!/bin/sh\nexec wtf audit --brief --no-color` body.
 
 
 # ---- CSV format ----

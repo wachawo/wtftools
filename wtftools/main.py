@@ -10,7 +10,6 @@ import platform
 import re
 import shutil
 import sys
-import time
 from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple
 
@@ -27,16 +26,10 @@ from wtftools import (
     config as config_mod,
 )
 from wtftools import (
-    daemon as daemon_mod,
-)
-from wtftools import (
     events as events_mod,
 )
 from wtftools import (
     explain as explain_mod,
-)
-from wtftools import (
-    fleet as fleet_mod,
 )
 from wtftools import (
     info as info_mod,
@@ -48,7 +41,6 @@ from wtftools import (
     snapshot as snapshot_mod,
 )
 from wtftools.checks import cron, sysinfo
-from wtftools.checks import plugins as plugins_mod
 
 logger = logging.getLogger(__name__)
 
@@ -180,494 +172,6 @@ def cmd_ports(args: argparse.Namespace) -> int:
               f"{(r['user'] or '-')[:14]:<14} {r['command']}")
     return 0
 
-
-def cmd_motd_install(args: argparse.Namespace) -> int:
-    """Install /etc/update-motd.d/99-wtf-brief so SSH logins get a wtftools summary."""
-    target = args.path or "/etc/update-motd.d/99-wtf-brief"
-    script = (
-        "#!/bin/sh\n"
-        "# Installed by `wtf motd-install` — shows a single wtftools summary line\n"
-        "# at login. Remove this file (or chmod -x) to disable.\n"
-        "exec /usr/bin/env wtf audit --brief --no-color 2>/dev/null || true\n"
-    )
-    target_dir = os.path.dirname(target)
-    if not os.path.isdir(target_dir):
-        msg = (f"{target_dir} does not exist — is update-motd.d configured here? "
-               "If you use a different motd system, install the brief line manually:\n"
-               "  wtf audit --brief --no-color")
-        if args.format == "json":
-            print(json.dumps({"error": msg}))
-        else:
-            print(colors.red(msg))
-        return 2
-    try:
-        with open(target, "w", encoding="utf-8") as f:
-            f.write(script)
-        os.chmod(target, 0o755)
-    except PermissionError:
-        msg = (f"need root to write {target} — run:\n"
-               f"  sudo wtf motd-install")
-        if args.format == "json":
-            print(json.dumps({"error": msg, "target": target}))
-        else:
-            print(colors.yellow(msg))
-        return 2
-    except OSError as exc:
-        msg = f"could not write {target}: {exc}"
-        if args.format == "json":
-            print(json.dumps({"error": msg}))
-        else:
-            print(colors.red(msg))
-        return 1
-
-    if args.format == "json":
-        print(json.dumps({"target": target, "status": "installed"}))
-    else:
-        print(colors.green(f"installed: {target}", bold=True))
-        print(colors.dim("  next ssh login will run `wtf audit --brief` once."))
-    return 0
-
-
-def cmd_init(args: argparse.Namespace) -> int:
-    """Interactive (or scripted) one-time setup for a fresh host.
-
-    Walks the operator through writing a config, installing the MOTD hook,
-    optionally enabling the wtfd daemon, and adding an hourly snapshot cron.
-    With `--non-interactive` all defaults apply unless overridden by flags.
-    """
-    actions = _plan_init(args)
-    if args.non_interactive:
-        chosen = actions
-    else:
-        chosen = _prompt_init(actions)
-
-    if not chosen:
-        print(colors.dim("nothing selected — aborting"))
-        return 0
-
-    if args.dry_run:
-        print(colors.section("INIT — DRY RUN"))
-        for a in chosen:
-            print(f"  would: {colors.bold(a['title'])}")
-            for line in a["preview"]:
-                print(f"      {colors.dim(line)}")
-        return 0
-
-    print(colors.section("INIT"))
-    failures = 0
-    for a in chosen:
-        try:
-            a["apply"]()
-            print(f"  {colors.green('✓')} {a['title']}")
-        except Exception as exc:
-            print(f"  {colors.red('✗')} {a['title']}  ({type(exc).__name__}: {exc})")
-            failures += 1
-
-    print("")
-    if failures:
-        print(colors.red(f"{failures} step(s) failed — re-run as root if it's a permission issue"))
-        return 1
-    print(colors.green("done.", bold=True))
-    print(colors.dim("try:  wtf  ·  wtf audit --brief  ·  wtf doctor"))
-    return 0
-
-
-def _plan_init(args: argparse.Namespace) -> List[dict]:
-    """Build the list of setup steps. Each: {title, preview, apply}."""
-    actions: List[dict] = []
-    cfg_path = args.config_path or "/etc/wtftools/config.ini"
-    if args.enable_config is not False:
-        actions.append({
-            "key": "config",
-            "title": f"write example config to {cfg_path}",
-            "preview": [f"creates {cfg_path} with the default thresholds"],
-            "apply": lambda: _write_example_config(cfg_path),
-        })
-    if args.enable_motd is not False:
-        motd_path = "/etc/update-motd.d/99-wtf-brief"
-        actions.append({
-            "key": "motd",
-            "title": f"install ssh-login summary to {motd_path}",
-            "preview": [f"creates {motd_path} that runs `wtf audit --brief`"],
-            "apply": lambda: _install_motd(motd_path),
-        })
-    if args.enable_wtfd is True:
-        unit_path = "/etc/systemd/system/wtfd.service"
-        actions.append({
-            "key": "wtfd",
-            "title": f"install + enable {unit_path}",
-            "preview": [
-                "writes the bundled wtfd.service unit",
-                "runs `systemctl daemon-reload && systemctl enable --now wtfd`",
-            ],
-            "apply": lambda: _install_wtfd(unit_path),
-        })
-    if args.enable_cron is not False:
-        cron_path = "/etc/cron.d/wtftools-hourly"
-        actions.append({
-            "key": "cron",
-            "title": f"add hourly snapshot cron at {cron_path}",
-            "preview": ["runs `wtf audit --save` every hour as root"],
-            "apply": lambda: _install_cron(cron_path),
-        })
-    return actions
-
-
-def _prompt_init(actions: List[dict]) -> List[dict]:
-    """Ask the user yes/no for each planned step. Returns the accepted subset."""
-    print(colors.section("WTFTOOLS INIT"))
-    print(f"  host: {colors.bold(sysinfo.get_hostname())}")
-    os_release = sysinfo.get_os_release()
-    if os_release:
-        print(f"  os  : {os_release.get('PRETTY_NAME', '?')}")
-    print(colors.dim("\n  this will set up wtftools on this host. Ctrl-C to abort."))
-    print("")
-    chosen = []
-    for idx, a in enumerate(actions, 1):
-        default_yes = a["key"] != "wtfd"  # wtfd defaults to "n" — operator may not want a daemon
-        suffix = "[Y/n]" if default_yes else "[y/N]"
-        try:
-            answer = input(f"  [{idx}/{len(actions)}] {a['title']}? {suffix} ")
-        except (EOFError, KeyboardInterrupt):
-            print("")
-            return []
-        answer = answer.strip().lower()
-        if not answer:
-            ok = default_yes
-        else:
-            ok = answer in ("y", "yes")
-        if ok:
-            chosen.append(a)
-    return chosen
-
-
-def _write_example_config(path: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(config_mod.example_config())
-
-
-def _install_motd(path: str) -> None:
-    target_dir = os.path.dirname(path)
-    if not os.path.isdir(target_dir):
-        raise FileNotFoundError(f"{target_dir} does not exist (no update-motd.d on this host)")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(
-            "#!/bin/sh\n"
-            "# Installed by `wtf init`. Remove or chmod -x to disable.\n"
-            "exec /usr/bin/env wtf audit --brief --no-color 2>/dev/null || true\n"
-        )
-    os.chmod(path, 0o755)
-
-
-def _install_wtfd(unit_path: str) -> None:
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    src = os.path.join(here, "scripts", "wtfd.service")
-    if not os.path.exists(src):
-        raise FileNotFoundError(f"shipped unit not found: {src}")
-    with open(src, encoding="utf-8") as f:
-        body = f.read()
-    with open(unit_path, "w", encoding="utf-8") as f:
-        f.write(body)
-    import subprocess
-    subprocess.run(["systemctl", "daemon-reload"], check=True, timeout=10)
-    subprocess.run(["systemctl", "enable", "--now", "wtfd"], check=True, timeout=15)
-
-
-def _install_cron(path: str) -> None:
-    body = (
-        "# Installed by `wtf init`. Saves an hourly audit snapshot.\n"
-        "# Remove this file (or chmod -x) to disable.\n"
-        "MAILTO=\"\"\n"
-        "17 * * * * root /usr/bin/env wtf audit --save >/dev/null 2>&1\n"
-    )
-    target_dir = os.path.dirname(path)
-    if not os.path.isdir(target_dir):
-        raise FileNotFoundError(f"{target_dir} does not exist (cron.d not configured)")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(body)
-    os.chmod(path, 0o644)
-
-
-def cmd_compare(args: argparse.Namespace) -> int:
-    """Side-by-side diff of two wtfd hosts. Useful for config-drift detection."""
-    token: Optional[str] = None
-    if args.token_file:
-        try:
-            with open(args.token_file, encoding="utf-8") as f:
-                token = f.read().strip()
-        except OSError as exc:
-            print(colors.red(f"cannot read token file: {exc}"))
-            return 2
-
-    hosts = fleet_mod.fetch_all([args.host_a, args.host_b],
-                                 timeout=args.timeout, token=token)
-    host_a, host_b = hosts[0], hosts[1]
-
-    if not host_a.ok or not host_b.ok:
-        if args.format == "json":
-            print(json.dumps({
-                "a": {"target": host_a.target, "ok": host_a.ok, "error": host_a.error},
-                "b": {"target": host_b.target, "ok": host_b.ok, "error": host_b.error},
-            }, indent=2, default=str))
-        else:
-            for h, label in ((host_a, "A"), (host_b, "B")):
-                if not h.ok:
-                    print(colors.red(f"host {label} ({h.target}): {h.error}"))
-        return 2
-
-    rows = fleet_mod.compare_hosts(host_a, host_b)
-
-    if args.only_drift:
-        rows = [r for r in rows if r.kind != "same"]
-
-    if args.format == "json":
-        payload = {
-            "a": {"target": host_a.target, "host": host_a.host},
-            "b": {"target": host_b.target, "host": host_b.host},
-            "rows": [r.__dict__ for r in rows],
-            "drift_count": sum(1 for r in rows if r.kind != "same"),
-        }
-        print(json.dumps(payload, indent=2, default=str))
-        return 0
-
-    label_a = host_a.host or host_a.target
-    label_b = host_b.host or host_b.target
-    print(colors.section(f"COMPARE · {label_a}  vs  {label_b}"))
-    if not rows:
-        print(colors.dim("  (no rows)"))
-        return 0
-
-    name_width = max((len(r.name) for r in rows), default=20)
-    kind_marker = {
-        "same":   colors.dim("[ =  ]"),
-        "differ": colors.yellow("[DIFF]", bold=True),
-        "a-only": colors.cyan("[A→ ]"),
-        "b-only": colors.cyan("[ →B]"),
-    }
-    for r in rows:
-        marker = kind_marker.get(r.kind, "[?]")
-        a_cell = _compare_cell(r.a_status, r.a_message) if r.a_status else colors.dim("(absent)")
-        b_cell = _compare_cell(r.b_status, r.b_message) if r.b_status else colors.dim("(absent)")
-        print(f"  {marker} {r.name.ljust(name_width)}  "
-              f"{a_cell:<42}  {b_cell}")
-
-    drift = sum(1 for r in rows if r.kind != "same")
-    same = len(rows) - drift
-    a_only = sum(1 for r in rows if r.kind == "a-only")
-    b_only = sum(1 for r in rows if r.kind == "b-only")
-    print("")
-    print(f"  Summary: {colors.bold(str(drift) + ' drifted')}  ·  "
-          f"{colors.dim(str(same) + ' identical')}  ·  "
-          f"{a_only} only on A, {b_only} only on B")
-    return 0 if drift == 0 else 1
-
-
-def _compare_cell(status: str, message: str) -> str:
-    """Format one side of the compare table: status + truncated message."""
-    short = (message or "")[:36]
-    if len(message or "") > 36:
-        short = short[:35] + "…"
-    if status == "ok":
-        return f"{colors.green('ok'):<4} {short}"
-    if status == "warn":
-        return f"{colors.yellow('warn'):<4} {short}"
-    if status == "fail":
-        return f"{colors.red('fail'):<4} {short}"
-    return f"{colors.dim(status):<4} {short}"
-
-
-def cmd_fleet(args: argparse.Namespace) -> int:
-    """Pull /audit.json from a list of wtfd peers and render an aggregate view."""
-    if getattr(args, "watch", 0):
-        return _watch_fleet(args)
-    return _fleet_once(args)
-
-
-def _watch_fleet(args: argparse.Namespace) -> int:
-    interval = max(1, int(args.watch))
-    args.watch = 0  # avoid recursion when _fleet_once dispatches
-    try:
-        while True:
-            sys.stdout.write("\033[2J\033[H")
-            sys.stdout.flush()
-            print(colors.dim(
-                f"wtf fleet · refresh every {interval}s · Ctrl-C to exit"))
-            _fleet_once(args)
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        print("\nwatch stopped")
-        return 0
-
-
-def _fleet_once(args: argparse.Namespace) -> int:
-    """One iteration of fleet aggregation. Returns the exit code."""
-    targets = _gather_fleet_targets(args)
-    if not targets:
-        print(colors.red(
-            "no fleet hosts specified. Use --hosts a:8765,b:8765 "
-            "or --hosts-file <path> or set 'hosts = ...' in config [fleet]."))
-        return 2
-
-    token: Optional[str] = None
-    if args.token_file:
-        try:
-            with open(args.token_file, encoding="utf-8") as f:
-                token = f.read().strip()
-        except OSError as exc:
-            print(colors.red(f"cannot read token file: {exc}"))
-            return 2
-
-    if getattr(args, "run_now", False):
-        # Best-effort kick — don't block on the per-peer audit; just signal them.
-        statuses = fleet_mod.trigger_run_now(targets, timeout=args.timeout,
-                                             workers=args.workers, token=token)
-        bad = [t for t, s in statuses.items() if s != "ok"]
-        if bad and args.format == "text":
-            print(colors.dim(f"  run-now reached {len(statuses) - len(bad)}/"
-                             f"{len(statuses)} peer(s)"))
-        # Give peers a tick to start producing fresh data before we re-fetch.
-        time.sleep(1.0)
-
-    hosts = fleet_mod.fetch_all(targets, timeout=args.timeout,
-                                workers=args.workers, token=token)
-
-    if args.problem_only:
-        hosts = [h for h in hosts if (not h.ok)
-                 or h.summary.get("fail", 0) > 0
-                 or h.summary.get("warn", 0) > 0]
-
-    if args.format == "prometheus":
-        print(fleet_mod.render_prometheus(hosts), end="")
-        return _fleet_exit_code(hosts)
-
-    if args.format == "json":
-        payload = {
-            "fetched_at": time.time(),
-            "totals": fleet_mod.aggregate_summary(hosts),
-            "hosts": [
-                {
-                    "target": h.target, "url": h.url,
-                    "ok": h.ok, "error": h.error, "host": h.host,
-                    "timestamp": h.timestamp,
-                    "summary": h.summary, "latency_ms": h.latency_ms,
-                } for h in hosts
-            ],
-        }
-        print(json.dumps(payload, indent=2, default=str))
-        return _fleet_exit_code(hosts)
-
-    # text
-    print(colors.section(f"FLEET · {len(hosts)} host(s)"))
-    hosts_sorted = sorted(hosts, key=fleet_mod.host_severity)
-    name_width = max((len((h.host or h.target)) for h in hosts_sorted), default=20)
-    for h in hosts_sorted:
-        label = (h.host or h.target).ljust(name_width)
-        latency = f"{h.latency_ms:>5.0f}ms" if h.latency_ms is not None else "  -  "
-        if not h.ok:
-            print(f"  {colors.status_marker('FAIL')} {label}  {colors.red(h.error)}  {colors.dim(latency)}")
-            continue
-        s = h.summary
-        if s.get("fail", 0):
-            mark = colors.status_marker("FAIL")
-        elif s.get("warn", 0):
-            mark = colors.status_marker("WARN")
-        else:
-            mark = colors.status_marker("OK")
-        bits = (f"{colors.green(str(s.get('ok', 0)) + ' ok')}  "
-                f"{colors.yellow(str(s.get('warn', 0)) + ' warn')}  "
-                f"{colors.red(str(s.get('fail', 0)) + ' fail')}  "
-                f"{colors.dim(str(s.get('skip', 0)) + ' skip')}")
-        # Include top problems inline for at-a-glance triage.
-        problems = [r for r in h.results if r.get("status") in ("fail", "warn")]
-        problems.sort(key=lambda r: 0 if r["status"] == "fail" else 1)
-        top = ""
-        if problems:
-            top = colors.dim(" · " + "; ".join(
-                f"{p['name']}: {p['message'][:40]}" for p in problems[:2]
-            ))
-        print(f"  {mark} {label}  {bits}  {colors.dim(latency)}{top}")
-
-    totals = fleet_mod.aggregate_summary(hosts)
-    print("")
-    summary_parts = [
-        colors.green(f"{totals['ok']} ok"),
-        colors.yellow(f"{totals['warn']} warn"),
-        colors.red(f"{totals['fail']} fail"),
-        colors.dim(f"{totals['skip']} skip"),
-    ]
-    if totals.get("unreachable"):
-        summary_parts.append(colors.red(f"{totals['unreachable']} unreachable", bold=True))
-    print(f"  Totals across fleet: {' · '.join(summary_parts)}")
-    return _fleet_exit_code(hosts)
-
-
-def _fleet_exit_code(hosts: List[fleet_mod.FleetHost]) -> int:
-    unreachable = sum(1 for h in hosts if not h.ok)
-    any_fail = any(h.ok and h.summary.get("fail", 0) > 0 for h in hosts)
-    if any_fail:
-        return 2
-    if unreachable == len(hosts) and hosts:
-        return 2  # everything is down — surface it as fail
-    if unreachable:
-        return 1
-    return 0
-
-
-def _gather_fleet_targets(args: argparse.Namespace) -> List[str]:
-    """Combine --hosts flag, --hosts-file, and config [fleet] hosts entry."""
-    targets: List[str] = []
-    if args.hosts:
-        for chunk in args.hosts:
-            targets.extend(t.strip() for t in chunk.split(",") if t.strip())
-    if args.hosts_file:
-        try:
-            with open(args.hosts_file, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        targets.append(line)
-        except OSError as exc:
-            logger.warning(f"cannot read hosts file: {exc}")
-    cfg = config_mod.get_config()
-    cfg_hosts = getattr(cfg, "fleet_hosts", "")
-    if cfg_hosts:
-        targets.extend(t.strip() for t in cfg_hosts.split(",") if t.strip())
-    # Dedup preserving order
-    seen = set()
-    deduped: List[str] = []
-    for t in targets:
-        if t not in seen:
-            seen.add(t)
-            deduped.append(t)
-    return deduped
-
-
-def cmd_serve(args: argparse.Namespace) -> int:
-    """Run the wtfd daemon foreground. Same effect as the standalone `wtfd` binary."""
-    host, _, port_s = args.listen.rpartition(":")
-    if not port_s:
-        print(colors.red("invalid --listen: expected HOST:PORT"))
-        return 2
-    try:
-        port = int(port_s)
-    except ValueError:
-        print(colors.red(f"invalid port: {port_s}"))
-        return 2
-    token: Optional[str] = None
-    if args.auth_token_file:
-        try:
-            with open(args.auth_token_file, encoding="utf-8") as f:
-                token = f.read().strip()
-        except OSError as exc:
-            print(colors.red(f"cannot read auth token file: {exc}"))
-            return 2
-        if not token:
-            print(colors.red("auth token file is empty"))
-            return 2
-    host = host.strip("[]") or "127.0.0.1"
-    return daemon_mod.serve(host, port, args.interval, args.save,
-                            auth_token=token)
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -808,8 +312,6 @@ def cmd_history(args: argparse.Namespace) -> int:
 
 
 def cmd_info(args: argparse.Namespace) -> int:
-    if getattr(args, "watch", 0):
-        return _watch_info(args)
     if args.format == "json":
         from wtftools.checks import sysinfo
         payload = {
@@ -870,9 +372,6 @@ def cmd_audit(args: argparse.Namespace) -> int:
             print(name)
         return 0
 
-    if getattr(args, "watch", 0):
-        return _watch_audit(args)
-
     results, _ = _run_audit_once(args)
     if getattr(args, "alert", None):
         _maybe_fire_alert(args, results)
@@ -880,8 +379,6 @@ def cmd_audit(args: argparse.Namespace) -> int:
         path = snapshot_mod.save_snapshot(results, host=sysinfo.get_hostname())
         if path and args.format == "text":
             print(colors.dim(f"snapshot saved: {path}"))
-    if getattr(args, "diff", False):
-        return _emit_audit_diff(args, results)
     if getattr(args, "brief", False):
         return _emit_brief(results)
     if not results:
@@ -1001,53 +498,6 @@ def _audit_exit_code(args: argparse.Namespace,
     return 0
 
 
-def _emit_audit_diff(args: argparse.Namespace,
-                     results: List[audit_mod.CheckResult]) -> int:
-    """Print the diff between the current audit and the most recent snapshot."""
-    prev = snapshot_mod.latest_snapshot()
-    if prev is None:
-        if args.format == "json":
-            print(json.dumps({"diff": [], "reason": "no previous snapshot"}, indent=2))
-        else:
-            print(colors.dim(
-                "no previous snapshot to diff against. "
-                "run `wtf audit --save` to create one."))
-        return 0
-    events = snapshot_mod.diff_snapshots(prev, results)
-    if args.format == "json":
-        print(json.dumps({"previous": prev.get("timestamp"),
-                          "changes": events}, indent=2, default=str))
-    else:
-        title = f"DIFF vs {prev.get('timestamp', 'previous')}"
-        print(colors.section(title))
-        if not events:
-            print(colors.green("  (nothing changed)"))
-        else:
-            kind_marker = {
-                "regression": colors.red("REG ", bold=True),
-                "worsened": colors.yellow("WRSE", bold=True),
-                "new":      colors.cyan("NEW ", bold=True),
-                "improved": colors.green("IMP ", bold=True),
-                "recovery": colors.green("FIX ", bold=True),
-                "removed":  colors.dim("GONE"),
-            }
-            name_width = max((len(e["name"]) for e in events), default=20)
-            for ev in events:
-                marker = kind_marker.get(ev["kind"], ev["kind"])
-                if ev["kind"] in ("new",):
-                    transition = colors.dim(f"        ↘ {ev['new_status']}")
-                elif ev["kind"] in ("removed",):
-                    transition = colors.dim(f"{ev['old_status']} ↗")
-                else:
-                    transition = (
-                        f"{ev['old_status']:>4} → {ev['new_status']:<4}"
-                    )
-                msg = ev.get("new_message") or ev.get("old_message") or ""
-                print(f"  {marker} {ev['name'].ljust(name_width)}  "
-                      f"{transition}   {colors.dim(msg)}")
-    return _audit_exit_code(args, results)
-
-
 def _maybe_fire_alert(args: argparse.Namespace,
                       results: List[audit_mod.CheckResult]) -> None:
     """Run the user's alert command when audit severity passes the threshold.
@@ -1111,42 +561,6 @@ def _emit_brief(results: List[audit_mod.CheckResult]) -> int:
         return 2
     print(colors.yellow(line, bold=True))
     return 1
-
-
-def _watch_info(args: argparse.Namespace) -> int:
-    """Refresh `wtf info` every args.watch seconds."""
-    interval = max(1, int(args.watch))
-    try:
-        while True:
-            sys.stdout.write("\033[2J\033[H")
-            sys.stdout.flush()
-            print(colors.dim(
-                f"wtf info · refresh every {interval}s · Ctrl-C to exit"))
-            print(info_mod.render_info())
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        print("\nwatch stopped")
-        return 0
-
-
-def _watch_audit(args: argparse.Namespace) -> int:
-    """Re-run the audit every args.watch seconds and reprint."""
-    interval = max(1, int(args.watch))
-    try:
-        while True:
-            sys.stdout.write("\033[2J\033[H")  # clear screen, home cursor
-            sys.stdout.flush()
-            print(colors.dim(
-                f"wtf audit · refresh every {interval}s · Ctrl-C to exit"))
-            results, _ = _run_audit_once(args)
-            if not results:
-                print(colors.dim("  (no checks matched the filter)"))
-            else:
-                _emit_audit(args, results)
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        print("\nwatch stopped")
-        return 0
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
@@ -1214,28 +628,6 @@ def _explain_via_llm(args: argparse.Namespace,
 
 def cmd_events(args: argparse.Namespace) -> int:
     """Chronological timeline of significant host events."""
-    if getattr(args, "watch", 0):
-        return _watch_events(args)
-    return _events_once(args)
-
-
-def _watch_events(args: argparse.Namespace) -> int:
-    interval = max(1, int(args.watch))
-    args.watch = 0
-    try:
-        while True:
-            sys.stdout.write("\033[2J\033[H")
-            sys.stdout.flush()
-            print(colors.dim(
-                f"wtf events · refresh every {interval}s · Ctrl-C to exit"))
-            _events_once(args)
-            time.sleep(interval)
-    except KeyboardInterrupt:
-        print("\nwatch stopped")
-        return 0
-
-
-def _events_once(args: argparse.Namespace) -> int:
     kinds = args.kind or None
     events = events_mod.collect_events(hours=args.since, kinds=kinds)
     if args.limit:
@@ -1468,31 +860,14 @@ def cmd_config(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_plugins(args: argparse.Namespace) -> int:
-    paths = plugins_mod.discover_plugins()
-    if args.format == "json":
-        print(json.dumps({
-            "dirs": list(plugins_mod.DEFAULT_PLUGIN_DIRS),
-            "plugins": paths,
-        }, indent=2))
-        return 0
-    print(colors.section("PLUGINS"))
-    print("  search dirs:")
-    for d in plugins_mod.DEFAULT_PLUGIN_DIRS:
-        marker = colors.green("●") if os.path.isdir(d) else colors.dim("○")
-        print(f"    {marker} {d}")
-    print("")
-    if not paths:
-        print(colors.dim(
-            "  (no plugins discovered)\n"
-            "  drop an executable script into one of the search dirs,\n"
-            "  exit codes: 0=ok, 1=warn, 2=fail, 77=skip; stdout is the message."))
-        return 0
-    print(colors.bold(f"  {len(paths)} plugin(s):"))
-    for path in paths:
-        name = plugins_mod._plugin_name(path)
-        print(f"    {colors.cyan(name)}  {colors.dim(path)}")
-    return 0
+def cmd_problems(args: argparse.Namespace) -> int:
+    """Alias for `wtf audit --only problem` — show WARN+FAIL results only.
+
+    This is the most common audit invocation during an incident, surfaced as
+    its own subcommand for typing comfort.
+    """
+    args.only = "problem"
+    return cmd_audit(args)
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -1784,8 +1159,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     info = subparsers.add_parser("info", help="Show summary of system state")
     info.add_argument("--format", choices=["text", "json"], default="text")
-    info.add_argument("--watch", type=int, metavar="SECONDS", default=0,
-                      help="Re-render every N seconds (Ctrl-C to exit)")
     info.set_defaults(func=cmd_info)
 
     audit = subparsers.add_parser("audit", help="Run health audit and show OK/WARN/FAIL")
@@ -1800,8 +1173,6 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Show only results with the given status (fail/warn/problem/skip/ok/all)")
     audit.add_argument("--since", type=int, metavar="HOURS", default=24,
                        help="Look-back window in hours for OOM/auth/kernel checks (default: 24)")
-    audit.add_argument("--watch", type=int, metavar="SECONDS", default=0,
-                       help="Re-run audit every N seconds (Ctrl-C to exit)")
     audit.add_argument("--list-checks", action="store_true",
                        dest="list_checks", help="List all check short-names and exit")
     audit.add_argument("--brief", "-b", action="store_true",
@@ -1821,8 +1192,6 @@ def build_parser() -> argparse.ArgumentParser:
                        help="When to fire --alert (default: only on FAIL)")
     audit.add_argument("--save", action="store_true",
                        help="Persist the audit result as a snapshot for history/diff")
-    audit.add_argument("--diff", action="store_true",
-                       help="Show changes vs the most recent saved snapshot (no plain output)")
     audit.set_defaults(func=cmd_audit)
 
     top = subparsers.add_parser("top",
@@ -1845,86 +1214,31 @@ def build_parser() -> argparse.ArgumentParser:
     ports.add_argument("--format", choices=["text", "json"], default="text")
     ports.set_defaults(func=cmd_ports)
 
-    motd = subparsers.add_parser("motd-install",
-                                 help="Install a one-line wtf brief into /etc/update-motd.d/")
-    motd.add_argument("--path", metavar="PATH",
-                      help="Override the install path (default: /etc/update-motd.d/99-wtf-brief)")
-    motd.add_argument("--format", choices=["text", "json"], default="text")
-    motd.set_defaults(func=cmd_motd_install)
-
-    init = subparsers.add_parser("init",
-                                 help="Interactive setup wizard for a fresh host")
-    init.add_argument("--non-interactive", action="store_true",
-                      help="Don't prompt; use defaults (config + motd + cron; no wtfd)")
-    init.add_argument("--dry-run", action="store_true",
-                      help="Show what would happen, but don't touch the filesystem")
-    init.add_argument("--config-path", metavar="PATH",
-                      help="Override config destination (default: /etc/wtftools/config.ini)")
-    init.add_argument("--enable-config", dest="enable_config",
-                      action="store_true", default=None)
-    init.add_argument("--no-config", dest="enable_config",
-                      action="store_false", default=None)
-    init.add_argument("--enable-motd", dest="enable_motd",
-                      action="store_true", default=None)
-    init.add_argument("--no-motd", dest="enable_motd",
-                      action="store_false", default=None)
-    init.add_argument("--enable-wtfd", dest="enable_wtfd",
-                      action="store_true", default=False,
-                      help="Install + systemctl enable --now wtfd")
-    init.add_argument("--enable-cron", dest="enable_cron",
-                      action="store_true", default=None)
-    init.add_argument("--no-cron", dest="enable_cron",
-                      action="store_false", default=None)
-    init.set_defaults(func=cmd_init)
-
-    compare = subparsers.add_parser("compare",
-                                    help="Side-by-side diff of two wtfd hosts (config drift)")
-    compare.add_argument("host_a", help="First target (host:port or full URL)")
-    compare.add_argument("host_b", help="Second target")
-    compare.add_argument("--token-file", metavar="PATH",
-                         help="Bearer token sent to both hosts")
-    compare.add_argument("--timeout", type=float, default=5.0,
-                         help="Per-host fetch timeout (default: 5s)")
-    compare.add_argument("--only-drift", action="store_true",
-                         help="Hide rows where both hosts agree")
-    compare.add_argument("--format", choices=["text", "json"], default="text")
-    compare.set_defaults(func=cmd_compare)
-
-    fleet = subparsers.add_parser("fleet",
-                                  help="Aggregate /audit.json from many wtfd peers")
-    fleet.add_argument("--hosts", action="append", metavar="LIST", default=[],
-                       help="Comma-separated targets (host:port or full URL). Repeatable.")
-    fleet.add_argument("--hosts-file", metavar="PATH",
-                       help="File with one target per line; '#' starts a comment.")
-    fleet.add_argument("--token-file", metavar="PATH",
-                       help="Read a bearer token from this file; sent to every peer.")
-    fleet.add_argument("--timeout", type=float, default=5.0,
-                       help="Per-host fetch timeout in seconds (default: 5)")
-    fleet.add_argument("--workers", type=int, default=16,
-                       help="Max parallel HTTP fetches (default: 16)")
-    fleet.add_argument("--problem-only", action="store_true",
-                       help="Only show hosts that have problems or are unreachable")
-    fleet.add_argument("--format", choices=["text", "json", "prometheus"],
-                       default="text")
-    fleet.add_argument("--watch", type=int, metavar="SECONDS", default=0,
-                       help="Re-fetch every N seconds. Heavy on big fleets — "
-                            "pick an interval that respects N hosts × per-fetch cost.")
-    fleet.add_argument("--run-now", action="store_true",
-                       help="POST /run-now to every peer before fetching, "
-                            "so the aggregated view contains fresh data.")
-    fleet.set_defaults(func=cmd_fleet)
-
-    serve = subparsers.add_parser("serve",
-                                  help="Run the wtfd daemon (foreground)")
-    serve.add_argument("--listen", default="127.0.0.1:8765", metavar="HOST:PORT",
-                       help="Bind address (default: 127.0.0.1:8765)")
-    serve.add_argument("--interval", type=float, default=300.0,
-                       help="Audit cadence in seconds (default: 300 = 5 min)")
-    serve.add_argument("--save", action="store_true",
-                       help="Persist every audit as a snapshot")
-    serve.add_argument("--auth-token-file", metavar="PATH",
-                       help="Require Bearer auth; token read from this file")
-    serve.set_defaults(func=cmd_serve)
+    problems = subparsers.add_parser("problems",
+                                     help="Show only WARN+FAIL results (alias: audit --only problem)")
+    problems.add_argument("--check", action="append", metavar="NAME",
+                          help="Run only the named check (repeatable). See `--list-checks`.")
+    problems.add_argument("--ignore", action="append", metavar="NAME", default=[],
+                          help="Skip a check (short-name) or result-name")
+    problems.add_argument("--since", type=int, metavar="HOURS", default=24,
+                          help="Look-back window for OOM/auth/kernel checks")
+    problems.add_argument("--format", choices=["text", "json", "prometheus",
+                                               "csv", "plain", "html"],
+                          default="text")
+    problems.add_argument("--output", "-o", metavar="FILE",
+                          help="Write to FILE instead of stdout")
+    problems.add_argument("--strict", action="store_true",
+                          help="Exit non-zero on warnings too")
+    problems.add_argument("--exit-zero", action="store_true",
+                          help="Always exit with code 0")
+    problems.add_argument("--serial", action="store_true",
+                          help="Run checks sequentially")
+    problems.add_argument("--check-timeout", type=float, metavar="SECONDS",
+                          help="Per-check timeout in seconds")
+    problems.add_argument("--verbose", "-v", action="store_true",
+                          help="Show extra detail")
+    problems.set_defaults(func=cmd_problems, list_checks=False, brief=False,
+                          save=False, alert=None, alert_on="fail")
 
     diff = subparsers.add_parser("diff",
                                  help="Compare current audit (or a snapshot) against a stored snapshot")
@@ -1977,10 +1291,6 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Query PyPI for a newer wtftools version (network call)")
     doctor.set_defaults(func=cmd_doctor)
 
-    plugins = subparsers.add_parser("plugins", help="List discovered check plugins")
-    plugins.add_argument("--format", choices=["text", "json"], default="text")
-    plugins.set_defaults(func=cmd_plugins)
-
     events = subparsers.add_parser("events",
                                    help="Chronological timeline: reboots, OOM kills, failed units, kernel errors")
     events.add_argument("--since", type=int, default=24, metavar="HOURS",
@@ -1992,8 +1302,6 @@ def build_parser() -> argparse.ArgumentParser:
     events.add_argument("--limit", type=int, default=0,
                         help="Max events to show (0 = unlimited)")
     events.add_argument("--format", choices=["text", "json"], default="text")
-    events.add_argument("--watch", type=int, metavar="SECONDS", default=0,
-                        help="Re-collect every N seconds (Ctrl-C to exit)")
     events.set_defaults(func=cmd_events)
 
     logs = subparsers.add_parser("logs", help="Recent ERROR-level journal entries grouped by service")
@@ -2060,7 +1368,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.check = None
         args.only = None
         args.since = 24
-        args.watch = 0
         args.list_checks = False
         args.brief = False
         args.ignore = []
@@ -2069,7 +1376,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.alert = None
         args.alert_on = "fail"
         args.save = False
-        args.diff = False
         args.output = None
         args.func = cmd_audit
 

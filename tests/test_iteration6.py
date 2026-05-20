@@ -332,22 +332,9 @@ def test_cli_prometheus_format(monkeypatch):
     assert rc == 0
 
 
-# ---- info --watch ----
-
-def test_cmd_info_watch(monkeypatch):
-    # Avoid invoking real sysinfo (psutil warmup uses time.sleep which we mock).
-    monkeypatch.setattr(main.info_mod, "render_info", lambda: "==SYSTEM==\n")
-
-    def boom(_):
-        raise KeyboardInterrupt
-    monkeypatch.setattr(main.time, "sleep", boom)
-    rc, out = _capture(["info", "--watch", "1"])
-    assert rc == 0
-    assert "SYSTEM" in out
-    assert "watch stopped" in out
-
-
-# ---- snapshot CLI integration ----
+# NB: --watch / --diff flags removed from audit/info in v0.1.0 cleanup
+# (one-shot CLI scope). Diff functionality lives on as `wtf diff` standalone;
+# tested separately in test_iteration8.py.
 
 def test_audit_save_writes_file(monkeypatch, tmp_path):
     monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
@@ -358,52 +345,6 @@ def test_audit_save_writes_file(monkeypatch, tmp_path):
     assert len(files) == 1
     assert files[0].suffix == ".json"
     assert "snapshot saved" in out
-
-
-def test_audit_diff_no_previous(monkeypatch, tmp_path):
-    monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "y")])
-    rc, out = _capture(["audit", "--diff", "--check", "uptime"])
-    assert rc == 0
-    assert "no previous snapshot" in out
-
-
-def test_audit_diff_with_previous(monkeypatch, tmp_path):
-    monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    # Plant a previous snapshot showing swap=ok
-    snapshot.save_snapshot(
-        [audit.CheckResult("swap", "ok", "10%")],
-        host="testhost", directory=str(tmp_path),
-    )
-    # Current run says swap=fail → regression
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("swap", "fail", "99%"),
-    ])
-    rc, out = _capture(["audit", "--diff", "--check", "swap"])
-    assert "regression" in out.lower() or "REG" in out
-
-
-def test_audit_diff_unchanged(monkeypatch, tmp_path):
-    monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    snapshot.save_snapshot([audit.CheckResult("x", "ok", "")],
-                           host="h", directory=str(tmp_path))
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "")])
-    rc, out = _capture(["audit", "--diff"])
-    assert "nothing changed" in out
-
-
-def test_audit_diff_json(monkeypatch, tmp_path):
-    monkeypatch.setenv("WTFTOOLS_SNAPSHOT_DIR", str(tmp_path))
-    snapshot.save_snapshot([audit.CheckResult("swap", "ok", "")],
-                           host="h", directory=str(tmp_path))
-    monkeypatch.setattr(audit, "run_audit",
-                        lambda names=None, ignore=None: [audit.CheckResult("swap", "fail", "")])
-    rc, out = _capture(["audit", "--diff", "--format", "json"])
-    data = json.loads(out)
-    assert "changes" in data
-    assert any(e["kind"] == "regression" for e in data["changes"])
 
 
 def test_cmd_history_empty(monkeypatch, tmp_path):

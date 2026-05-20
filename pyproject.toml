@@ -44,7 +44,6 @@ dev = [
 [project.scripts]
 wtf = "wtftools.main:main"
 wtftools = "wtftools.main:main"
-wtfd = "wtftools.daemon:cli_main"
 
 [project.urls]
 Homepage = "https://github.com/wachawo/wtftools"

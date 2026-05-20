@@ -6,7 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(no changes yet)
+### Changed — scope cleanup
+wtftools is now strictly a **one-shot CLI**. The daemon / fleet / multi-host
+story was removed in favor of the original PROJECT.md Phase 1 vision:
+one server, one command, immediate answer. Removed:
+
+- `wtfd` daemon (HTTP server, periodic audit loop, `POST /run-now`)
+- `wtf serve` subcommand and `wtfd` console-script entry point
+- `wtf fleet` (multi-host aggregation) and `wtf compare HOSTA HOSTB`
+- `wtf plugins` listing subcommand (plugins still load — see
+  `wtf audit --list-checks` for the `plugin:*` entries)
+- `wtf motd-install` (replace with three lines of shell, see QUICKSTART)
+- `wtf init` interactive wizard (its useful step — writing the example
+  config — is `wtf config --example | sudo tee /etc/wtftools/config.ini`)
+- `--watch` flags on `wtf audit`, `wtf info`, `wtf events`
+- `wtf audit --diff` (the standalone `wtf diff` command remains)
+- Bundled `scripts/wtfd.service` systemd unit
+- `wtftools/daemon.py` and `wtftools/fleet.py` modules
+
+Kept: `wtf audit --save`, `wtf diff`, `wtf history` — snapshots are pure
+filesystem operations under `~/.cache/wtftools/`, no daemon required.
+
+### Added
+- **`wtf problems`** — alias for `wtf audit --only problem`, surfaces just
+  the WARN+FAIL rows. Most common audit invocation during an incident,
+  given its own subcommand for typing comfort.
 
 ## [0.0.0] — 2026-05-20
 

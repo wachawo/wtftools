@@ -3,7 +3,6 @@
 """Tests for additions in iteration 2: restart-loops, network-errors, brief mode, plugins glue."""
 
 import io
-import json
 from contextlib import redirect_stdout
 
 from wtftools import audit, main
@@ -216,24 +215,6 @@ def test_list_check_names_includes_plugins(monkeypatch, tmp_path):
     assert "plugin:p" in names
 
 
-def test_cmd_plugins_text():
-    rc, out = _capture(["plugins"])
-    assert rc == 0
-    assert "PLUGINS" in out
-
-
-def test_cmd_plugins_json():
-    rc, out = _capture(["plugins", "--format", "json"])
-    data = json.loads(out)
-    assert "dirs" in data
-    assert "plugins" in data
-
-
-def test_cmd_plugins_lists_discovered(monkeypatch, tmp_path):
-    p = tmp_path / "tmpcheck.sh"
-    p.write_text("#!/bin/sh\nexit 0\n")
-    import os
-    os.chmod(str(p), 0o755)
-    monkeypatch.setattr(plugins_mod, "DEFAULT_PLUGIN_DIRS", (str(tmp_path),))
-    rc, out = _capture(["plugins"])
-    assert "tmpcheck" in out
+# NB: `wtf plugins` subcommand was removed in v0.1.0 — plugins still load
+# and appear in `wtf audit --list-checks` as `plugin:<name>`. Listing-only
+# tests are unnecessary now.

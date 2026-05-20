@@ -112,28 +112,7 @@ def test_audit_since_passed_to_module(monkeypatch):
     assert set_hours == [6]
 
 
-def test_audit_watch_runs_once_then_interrupt(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [
-        audit.CheckResult("x", "ok", "good")
-    ])
-
-    def fake_sleep(_):
-        raise KeyboardInterrupt
-    monkeypatch.setattr(main.time, "sleep", fake_sleep)
-    rc, out = _capture(["audit", "--watch", "1"])
-    assert rc == 0
-    assert "watch stopped" in out
-
-
-def test_audit_watch_handles_empty_results(monkeypatch):
-    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [])
-
-    def fake_sleep(_):
-        raise KeyboardInterrupt
-    monkeypatch.setattr(main.time, "sleep", fake_sleep)
-    rc, out = _capture(["audit", "--watch", "1", "--only", "fail"])
-    assert rc == 0
-    assert "no checks matched" in out
+# NB: --watch removed from audit in v0.1.0 cleanup (one-shot CLI).
 
 
 def test_status_filters_dict_has_expected_keys():
