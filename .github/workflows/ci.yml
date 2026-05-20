@@ -46,8 +46,8 @@ jobs:
           wtf --version
           wtf doctor
           wtf info > /dev/null
-          wtf audit --only problem || true
+          wtf problems || true
+          wtf audit --only problems || true
           wtf audit --check uptime --check load
           wtf audit --list-checks
           wtf audit --brief || true
-          wtf plugins
