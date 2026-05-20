@@ -45,4 +45,5 @@ site/
 !README.md
 !CHANGELOG.md
 !CONTRIBUTING.md
+!CLAUDE.md
 !docs/**/*.md
