@@ -38,13 +38,11 @@ site/
 # Editor swap files
 *.swp
 
-# All Markdown is ignored by default — whitelist only the docs that are part of
-# the public repo. Internal notes (PROJECT.md, …) stay local.
+# All Markdown is ignored by default. The three root docs below are
+# whitelisted; everything else must live under docs/ to be tracked.
+# Internal notes (PROJECT.md, ad-hoc TODOs, …) thus stay local.
 *.md
 !README.md
 !CHANGELOG.md
 !CONTRIBUTING.md
-!QUICKSTART.md
-!ROADMAP.md
-!PLUGIN_GUIDE.md
 !docs/**/*.md

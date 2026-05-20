@@ -202,7 +202,7 @@ def test_cli_events_watch_label(monkeypatch):
 def test_quickstart_file_exists():
     path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "QUICKSTART.md",
+        "docs", "QUICKSTART.md",
     )
     assert os.path.exists(path)
     with open(path, encoding="utf-8") as f:

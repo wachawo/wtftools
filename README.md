@@ -7,7 +7,7 @@ checks, bash + Python plugin SDK, `wtfd` HTTP daemon for fleet management,
 multi-host aggregation + drift detection, LLM-driven explain. 734 tests,
 92.6 % coverage.
 
-> **In a hurry?** See [QUICKSTART.md](QUICKSTART.md) for the 5-minute version.
+> **In a hurry?** See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the 5-minute version.
 
 ```
 $ wtf
@@ -316,7 +316,7 @@ See `scripts/example-plugin-check-tmp.sh` for a minimal bash example, and
 `examples/plugins/` for five production-ready scripts (TLS cert probe,
 PostgreSQL/Redis connection counts, disk-write latency, HTTP health).
 
-**Writing your own?** See [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) for the full
+**Writing your own?** See [docs/PLUGIN_GUIDE.md](docs/PLUGIN_GUIDE.md) for the full
 contract + best practices. Python authors can use
 `wtftools.plugin_sdk` for boilerplate-free `ok() / warn() / fail() / skip()`
 calls instead of hand-rolling the JSON.

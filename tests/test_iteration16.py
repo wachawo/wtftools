@@ -143,8 +143,8 @@ def test_plugin_subprocess_integration_with_loader(tmp_path):
 
 def test_plugin_guide_exists():
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(here, "PLUGIN_GUIDE.md")
-    assert os.path.exists(path), "PLUGIN_GUIDE.md must ship in the repo"
+    path = os.path.join(here, "docs", "PLUGIN_GUIDE.md")
+    assert os.path.exists(path), "docs/PLUGIN_GUIDE.md must ship in the repo"
     with open(path, encoding="utf-8") as f:
         body = f.read()
     # Sanity: covers both contracts and both languages

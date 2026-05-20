@@ -43,7 +43,7 @@ Initial public release. Highlights:
   Detail items are coerced to strings.
 - **`examples/plugins/check-http-health.py`** — example Python plugin using
   the SDK; probes an HTTP endpoint with latency thresholds.
-- **`PLUGIN_GUIDE.md`** — comprehensive plugin author's guide. Documents
+- **`docs/PLUGIN_GUIDE.md`** — comprehensive plugin author's guide. Documents
   both exit-code and JSON contracts, shows bash + Python quickstarts, lists
   best practices, and points at the 5 example plugins.
 
@@ -56,7 +56,7 @@ Initial public release. Highlights:
   status line and the fetch proceeds anyway.
 - **`wtf events --watch SECONDS`** — auto-refresh the event timeline.
   Useful in an incident war room.
-- **`QUICKSTART.md`** — 5-minute onboarding guide (README grew past 250
+- **`docs/QUICKSTART.md`** — 5-minute onboarding guide (README grew past 250
   lines — newcomers needed something smaller). Covers install, the
   incident-triage flow, fleet/Prometheus setup, custom checks, and a
   cheat-sheet table mapping common questions to commands.
