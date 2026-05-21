@@ -25,11 +25,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: Install Python build tools
+        run: python -m pip install --upgrade build setuptools wheel stdeb
       - name: Install Debian packaging toolchain
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            dh-python debhelper fakeroot build-essential
+            python3-all dh-python debhelper fakeroot build-essential
       - name: Build .deb
         run: bash scripts/build-deb.sh
       - name: Upload .deb to the GitHub Release
