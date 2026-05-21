@@ -7,9 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.0.0). Leave blank to use the version from pyproject.toml."
+        description: "Release tag to (re)build (e.g. v0.0.0). The .deb is attached to this GitHub Release."
         required: true
-        default: ""
 permissions:
   contents: write
 jobs:
@@ -42,13 +41,11 @@ jobs:
       - name: Compute release tag
         id: tag
         run: |
+          # workflow_dispatch → required input; push tag → github.ref_name.
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG="${{ github.ref_name }}"
           else
-            VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-            TAG="v$VERSION"
+            TAG="${{ github.ref_name }}"
           fi
           echo "name=$TAG" >> "$GITHUB_OUTPUT"
           echo "Release tag: $TAG"
