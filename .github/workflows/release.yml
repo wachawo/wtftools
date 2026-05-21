@@ -8,7 +8,7 @@ on:
     inputs:
       tag:
         description: "Release tag (e.g. v0.0.0). Leave blank to use the version from pyproject.toml."
-        required: false
+        required: true
         default: ""
 permissions:
   contents: write
@@ -23,7 +23,6 @@ jobs:
       - run: pip install -e ".[dev,full]"
       - run: ruff check wtftools tests
       - run: pytest
-
   deb:
     needs: test
     runs-on: ubuntu-latest
