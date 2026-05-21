@@ -36,7 +36,27 @@ setup()
 PY
 fi
 
-python3 setup.py --command-packages=stdeb.command sdist_dsc bdist_deb
+# Two-step (instead of `bdist_deb`):
+#   1. sdist_dsc    — produce the unpacked source-package under deb_dist/
+#   2. dpkg-buildpackage — build the actual .deb
+# Why split: between (1) and (2) we have to monkey-patch the generated
+# debian/rules. stdeb hard-codes `python3 setup.py install --install-layout=deb`,
+# but modern setuptools (>=70) drops `--install-layout`. Strip it so the
+# install step succeeds.
+python3 setup.py --command-packages=stdeb.command sdist_dsc
+
+# Locate the unpacked source dir, e.g. deb_dist/wtftools-0.0.0/
+SRCDIR=$(ls -1d deb_dist/wtftools-*/ | head -n1)
+if [ -z "$SRCDIR" ]; then
+    echo "stdeb did not produce a source dir under deb_dist/" >&2
+    exit 1
+fi
+
+if [ -f "$SRCDIR/debian/rules" ]; then
+    sed -i 's| --install-layout=deb||g' "$SRCDIR/debian/rules"
+fi
+
+(cd "$SRCDIR" && dpkg-buildpackage -us -uc -b)
 
 echo
 echo "Built artifacts:"
