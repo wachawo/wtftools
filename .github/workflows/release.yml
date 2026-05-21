@@ -1,9 +1,15 @@
-name: release
+name: Release
 on:
   push:
     tags:
       - "*.*.*"
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.0.0). Leave blank to use the version from pyproject.toml."
+        required: false
+        default: ""
 permissions:
   contents: write
 jobs:
@@ -34,8 +40,22 @@ jobs:
             python3-all dh-python debhelper fakeroot build-essential
       - name: Build .deb
         run: bash scripts/build-deb.sh
+      - name: Compute release tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+            TAG="v$VERSION"
+          fi
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG"
       - name: Upload .deb to the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: deb_dist/*.deb
+          tag_name: ${{ steps.tag.outputs.name }}
           generate_release_notes: true
