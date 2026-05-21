@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Build & release
+- `release.yml` no longer publishes a Docker image to GHCR. On a `v*` /
+  `*.*.*` tag it now runs tests, builds a `.deb` via `scripts/build-deb.sh`
+  (stdeb + debhelper toolchain), and attaches the artifact to the matching
+  GitHub Release. PyPI publishing happens separately in `publish.yml` via
+  OIDC trusted-publisher.
+- `Dockerfile` stays in-repo for ad-hoc `docker build .` use, but no longer
+  ships as a release artifact.
+
+### Tooling
+- `black` added to `.pre-commit-config.yaml`, running before `ruff` on
+  every commit. Config lives in `pyproject.toml [tool.black]`
+  (`line-length=180`, `target-version=["py38"]`). Existing tree is already
+  black-compatible — no formatting churn.
+
 ### Changed — scope cleanup
 wtftools is now strictly a **one-shot CLI**. The daemon / fleet / multi-host
 story was removed in favor of the original PROJECT.md Phase 1 vision:
