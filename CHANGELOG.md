@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — plugin infrastructure
+- `wtftools/plugin_sdk.py` — Python helper for plugin authors.
+- `wtftools/checks/plugins.py` — discovery / executor / parser for
+  `/etc/wtf/checks.d/` scripts (bash + Python).
+- `_plugin_to_check` + `_all_check_callables` glue in `wtftools/audit.py`.
+- `tests/test_plugins.py`, `tests/test_iteration16.py`.
+- README's «Plugins» section and QUICKSTART's «Custom checks (plugins)»
+  section.
+
+The CLI is now a closed set of built-in checks. Custom logic should live
+upstream (e.g. monitoring tools) or be added as new built-in checks via PR.
+
+### Changed — layout flattening
+- `wtftools/checks/cron.py` → `wtftools/cron.py`
+- `wtftools/checks/sysinfo.py` → `wtftools/sysinfo.py`
+- `wtftools/checks/` subpackage removed (`__init__.py` deleted).
+- All imports updated: `from wtftools.checks import X` → `from wtftools import X`.
+
 ### Build & release
 - `release.yml` no longer publishes a Docker image to GHCR. On a `v*` /
   `*.*.*` tag it now runs tests, builds a `.deb` via `scripts/build-deb.sh`

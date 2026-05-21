@@ -9,8 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from wtftools import config as config_mod
-from wtftools.checks import cron, sysinfo
-from wtftools.checks import plugins as plugins_mod
+from wtftools import cron, sysinfo
 
 logger = logging.getLogger(__name__)
 
@@ -704,50 +703,30 @@ def render_prometheus(results: List[CheckResult]) -> str:
 DEFAULT_CHECKS: List[CheckFn] = list(CHECK_REGISTRY.values())
 
 
-def _plugin_to_check(path: str) -> CheckFn:
-    """Wrap a plugin path as a CheckFn returning CheckResult."""
-
-    def _run() -> CheckResult:
-        pr = plugins_mod.run_plugin(path)
-        return CheckResult(f"plugin:{pr.name}", pr.status, pr.message, detail=list(pr.detail))
-
-    return _run
-
-
-def _all_check_callables() -> Dict[str, CheckFn]:
-    """Built-in checks merged with discovered plugins as `plugin:<name>` keys."""
-    combined: Dict[str, CheckFn] = dict(CHECK_REGISTRY)
-    for path in plugins_mod.discover_plugins():
-        name = plugins_mod._plugin_name(path)
-        combined[f"plugin:{name}"] = _plugin_to_check(path)
-    return combined
-
-
 def list_check_names() -> List[str]:
-    """Return short names of all registered checks AND discovered plugins."""
-    return list(_all_check_callables().keys())
+    """Return short names of all registered checks."""
+    return list(CHECK_REGISTRY.keys())
 
 
 def run_audit(names: Optional[List[str]] = None, ignore: Optional[List[str]] = None) -> List[CheckResult]:
-    """Run all audit checks (built-ins + plugins) or a filtered subset by name.
+    """Run all audit checks or a filtered subset by name.
 
-    `names` filters by short keys from CHECK_REGISTRY or `plugin:<name>`.
+    `names` filters by short keys from CHECK_REGISTRY.
     `ignore` excludes short-names AND skips results whose `name` matches
     (lets users say `--ignore "disk /mnt/Backup"` to skip a single mount).
     The config file's `[ignore]` section is merged into both filters.
     """
     cfg = config_mod.get_config()
     ignore_keys = set(ignore or []) | set(cfg.ignored_checks)
-    ignore_results = set(cfg.ignored_result_names) | (set(ignore or []) - set(_all_check_callables().keys()))
+    ignore_results = set(cfg.ignored_result_names) | (set(ignore or []) - set(CHECK_REGISTRY.keys()))
 
-    all_checks = _all_check_callables()
     if names:
         funcs: List[CheckFn] = []
         skips: List[CheckResult] = []
         for n in names:
             if n in ignore_keys:
                 continue
-            fn = all_checks.get(n)
+            fn = CHECK_REGISTRY.get(n)
             if fn is None:
                 skips.append(CheckResult(n, "skip", f"unknown check '{n}'"))
             else:
@@ -755,7 +734,7 @@ def run_audit(names: Optional[List[str]] = None, ignore: Optional[List[str]] = N
         results = _run_funcs(funcs)
         return [r for r in skips + results if r.name not in ignore_results]
 
-    funcs = [fn for k, fn in all_checks.items() if k not in ignore_keys]
+    funcs = [fn for k, fn in CHECK_REGISTRY.items() if k not in ignore_keys]
     results = _run_funcs(funcs)
     return [r for r in results if r.name not in ignore_results]
 

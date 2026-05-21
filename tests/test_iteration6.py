@@ -8,8 +8,7 @@ import os
 from contextlib import redirect_stdout
 from unittest import mock
 
-from wtftools import audit, main, snapshot
-from wtftools.checks import sysinfo
+from wtftools import audit, main, snapshot, sysinfo
 
 
 def _capture(argv):

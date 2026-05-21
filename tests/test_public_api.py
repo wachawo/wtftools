@@ -48,7 +48,7 @@ def test_run_audit_reexport(monkeypatch):
     """`from wtftools import run_audit` must work and behave like the submodule."""
     from wtftools import audit as audit_mod
 
-    monkeypatch.setattr(audit_mod, "_all_check_callables", lambda: {"only": lambda: audit_mod.CheckResult("x", "ok", "")})
+    monkeypatch.setattr(audit_mod, "CHECK_REGISTRY", {"only": lambda: audit_mod.CheckResult("x", "ok", "")})
     results = wtftools.run_audit()
     assert len(results) == 1
     assert results[0].name == "x"

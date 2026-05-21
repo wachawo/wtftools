@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for wtftools.checks.cron — vendored crontab validator."""
+"""Tests for wtftools.cron — vendored crontab validator."""
 
 import os
 from unittest import mock
 
 import pytest
 
-from wtftools.checks import cron
+from wtftools import cron
 
 
 def test_check_filename_valid():

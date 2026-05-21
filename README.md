@@ -3,8 +3,8 @@
 > One command to see what is going on with your Linux server right now.
 
 **Status:** v0.0.0 — initial public release. 14 subcommands, 38 built-in
-checks, bash + Python plugin SDK, snapshot/diff/history, LLM-driven explain.
-One-shot CLI; no daemon, no fleet aggregator.
+checks, snapshot/diff/history, LLM-driven explain. One-shot CLI; no daemon,
+no fleet aggregator, no plugin extension API.
 
 > **In a hurry?** See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the 5-minute version.
 
@@ -169,39 +169,6 @@ checks = swap, updates
 result_names =
     disk /mnt/Backup
     disk /mnt/Video
-```
-
-## Plugins
-
-Drop an executable script into one of:
-
-- `/etc/wtf/checks.d/`
-- `/etc/wtftools/checks.d/`
-- `~/.config/wtftools/checks.d/`
-
-It is automatically picked up by `wtf audit` under the name `plugin:<basename>`.
-
-**Exit-code contract:** `0` ok, `1` warn, `2` fail, `77` skip (anything else
-is treated as fail). stdout becomes the message line.
-
-**JSON contract (optional, takes precedence):** the script may print a single
-JSON line on stdout:
-
-```json
-{"status": "warn", "message": "TLS expires in 7 days", "detail": ["host=example.com"]}
-```
-
-Python plugins can use `wtftools.plugin_sdk` for boilerplate-free
-`ok() / warn() / fail() / skip()` calls instead of hand-rolling the JSON
-output:
-
-```python
-#!/usr/bin/env python3
-from wtftools.plugin_sdk import ok, warn, fail, skip
-# … gather your data …
-if pct >= 90: fail(f"{pct}% used")
-if pct >= 70: warn(f"{pct}% used")
-ok(f"{pct}% used")
 ```
 
 ## Compatibility

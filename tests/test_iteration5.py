@@ -6,8 +6,7 @@ import io
 import json
 from contextlib import redirect_stdout
 
-from wtftools import audit, explain, main
-from wtftools.checks import sysinfo
+from wtftools import audit, explain, main, sysinfo
 
 
 def _capture(argv):

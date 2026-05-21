@@ -18,6 +18,8 @@ from wtftools import (
     __url__,
     __version__,
     colors,
+    cron,
+    sysinfo,
 )
 from wtftools import (
     audit as audit_mod,
@@ -40,7 +42,6 @@ from wtftools import (
 from wtftools import (
     snapshot as snapshot_mod,
 )
-from wtftools.checks import cron, sysinfo
 
 logger = logging.getLogger(__name__)
 
@@ -312,7 +313,7 @@ def cmd_history(args: argparse.Namespace) -> int:
 
 def cmd_info(args: argparse.Namespace) -> int:
     if args.format == "json":
-        from wtftools.checks import sysinfo
+        from wtftools import sysinfo
 
         payload = {
             "hostname": sysinfo.get_hostname(),

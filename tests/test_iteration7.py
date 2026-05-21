@@ -11,8 +11,7 @@ from collections import namedtuple
 from contextlib import redirect_stdout
 from unittest import mock
 
-from wtftools import audit, main
-from wtftools.checks import sysinfo
+from wtftools import audit, main, sysinfo
 
 
 def _capture(argv):

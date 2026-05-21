@@ -15,8 +15,8 @@ Two modes:
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple, Union
 
+from wtftools import sysinfo
 from wtftools.audit import CheckResult
-from wtftools.checks import sysinfo
 
 
 @dataclass

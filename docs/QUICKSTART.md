@@ -64,27 +64,6 @@ wtf diff                  # what's changed since the last save?
 wtf diff --snapshot 5     # vs 5 snapshots ago
 ```
 
-## Custom checks (plugins)
-
-Drop an executable script at `/etc/wtf/checks.d/<name>.sh`:
-
-```bash
-#!/bin/sh
-set -e
-if [ -f /var/run/my-flag ]; then
-    echo "/var/run/my-flag still present"
-    exit 1     # warn
-fi
-echo "flag absent"
-exit 0         # ok
-```
-
-Exit codes: `0=ok / 1=warn / 2=fail / 77=skip`. stdout becomes the message.
-
-Python plugins can `from wtftools.plugin_sdk import ok, warn, fail, skip`
-for boilerplate-free output — each helper prints structured JSON and exits
-with the right code.
-
 ## Cheat sheet
 
 | I want to…                                | Command                                   |
@@ -104,5 +83,5 @@ with the right code.
 ## Next steps
 
 - Full reference: `wtf --help` and the project `README.md`
-- Architecture / configuration: `README.md` sections «Config», «Plugins»
+- Architecture / configuration: `README.md` section «Config»
 - Contribute: `CONTRIBUTING.md`

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from wtftools.checks.sysinfo import run
+from wtftools.sysinfo import run
 
 logger = logging.getLogger(__name__)
 

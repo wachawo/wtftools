@@ -9,8 +9,7 @@ from unittest import mock
 
 import pytest
 
-from wtftools import audit, config, main, snapshot
-from wtftools.checks import sysinfo
+from wtftools import audit, config, main, snapshot, sysinfo
 
 
 def _capture(argv):

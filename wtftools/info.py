@@ -4,8 +4,7 @@
 
 from typing import List
 
-from wtftools import colors
-from wtftools.checks import sysinfo
+from wtftools import colors, sysinfo
 
 
 def _bar(percent: int, width: int = 20) -> str:

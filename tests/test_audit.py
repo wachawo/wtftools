@@ -308,7 +308,7 @@ def test_run_audit_handles_exception(monkeypatch, caplog):
     def boom():
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(audit, "_all_check_callables", lambda: {"only": boom})
+    monkeypatch.setattr(audit, "CHECK_REGISTRY", {"only": boom})
     with caplog.at_level(logging.WARNING):
         results = audit.run_audit()
     assert len(results) == 1
@@ -319,7 +319,7 @@ def test_run_audit_list_outcome(monkeypatch):
     def multi():
         return [audit.CheckResult("x", "ok", "1"), audit.CheckResult("y", "warn", "2")]
 
-    monkeypatch.setattr(audit, "_all_check_callables", lambda: {"only": multi})
+    monkeypatch.setattr(audit, "CHECK_REGISTRY", {"only": multi})
     results = audit.run_audit()
     assert len(results) == 2
 

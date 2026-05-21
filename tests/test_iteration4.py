@@ -7,8 +7,7 @@ import json
 import time
 from contextlib import redirect_stdout
 
-from wtftools import audit, config, main
-from wtftools.checks import sysinfo
+from wtftools import audit, config, main, sysinfo
 
 
 def _capture(argv):

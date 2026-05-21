@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for wtftools.checks.sysinfo — system information gathering."""
+"""Tests for wtftools.sysinfo — system information gathering."""
 
 import socket
 from collections import namedtuple
@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from wtftools.checks import sysinfo
+from wtftools import sysinfo
 
 
 def test_format_bytes_units():
@@ -175,7 +175,7 @@ def test_get_mounts_filters_virtual():
 
 
 def test_get_disk_usage_returns_none_on_oserror():
-    with mock.patch("wtftools.checks.sysinfo.shutil.disk_usage", side_effect=OSError):
+    with mock.patch("wtftools.sysinfo.shutil.disk_usage", side_effect=OSError):
         assert sysinfo.get_disk_usage("/nonexistent/path") is None
 
 
@@ -310,18 +310,18 @@ def test_get_listening_ports_fallback_error(monkeypatch):
 
 
 def test_get_pending_updates_no_apt():
-    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value=None):
+    with mock.patch("wtftools.sysinfo.shutil.which", return_value=None):
         assert sysinfo.get_pending_updates() == -1
 
 
 def test_get_pending_updates_with_apt():
     out = "Listing... Done\nfoo/jammy 1.2.3 amd64 [upgradable]\nbar/jammy 0.1 amd64 [upgradable]\n"
-    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value="/usr/bin/apt"), mock.patch.object(sysinfo, "run", return_value=(0, out, "")):
+    with mock.patch("wtftools.sysinfo.shutil.which", return_value="/usr/bin/apt"), mock.patch.object(sysinfo, "run", return_value=(0, out, "")):
         assert sysinfo.get_pending_updates() == 2
 
 
 def test_get_pending_updates_failure():
-    with mock.patch("wtftools.checks.sysinfo.shutil.which", return_value="/usr/bin/apt"), mock.patch.object(sysinfo, "run", return_value=(1, "", "")):
+    with mock.patch("wtftools.sysinfo.shutil.which", return_value="/usr/bin/apt"), mock.patch.object(sysinfo, "run", return_value=(1, "", "")):
         assert sysinfo.get_pending_updates() == -1
 
 

@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for additions in iteration 2: restart-loops, network-errors, brief mode, plugins glue."""
+"""Tests for additions in iteration 2: restart-loops, network-errors, brief mode."""
 
 import io
 from contextlib import redirect_stdout
 
-from wtftools import audit, main
-from wtftools.checks import plugins as plugins_mod
-from wtftools.checks import sysinfo
+from wtftools import audit, main, sysinfo
 
 
 def _capture(argv):
@@ -203,31 +201,6 @@ def test_brief_more_than_three_problems(monkeypatch):
     assert "+2 more" in out
 
 
-# ---- plugins integration ----
-
-
-def test_audit_includes_plugins(monkeypatch, tmp_path):
-    p = tmp_path / "myplugin.sh"
-    p.write_text("#!/bin/sh\necho 'hello'\nexit 0\n")
-    import os
-
-    os.chmod(str(p), 0o755)
-    monkeypatch.setattr(plugins_mod, "DEFAULT_PLUGIN_DIRS", (str(tmp_path),))
-    results = audit.run_audit(names=["plugin:myplugin"])
-    assert any(r.name == "plugin:myplugin" for r in results)
-
-
-def test_list_check_names_includes_plugins(monkeypatch, tmp_path):
-    p = tmp_path / "p.sh"
-    p.write_text("#!/bin/sh\nexit 0\n")
-    import os
-
-    os.chmod(str(p), 0o755)
-    monkeypatch.setattr(plugins_mod, "DEFAULT_PLUGIN_DIRS", (str(tmp_path),))
-    names = audit.list_check_names()
-    assert "plugin:p" in names
-
-
-# NB: `wtf plugins` subcommand was removed in v0.1.0 — plugins still load
-# and appear in `wtf audit --list-checks` as `plugin:<name>`. Listing-only
-# tests are unnecessary now.
+# NB: plugin infrastructure (wtftools/plugin_sdk.py, wtftools/checks/plugins.py
+# and the `plugin:*` registry merge in audit.run_audit) was removed entirely
+# in v0.1.0 — wtftools is a one-shot CLI with built-in checks only.

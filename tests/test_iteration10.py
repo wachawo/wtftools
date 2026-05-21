@@ -7,8 +7,7 @@ import json
 from contextlib import redirect_stdout
 from unittest import mock
 
-from wtftools import audit, llm, main
-from wtftools.checks import sysinfo
+from wtftools import audit, llm, main, sysinfo
 
 
 def _capture(argv):

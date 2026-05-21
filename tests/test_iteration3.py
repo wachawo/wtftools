@@ -6,8 +6,7 @@ import io
 import json
 from contextlib import redirect_stdout
 
-from wtftools import audit, config, main
-from wtftools.checks import sysinfo
+from wtftools import audit, config, main, sysinfo
 
 
 def _capture(argv):
@@ -247,8 +246,8 @@ def test_ports_for_pid_no_psutil(monkeypatch):
 def test_audit_ignore_short_name(monkeypatch):
     monkeypatch.setattr(
         audit,
-        "_all_check_callables",
-        lambda: {
+        "CHECK_REGISTRY",
+        {
             "memory": lambda: audit.CheckResult("memory", "ok", ""),
             "swap": lambda: audit.CheckResult("swap", "fail", "boom"),
         },
@@ -264,7 +263,7 @@ def test_audit_ignore_result_name(monkeypatch):
             audit.CheckResult("disk /mnt/Backup", "fail", "98%"),
         ]
 
-    monkeypatch.setattr(audit, "_all_check_callables", lambda: {"disks": disks})
+    monkeypatch.setattr(audit, "CHECK_REGISTRY", {"disks": disks})
     results = audit.run_audit(ignore=["disk /mnt/Backup"])
     names = [r.name for r in results]
     assert "disk /" in names
@@ -276,8 +275,8 @@ def test_audit_ignore_via_config(monkeypatch):
     config.set_config(cfg)
     monkeypatch.setattr(
         audit,
-        "_all_check_callables",
-        lambda: {
+        "CHECK_REGISTRY",
+        {
             "memory": lambda: audit.CheckResult("memory", "ok", ""),
             "swap": lambda: audit.CheckResult("swap", "fail", "boom"),
         },
