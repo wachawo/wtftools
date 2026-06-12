@@ -87,9 +87,11 @@ wtf explain --llm ollama        # or let a local LLM summarize it
 ## Output for scripts: grep, awk, jq
 
 Colors disappear automatically when you pipe, so plain `grep` always works.
-Every command also has machine-readable formats:
+Every command also has machine-readable formats — `plain` (tab-separated,
+no headers) and `json`. The flag works before the subcommand too:
 
 ```bash
+wtf -f json disk                         # same as: wtf disk --format json
 wtf disk --format plain                  # tab-separated, no headers
 wtf disk --format json | jq .            # full JSON
 
@@ -107,6 +109,22 @@ JSON payloads of the resource commands carry `schema_version` so your
 scripts survive upgrades.
 
 ## Daily routine and monitoring
+
+One command for the morning check — audit, what changed since the last run,
+and the event timeline, with a one-line verdict on top:
+
+```bash
+wtf daily                       # audit + diff vs yesterday + events
+```
+
+It saves a snapshot on every run, so tomorrow's `wtf daily` shows the diff.
+A crontab line for unattended use (mails only when something is wrong):
+
+```cron
+0 8 * * * wtf daily --format json > /var/log/wtf-daily.json 2>&1 || mail -s "wtf $(hostname)" you@example.com < /var/log/wtf-daily.json
+```
+
+The building blocks are also available separately:
 
 ```bash
 wtf audit --brief               # one line — perfect for MOTD / SSH banner
@@ -134,6 +152,7 @@ Exit codes are CI/cron-friendly:
 |---------------------|-------------------------------------------------------------|
 | `wtf` / `wtf audit` | green/yellow/red checklist: what is OK and what is not      |
 | `wtf problems`      | only WARN+FAIL rows                                         |
+| `wtf daily`         | morning check: audit + diff vs last run + events            |
 | `wtf explain`       | per-check actionable advice; `--llm` to pipe to an LLM      |
 | `wtf disk`          | per-mount usage; `--tree` shows largest directories         |
 | `wtf cpu`           | load, iowait, pressure, top CPU consumers                   |

@@ -7,8 +7,8 @@ _wtf_complete() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="info disk cpu mem net io who audit problems crontab doctor services service config logs explain history diff top ports events"
-    local global_opts="-h --help -V --version --no-color -v --verbose -q --quiet --config"
+    local subcommands="info disk cpu mem net io who daily audit problems crontab doctor services service config logs explain history diff top ports events"
+    local global_opts="-h --help -V --version -f --format --no-color -v --verbose -q --quiet --config"
 
     if [[ $COMP_CWORD -eq 1 ]]; then
         COMPREPLY=( $(compgen -W "$subcommands $global_opts" -- "$cur") )
@@ -20,6 +20,10 @@ _wtf_complete() {
     case "$cmd" in
         info)
             COMPREPLY=( $(compgen -W "--format" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text plain json" -- "$cur") )
+            ;;
+        daily)
+            COMPREPLY=( $(compgen -W "--since --ignore --strict --exit-zero --format" -- "$cur") )
             [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
             ;;
         disk)
@@ -88,7 +92,7 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
             local opts="--sort --limit --user --name --format"
             case "$prev" in
                 --sort)   COMPREPLY=( $(compgen -W "cpu rss" -- "$cur") ); return 0 ;;
-                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
                 --user)   COMPREPLY=( $(compgen -u -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
@@ -97,14 +101,14 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
             local opts="--proto --public-only --format"
             case "$prev" in
                 --proto)  COMPREPLY=( $(compgen -W "tcp udp all" -- "$cur") ); return 0 ;;
-                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
             ;;
         services|service)
             local opts="-n --lines --format"
             case "$prev" in
-                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
             esac
             local units=$(systemctl list-units --type=service --no-legend --plain 2>/dev/null \
                           | awk '{ sub(/\.service$/, "", $1); print $1 }')
@@ -114,14 +118,14 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
             local opts="--since --kind --limit --format"
             case "$prev" in
                 --kind)   COMPREPLY=( $(compgen -W "reboot oom failed-unit kernel-err auth-fail login" -- "$cur") ); return 0 ;;
-                --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
             ;;
         logs)
             local opts="--since --priority -p --units --lines -n --format"
             case "$prev" in
-                --format)      COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;
+                --format)      COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
                 --priority|-p) COMPREPLY=( $(compgen -W "emerg alert crit err warning notice info debug" -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )

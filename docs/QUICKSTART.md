@@ -14,6 +14,7 @@ Or `apt install wtftools` (see README for the .deb workflow).
 ```bash
 wtf                # default audit — green/yellow/red checklist
 wtf problems       # only WARN+FAIL rows
+wtf daily          # morning check: audit + diff vs last run + events
 wtf disk --tree    # is there space, and WHAT is eating it
 wtf cpu            # load, iowait, top CPU consumers
 wtf mem            # RAM/swap, OOM kills, top RAM consumers

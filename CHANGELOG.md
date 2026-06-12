@@ -23,6 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_default_gateway`, `get_dns_servers`, `get_logged_in_users`,
   `get_du_tree`, `get_disk_io_per_device`.
 
+### Added — daily routine and pipeline output
+- `wtf daily` — the morning check as one command: one-line verdict, diff
+  vs the previous snapshot, event timeline and the full audit; saves a
+  snapshot on every run so the next day diffs against it.
+- `--format plain` for `top`, `ports`, `events`, `logs`, `services` and
+  `info` — every command now has a tab-separated twin for grep/awk.
+- Global `-f/--format` flag: `wtf -f json disk` works; a `--format` given
+  after the subcommand still wins.
+- `schema_version` added to the JSON payloads of `info`, `events`, `logs`,
+  `services` and `daily`.
+
 ### Changed
 - `wtf ports` no longer fails without psutil — it falls back to an
   `ss`-based TCP listing (no PID/user info; UDP still needs psutil).
