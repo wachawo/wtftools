@@ -13,9 +13,12 @@ Or `apt install wtftools` (see README for the .deb workflow).
 
 ```bash
 wtf                # default audit — green/yellow/red checklist
-wtf audit --brief  # one-line summary, MOTD-friendly
 wtf problems       # only WARN+FAIL rows
-wtf info           # host snapshot (top procs, disks, mem)
+wtf disk --tree    # is there space, and WHAT is eating it
+wtf cpu            # load, iowait, top CPU consumers
+wtf mem            # RAM/swap, OOM kills, top RAM consumers
+wtf net            # interfaces, gateway, DNS, listening ports
+wtf info           # all of the above on one page
 wtf doctor         # which tools are actually available
 ```
 

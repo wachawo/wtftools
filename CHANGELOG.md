@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — per-resource subcommands
+- `wtf disk` — per-mount usage with inode percent and read-only flags;
+  `--tree [PATH]` lists the largest directories (du-based, `--depth`,
+  `--top`); without PATH it picks the fullest mount automatically.
+- `wtf cpu` — model, loadavg (+per-cpu), iowait, PSI, top-5 by CPU.
+- `wtf mem` — RAM/swap, PSI, OOM kills in the look-back window, top-5 by RSS.
+- `wtf net` — interfaces, default gateway, DNS servers, interface error
+  counters, listening TCP ports summary.
+- `wtf io` — PSI io, iowait, per-device read/write rates and utilization
+  (sampled from `/proc/diskstats`), D-state processes.
+- `wtf who` — logged-in users, recent logins, failed-auth count.
+- All six support `--format text|plain|json`; `plain` is tab-separated for
+  awk/grep, JSON includes `schema_version`.
+- New module `wtftools/sections.py`; new sysinfo helpers:
+  `get_default_gateway`, `get_dns_servers`, `get_logged_in_users`,
+  `get_du_tree`, `get_disk_io_per_device`.
+
+### Changed
+- `wtf ports` no longer fails without psutil — it falls back to an
+  `ss`-based TCP listing (no PID/user info; UDP still needs psutil).
+- `wtf service` is now an alias for `wtf services`.
+- README restructured for first-time users: install + the most-used
+  commands up top, scripting (grep/awk/jq) cookbook, advanced flags below.
+- Bash completion covers the new subcommands.
+
 ### Removed — plugin infrastructure
 - `wtftools/plugin_sdk.py` — Python helper for plugin authors.
 - `wtftools/checks/plugins.py` — discovery / executor / parser for

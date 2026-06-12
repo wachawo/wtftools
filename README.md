@@ -2,11 +2,8 @@
 
 > One command to see what is going on with your Linux server right now.
 
-**Status:** v0.0.0 — initial public release. 14 subcommands, 38 built-in
-checks, snapshot/diff/history, LLM-driven explain. One-shot CLI; no daemon,
-no fleet aggregator, no plugin extension API.
-
-> **In a hurry?** See [docs/QUICKSTART.md](docs/QUICKSTART.md) for the 5-minute version.
+You log in to a server and something feels wrong. Instead of running ten
+commands (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) you run one:
 
 ```
 $ wtf
@@ -22,17 +19,132 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-## Subcommands
+Green is fine, yellow needs a look, red needs fixing. That's it.
+
+## Install
+
+```bash
+pipx install wtftools          # recommended — works on any modern distro
+```
+
+No `pipx`? Any of these works too:
+
+```bash
+pip install wtftools           # classic pip (core, no dependencies)
+pip install wtftools[full]     # + psutil for richer process/socket info
+sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
+```
+
+After install you have the `wtf` command. Try it: `wtf`.
+
+## The commands you will actually use
+
+```bash
+wtf              # full health check — start here
+wtf problems     # show ONLY what is wrong (warnings + failures)
+wtf explain      # what to do about each problem, step by step
+```
+
+Then ask about one resource at a time, like `show` commands on a switch:
+
+```bash
+wtf disk         # is there space? per-mount usage, inodes, read-only
+wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf cpu          # load, iowait, top CPU consumers
+wtf mem          # RAM/swap, OOM kills, top memory consumers
+wtf net          # interfaces, IPs, gateway, DNS, listening ports
+wtf io           # disk read/write rates, IO-stuck processes
+wtf who          # who is logged in, recent logins, failed auth
+```
+
+Example — disk is filling up, find the culprit:
+
+```
+$ wtf disk --tree /var
+────────────── DISK ──────────────
+  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
+  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
+
+───────── LARGEST UNDER /var ─────────
+      15.0GB  /var/lib
+       3.1GB  /var/log
+       1.8GB  /var/log/app
+```
+
+`wtf disk --tree` without a path picks the fullest mount automatically.
+
+## When something is broken
+
+```bash
+wtf problems -v                 # every problem, with detail
+wtf events --since 6            # timeline: reboots, OOM kills, failed units
+wtf service nginx               # one service: state, restarts, ports, journal
+wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
+wtf explain                     # actionable advice per finding
+wtf explain --llm ollama        # or let a local LLM summarize it
+```
+
+## Output for scripts: grep, awk, jq
+
+Colors disappear automatically when you pipe, so plain `grep` always works.
+Every command also has machine-readable formats:
+
+```bash
+wtf disk --format plain                  # tab-separated, no headers
+wtf disk --format json | jq .            # full JSON
+
+# mounts above 80%:
+wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
+
+# failed checks only, names column:
+wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
+
+# top directory eating /var, bytes and path:
+wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+```
+
+JSON payloads of the resource commands carry `schema_version` so your
+scripts survive upgrades.
+
+## Daily routine and monitoring
+
+```bash
+wtf audit --brief               # one line — perfect for MOTD / SSH banner
+wtf audit --save                # save a snapshot
+wtf diff                        # what changed since the last snapshot
+wtf history                     # list saved snapshots
+
+# cron alerting without any monitoring stack:
+wtf audit --alert 'mail -s "wtf $WTF_HOST" you@example.com'
+wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
+```
+
+Exit codes are CI/cron-friendly:
+
+| code | meaning                                          |
+|------|--------------------------------------------------|
+| 0    | everything OK                                    |
+| 1    | warnings with `--strict`, or crontab errors      |
+| 2    | audit found a `[FAIL]`                           |
+| 130  | interrupted (Ctrl-C)                             |
+
+## All subcommands
 
 | command             | what it does                                                |
 |---------------------|-------------------------------------------------------------|
 | `wtf` / `wtf audit` | green/yellow/red checklist: what is OK and what is not      |
-| `wtf problems`      | alias for `audit --only problems` — show WARN+FAIL only      |
-| `wtf explain`       | per-check actionable advice; `--llm` to pipe to LLM          |
-| `wtf info`          | one-page snapshot: host, uptime, load, mem, disks, top, net |
+| `wtf problems`      | only WARN+FAIL rows                                         |
+| `wtf explain`       | per-check actionable advice; `--llm` to pipe to an LLM      |
+| `wtf disk`          | per-mount usage; `--tree` shows largest directories         |
+| `wtf cpu`           | load, iowait, pressure, top CPU consumers                   |
+| `wtf mem`           | RAM/swap, OOM kills, top memory consumers                   |
+| `wtf net`           | interfaces, gateway, DNS, errors, listening ports           |
+| `wtf io`            | per-device IO rates, pressure, stuck processes              |
+| `wtf who`           | logged-in users, recent logins, failed auth                 |
+| `wtf info`          | one-page snapshot: all of the above at once                 |
 | `wtf top`           | focused process top: sort by cpu/rss, filter user/name      |
 | `wtf ports`         | listening sockets with owning PID/user/command              |
-| `wtf services NAME` | drilldown one service: state, restarts, mem, ports, journal |
+| `wtf service NAME`  | drilldown one service: state, restarts, mem, ports, journal |
 | `wtf logs`          | recent ERROR+ journal entries grouped by service            |
 | `wtf events`        | chronological timeline: reboots, OOM, failed units, …       |
 | `wtf history`       | list saved audit snapshots (`wtf audit --save` to create)   |
@@ -41,96 +153,25 @@ $ wtf
 | `wtf doctor`        | self-diagnostic: which tools wtftools can actually use      |
 | `wtf config`        | show effective config / print example                       |
 
-`wtftools` absorbs and supersedes [`checkcrontab`](https://github.com/wachawo/checkcrontab) — the same cron validator now lives at `wtf crontab`.
+`wtftools` absorbs and supersedes
+[`checkcrontab`](https://github.com/wachawo/checkcrontab) — the same cron
+validator now lives at `wtf crontab`.
 
-## Install
-
-### From PyPI
-
-```bash
-pip install wtftools           # core, stdlib-only
-pip install wtftools[full]     # + psutil for richer metrics
-```
-
-After install the short command `wtf` (and the long alias `wtftools`) is on `$PATH`.
-
-### From apt (Debian/Ubuntu)
+## Advanced audit options
 
 ```bash
-sudo apt install python3-psutil
-sudo dpkg -i wtftools_0.0.0-1_all.deb
-```
-
-A `.deb` is built from the same source via `scripts/build-deb.sh` (uses `stdeb`).
-
-### From source
-
-```bash
-git clone https://github.com/wachawo/wtftools
-cd wtftools
-pip install -e .
-# or test without installing:
-python3 wtf.py audit
-```
-
-## Usage
-
-```bash
-wtf                      # short audit summary (default)
-wtf problems             # only WARN+FAIL rows
-wtf info                 # detailed system snapshot
-wtf info --format json   # machine-readable
-
-wtf audit                # full audit with [OK]/[WARN]/[FAIL] markers
 wtf audit -v             # show extra detail (failed units, OOM events)
 wtf audit --strict       # exit 1 on warnings (CI-friendly)
-wtf audit --format json  # JSON output for pipelines
-wtf audit --check memory --check disks   # run named checks only
+wtf audit --check memory --check disks    # run named checks only
 wtf audit --list-checks  # show all available check short-names
 wtf audit --since 1      # look-back window for OOM/auth/kernel (default 24h)
-wtf audit --brief        # one-line summary for MOTD / SSH banners
-wtf audit --ignore swap --ignore "disk /mnt/Backup"   # silence specific checks
-wtf audit --format csv > audit.csv               # spreadsheet-friendly
-wtf audit --format plain | awk '$1=="fail"'      # shell-pipeline-friendly
-wtf audit --format html -o report.html           # self-contained HTML for tickets
-
-wtf audit --save                 # save snapshot to ~/.cache/wtftools/
-wtf diff                         # what changed vs last snapshot
-wtf diff --snapshot 5            # vs 5 snapshots ago
-wtf history                      # list saved snapshots
-
-wtf explain                                 # per-check actionable advice
-wtf explain --prompt | ollama run llama3    # pipe to local LLM
-wtf explain --llm ollama                    # built-in: call ollama directly
-wtf explain --llm claude                    # anthropic SDK + ANTHROPIC_API_KEY
-wtf explain --llm auto                      # try ollama → claude → openai
-
-wtf audit --alert 'mail -s "wtf $WTF_HOST" sre@example.com'
-wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
-
-wtf top                                       # top processes
-wtf top --sort rss --user www-data --limit 5  # top RAM consumers for one user
-wtf ports                                     # listening TCP + owning process
-
-wtf services nginx       # state + restarts + ports + last 20 journal lines
-wtf logs                                       # last hour, ERROR+
-wtf events --since 48                          # 48-hour incident timeline
-wtf events --kind oom --kind failed-unit       # filter to specific kinds
-
-wtf doctor               # show which CLI tools wtf can use on this host
-wtf doctor --check-updates  # also query PyPI for a newer version
+wtf audit --ignore swap --ignore "disk /mnt/Backup"   # silence checks
+wtf audit --format csv > audit.csv        # spreadsheet-friendly
+wtf audit --format html -o report.html    # self-contained HTML for tickets
+wtf audit --format prometheus             # metrics for node_exporter textfile
 ```
 
-## Exit codes
-
-| code | meaning                                          |
-|------|--------------------------------------------------|
-| 0    | everything OK (`audit`) / no errors (`crontab`)  |
-| 1    | warnings with `--strict`, or crontab errors      |
-| 2    | audit found a `[FAIL]`                           |
-| 130  | interrupted (Ctrl-C)                             |
-
-## Built-in checks
+### Built-in checks
 
 uptime · system state · load average · CPU iowait · PSI cpu/memory/io ·
 TCP retransmits · memory · swap · disk (per mount) · inodes ·
@@ -141,19 +182,15 @@ open file descriptors · process count · failed auth · time sync ·
 pending updates · reboot required · cron daemon · crontab syntax · docker ·
 hw temperatures · disk SMART · DNS · HTTP/TCP probes · fail2ban.
 
-Run `wtf audit --list-checks` for the full list of short names usable with
-`--check` and `--ignore`.
-
 ## Config
 
-Drop an INI at any of:
+Thresholds and ignores live in an INI file at any of:
 
 - `/etc/wtftools/config.ini`
 - `/etc/wtf/config.ini`
 - `~/.config/wtftools/config.ini`
 
-Or stack one ad-hoc via `wtf --config /path/to.ini …`. Run `wtf config --example`
-for a fully-commented template. Headlines:
+Run `wtf config --example` for a fully-commented template. Headlines:
 
 ```ini
 [thresholds]
@@ -161,23 +198,30 @@ disk_warn = 85
 disk_fail = 95
 swap_warn = 50
 swap_fail = 90
-tcp_retrans_warn = 1.0
-tcp_retrans_fail = 5.0
 
 [ignore]
 checks = swap, updates
 result_names =
     disk /mnt/Backup
-    disk /mnt/Video
 ```
 
 ## Compatibility
 
 - Python 3.8+
-- Linux (any systemd-based distribution is the happy path; the tool degrades
-  gracefully when `systemctl` / `journalctl` are missing)
+- Linux (systemd distributions are the happy path; the tool degrades
+  gracefully when `systemctl` / `journalctl` / `psutil` are missing)
 - No network access required for the core CLI
 - Optional network: `wtf explain --llm claude/openai`, `wtf doctor --check-updates`
+
+## From source
+
+```bash
+git clone https://github.com/wachawo/wtftools
+cd wtftools
+pip install -e .
+# or test without installing:
+python3 wtf.py audit
+```
 
 ## License
 
