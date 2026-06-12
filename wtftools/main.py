@@ -67,7 +67,7 @@ STATUS_FILTERS = {
 }
 
 
-def emit_section(args: argparse.Namespace, data: dict, render_text, render_plain) -> int:
+def emit_section(args: argparse.Namespace, data: dict, render_text, render_plain, section: str = "") -> int:
     """Print one resource section in the requested format."""
     if args.format == "json":
         print(json.dumps(data, indent=2, default=str))
@@ -75,6 +75,8 @@ def emit_section(args: argparse.Namespace, data: dict, render_text, render_plain
         print(render_plain(data))
     else:
         print(render_text(data))
+        if section and getattr(args, "show_commands", False):
+            print(sections_mod.render_equivalents(section))
     return 0
 
 
@@ -91,37 +93,37 @@ def cmd_disk(args: argparse.Namespace) -> int:
                 print(colors.red(msg))
             return 2
     data = sections_mod.collect_disk(tree_root=tree_root, depth=args.depth, top=args.top)
-    return emit_section(args, data, sections_mod.render_disk_text, sections_mod.render_disk_plain)
+    return emit_section(args, data, sections_mod.render_disk_text, sections_mod.render_disk_plain, section="disk")
 
 
 def cmd_cpu(args: argparse.Namespace) -> int:
     """CPU model, load, iowait, PSI and top consumers."""
     data = sections_mod.collect_cpu()
-    return emit_section(args, data, sections_mod.render_cpu_text, sections_mod.render_cpu_plain)
+    return emit_section(args, data, sections_mod.render_cpu_text, sections_mod.render_cpu_plain, section="cpu")
 
 
 def cmd_mem(args: argparse.Namespace) -> int:
     """RAM/swap usage, PSI, OOM kills and top consumers."""
     data = sections_mod.collect_mem(since_hours=args.since)
-    return emit_section(args, data, sections_mod.render_mem_text, sections_mod.render_mem_plain)
+    return emit_section(args, data, sections_mod.render_mem_text, sections_mod.render_mem_plain, section="mem")
 
 
 def cmd_net(args: argparse.Namespace) -> int:
     """Interfaces, gateway, DNS, errors and listening ports."""
     data = sections_mod.collect_net()
-    return emit_section(args, data, sections_mod.render_net_text, sections_mod.render_net_plain)
+    return emit_section(args, data, sections_mod.render_net_text, sections_mod.render_net_plain, section="net")
 
 
 def cmd_io(args: argparse.Namespace) -> int:
     """Disk IO pressure, per-device rates and stuck processes."""
     data = sections_mod.collect_io()
-    return emit_section(args, data, sections_mod.render_io_text, sections_mod.render_io_plain)
+    return emit_section(args, data, sections_mod.render_io_text, sections_mod.render_io_plain, section="io")
 
 
 def cmd_who(args: argparse.Namespace) -> int:
     """Logged-in users, recent logins and failed auth count."""
     data = sections_mod.collect_who(since_hours=args.since)
-    return emit_section(args, data, sections_mod.render_who_text, sections_mod.render_who_plain)
+    return emit_section(args, data, sections_mod.render_who_text, sections_mod.render_who_plain, section="who")
 
 
 def cmd_top(args: argparse.Namespace) -> int:
@@ -1352,28 +1354,34 @@ def build_parser() -> argparse.ArgumentParser:
     disk.add_argument("--depth", type=int, default=2, metavar="N", help="Tree depth for --tree (default: 2)")
     disk.add_argument("--top", type=int, default=15, metavar="N", help="Entries to show for --tree (default: 15)")
     disk.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    disk.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     disk.set_defaults(func=cmd_disk)
 
     cpu = subparsers.add_parser("cpu", help="CPU load, iowait, pressure, top consumers")
     cpu.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    cpu.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     cpu.set_defaults(func=cmd_cpu)
 
     mem = subparsers.add_parser("mem", help="Memory/swap usage, OOM kills, top consumers")
     mem.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window for OOM kills (default: 24)")
     mem.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    mem.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     mem.set_defaults(func=cmd_mem)
 
     net = subparsers.add_parser("net", help="Interfaces, gateway, DNS, errors, listening ports")
     net.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    net.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     net.set_defaults(func=cmd_net)
 
     io = subparsers.add_parser("io", help="Disk IO rates, pressure, stuck processes")
     io.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    io.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     io.set_defaults(func=cmd_io)
 
     who = subparsers.add_parser("who", help="Logged-in users, recent logins, failed auth")
     who.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window for failed auth (default: 24)")
     who.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    who.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     who.set_defaults(func=cmd_who)
 
     audit = subparsers.add_parser("audit", help="Run health audit and show OK/WARN/FAIL")

@@ -73,6 +73,18 @@ $ wtf disk --tree /var
 
 `wtf disk --tree` without a path picks the fullest mount automatically.
 
+Learning Linux? Add `--show-commands` to any resource command and it also
+prints the classic commands it replaces, so you can run them yourself:
+
+```
+$ wtf cpu --show-commands
+  ...
+  equivalent commands:
+    $ uptime
+    $ top -bn1 | head
+    $ ps aux --sort=-%cpu | head
+```
+
 ## When something is broken
 
 ```bash

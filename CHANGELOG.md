@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_default_gateway`, `get_dns_servers`, `get_logged_in_users`,
   `get_du_tree`, `get_disk_io_per_device`.
 
+### Added — teaching mode
+- `--show-commands` on `disk`/`cpu`/`mem`/`net`/`io`/`who` prints the
+  classic commands each view replaces (`df -h`, `ss -tlnp`, …), so the
+  output can be learned from and double-checked by hand.
+
 ### Added — daily routine and pipeline output
 - `wtf daily` — the morning check as one command: one-line verdict, diff
   vs the previous snapshot, event timeline and the full audit; saves a

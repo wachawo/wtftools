@@ -14,6 +14,25 @@ from wtftools import colors, sysinfo
 
 SCHEMA_VERSION = 1
 
+# Classic commands each section is roughly equivalent to. Shown by
+# `--show-commands` so users can learn (and verify) the traditional way.
+EQUIVALENT_COMMANDS = {
+    "disk": ["df -h", "df -i", "du -x -d2 --block-size=1 PATH | sort -rn | head"],
+    "cpu": ["uptime", "top -bn1 | head", "ps aux --sort=-%cpu | head"],
+    "mem": ["free -h", "ps aux --sort=-rss | head", "dmesg | grep -i 'out of memory'"],
+    "net": ["ip -br addr", "ip route show default", "cat /etc/resolv.conf", "ss -tlnp"],
+    "io": ["iostat -x 1 2", "cat /proc/pressure/io", "ps -eo pid,stat,comm | awk '$2 ~ /^D/'"],
+    "who": ["who", "last -n 10", "journalctl -u ssh --since '24 hours ago' | grep -ci failed"],
+}
+
+
+def render_equivalents(section: str) -> str:
+    """Dim footer listing the classic commands behind one section."""
+    commands = EQUIVALENT_COMMANDS.get(section, [])
+    lines = ["", colors.dim("  equivalent commands:")]
+    lines.extend(colors.dim(f"    $ {command}") for command in commands)
+    return "\n".join(lines)
+
 
 def render_bar(percent: int, width: int = 20) -> str:
     """ASCII usage bar colored by severity."""

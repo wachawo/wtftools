@@ -27,7 +27,7 @@ _wtf_complete() {
             [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
             ;;
         disk)
-            local opts="--tree --depth --top --format"
+            local opts="--tree --depth --top --format --show-commands"
             case "$prev" in
                 --tree)   COMPREPLY=( $(compgen -d -- "$cur") ); return 0 ;;
                 --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
@@ -35,11 +35,11 @@ _wtf_complete() {
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
             ;;
         cpu|net|io)
-            COMPREPLY=( $(compgen -W "--format" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--format --show-commands" -- "$cur") )
             [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text plain json" -- "$cur") )
             ;;
         mem|who)
-            COMPREPLY=( $(compgen -W "--since --format" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--since --format --show-commands" -- "$cur") )
             [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text plain json" -- "$cur") )
             ;;
         audit|problems)
