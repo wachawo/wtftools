@@ -273,7 +273,7 @@ def test_cmd_ports_no_psutil(monkeypatch):
 
 
 def test_cmd_ports_psutil_missing(monkeypatch):
-    """Simulate `import psutil` failing inside cmd_ports."""
+    """Without psutil cmd_ports falls back to the ss-based listing."""
     real_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
 
     def fake_import(name, *args, **kwargs):
@@ -282,7 +282,23 @@ def test_cmd_ports_psutil_missing(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr("builtins.__import__", fake_import)
+    monkeypatch.setattr(main.sysinfo, "get_listening_ports", lambda: [{"addr": "0.0.0.0", "port": 80, "pid": None}])
     rc, out = _capture(["ports"])
+    assert rc == 0
+    assert "80" in out
+
+
+def test_cmd_ports_psutil_missing_udp(monkeypatch):
+    """UDP listing still requires psutil — the fallback refuses with exit 2."""
+    real_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "psutil":
+            raise ImportError("no module")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+    rc, out = _capture(["ports", "--proto", "udp"])
     assert rc == 2
     assert "psutil" in out
 

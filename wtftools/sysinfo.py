@@ -1606,3 +1606,127 @@ def get_network_interfaces(include_virtual: bool = False) -> List[Dict[str, Any]
             ip = parts[3].split("/")[0]
             result.append({"name": name, "ipv4": [ip], "ipv6": [], "up": True})
     return result
+
+
+def get_default_gateway() -> Optional[Dict[str, str]]:
+    """Default IPv4 gateway from /proc/net/route. None when not found."""
+    content = read_file("/proc/net/route")
+    for line in content.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        iface, dest, gateway_hex = parts[0], parts[1], parts[2]
+        if dest != "00000000":
+            continue
+        try:
+            raw = int(gateway_hex, 16)
+        except ValueError:
+            continue
+        ip = socket.inet_ntoa(raw.to_bytes(4, "little"))
+        return {"gateway": ip, "iface": iface}
+    return None
+
+
+def get_dns_servers() -> List[str]:
+    """Nameserver addresses from /etc/resolv.conf."""
+    servers: List[str] = []
+    for line in read_file("/etc/resolv.conf").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] == "nameserver":
+            servers.append(parts[1])
+    return servers
+
+
+def get_logged_in_users() -> List[Dict[str, str]]:
+    """Currently logged-in users (psutil, falling back to `who`)."""
+    if HAS_PSUTIL:
+        try:
+            result: List[Dict[str, str]] = []
+            for u in psutil.users():
+                since = time.strftime("%Y-%m-%d %H:%M", time.localtime(u.started))
+                result.append({"user": u.name, "tty": u.terminal or "-", "host": u.host or "-", "since": since})
+            return result
+        except Exception:
+            pass
+    rc, out, _ = run(["who"], timeout=5)
+    if rc != 0:
+        return []
+    result = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        host = parts[4].strip("()") if len(parts) >= 5 else "-"
+        result.append({"user": parts[0], "tty": parts[1], "host": host, "since": f"{parts[2]} {parts[3]}"})
+    return result
+
+
+def get_du_tree(directory: str, depth: int = 2, limit: int = 15) -> List[Dict[str, Any]]:
+    """Largest directories under `directory`, up to `depth` levels deep.
+
+    Uses `du -x` (single filesystem). du exits non-zero on permission errors
+    but still prints what it could read, so only an empty stdout is fatal.
+    """
+    if not shutil.which("du") or not os.path.isdir(directory):
+        return []
+    rc, out, _ = run(["du", "-x", f"-d{depth}", "--block-size=1", directory], timeout=30)
+    if not out:
+        return []
+    results: List[Dict[str, Any]] = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 2:
+            continue
+        try:
+            size = int(parts[0])
+        except ValueError:
+            continue
+        path = parts[1]
+        if path.rstrip("/") == directory.rstrip("/"):
+            continue
+        results.append({"path": path, "bytes": size})
+    results.sort(key=lambda r: r["bytes"], reverse=True)
+    return results[:limit]
+
+
+def get_disk_io_per_device(sample_seconds: float = 0.5, limit: int = 5) -> List[Dict[str, Any]]:
+    """Per-device IO rates sampled from /proc/diskstats over a short window."""
+
+    def snapshot() -> Dict[str, Tuple[int, int, int]]:
+        stats: Dict[str, Tuple[int, int, int]] = {}
+        for line in read_file("/proc/diskstats").splitlines():
+            parts = line.split()
+            if len(parts) < 14:
+                continue
+            name = parts[2]
+            if name.startswith(("loop", "ram", "zram")):
+                continue
+            try:
+                stats[name] = (int(parts[5]), int(parts[9]), int(parts[12]))
+            except ValueError:
+                continue
+        return stats
+
+    first = snapshot()
+    if not first:
+        return []
+    time.sleep(sample_seconds)
+    second = snapshot()
+    results: List[Dict[str, Any]] = []
+    for name, (sectors_read2, sectors_written2, io_ticks2) in second.items():
+        if name not in first:
+            continue
+        sectors_read1, sectors_written1, io_ticks1 = first[name]
+        read_bps = (sectors_read2 - sectors_read1) * 512 / sample_seconds
+        write_bps = (sectors_written2 - sectors_written1) * 512 / sample_seconds
+        util = min(100.0, (io_ticks2 - io_ticks1) / (sample_seconds * 1000) * 100)
+        results.append(
+            {
+                "device": name,
+                "read_bps": int(read_bps),
+                "write_bps": int(write_bps),
+                "util_percent": round(util, 1),
+            }
+        )
+    results.sort(key=lambda d: (d["util_percent"], d["read_bps"] + d["write_bps"]), reverse=True)
+    return results[:limit]

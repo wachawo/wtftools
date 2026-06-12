@@ -7,7 +7,7 @@ _wtf_complete() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="info audit problems crontab doctor services config logs explain history diff top ports events"
+    local subcommands="info disk cpu mem net io who audit problems crontab doctor services service config logs explain history diff top ports events"
     local global_opts="-h --help -V --version --no-color -v --verbose -q --quiet --config"
 
     if [[ $COMP_CWORD -eq 1 ]]; then
@@ -21,6 +21,22 @@ _wtf_complete() {
         info)
             COMPREPLY=( $(compgen -W "--format" -- "$cur") )
             [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text json" -- "$cur") )
+            ;;
+        disk)
+            local opts="--tree --depth --top --format"
+            case "$prev" in
+                --tree)   COMPREPLY=( $(compgen -d -- "$cur") ); return 0 ;;
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
+            esac
+            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        cpu|net|io)
+            COMPREPLY=( $(compgen -W "--format" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text plain json" -- "$cur") )
+            ;;
+        mem|who)
+            COMPREPLY=( $(compgen -W "--since --format" -- "$cur") )
+            [[ "$prev" == "--format" ]] && COMPREPLY=( $(compgen -W "text plain json" -- "$cur") )
             ;;
         audit|problems)
             local opts="--format --strict --exit-zero --check --only --since --list-checks --brief -b --ignore --serial --check-timeout --alert --alert-on --save --output -o"
@@ -85,7 +101,7 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
             ;;
-        services)
+        services|service)
             local opts="-n --lines --format"
             case "$prev" in
                 --format) COMPREPLY=( $(compgen -W "text json" -- "$cur") ); return 0 ;;

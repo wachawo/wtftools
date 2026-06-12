@@ -40,6 +40,9 @@ from wtftools import (
     llm as llm_mod,
 )
 from wtftools import (
+    sections as sections_mod,
+)
+from wtftools import (
     snapshot as snapshot_mod,
 )
 
@@ -62,6 +65,63 @@ STATUS_FILTERS = {
     "ok": ["ok"],
     "all": ["ok", "warn", "fail", "skip"],
 }
+
+
+def emit_section(args: argparse.Namespace, data: dict, render_text, render_plain) -> int:
+    """Print one resource section in the requested format."""
+    if args.format == "json":
+        print(json.dumps(data, indent=2, default=str))
+    elif args.format == "plain":
+        print(render_plain(data))
+    else:
+        print(render_text(data))
+    return 0
+
+
+def cmd_disk(args: argparse.Namespace) -> int:
+    """Per-mount disk usage; --tree shows the largest directories."""
+    tree_root = None
+    if args.tree is not None:
+        tree_root = sections_mod.pick_fullest_mount() if args.tree == "auto" else args.tree
+        if not os.path.isdir(tree_root):
+            msg = f"not a directory: {tree_root}"
+            if args.format == "json":
+                print(json.dumps({"error": msg}))
+            else:
+                print(colors.red(msg))
+            return 2
+    data = sections_mod.collect_disk(tree_root=tree_root, depth=args.depth, top=args.top)
+    return emit_section(args, data, sections_mod.render_disk_text, sections_mod.render_disk_plain)
+
+
+def cmd_cpu(args: argparse.Namespace) -> int:
+    """CPU model, load, iowait, PSI and top consumers."""
+    data = sections_mod.collect_cpu()
+    return emit_section(args, data, sections_mod.render_cpu_text, sections_mod.render_cpu_plain)
+
+
+def cmd_mem(args: argparse.Namespace) -> int:
+    """RAM/swap usage, PSI, OOM kills and top consumers."""
+    data = sections_mod.collect_mem(since_hours=args.since)
+    return emit_section(args, data, sections_mod.render_mem_text, sections_mod.render_mem_plain)
+
+
+def cmd_net(args: argparse.Namespace) -> int:
+    """Interfaces, gateway, DNS, errors and listening ports."""
+    data = sections_mod.collect_net()
+    return emit_section(args, data, sections_mod.render_net_text, sections_mod.render_net_plain)
+
+
+def cmd_io(args: argparse.Namespace) -> int:
+    """Disk IO pressure, per-device rates and stuck processes."""
+    data = sections_mod.collect_io()
+    return emit_section(args, data, sections_mod.render_io_text, sections_mod.render_io_plain)
+
+
+def cmd_who(args: argparse.Namespace) -> int:
+    """Logged-in users, recent logins and failed auth count."""
+    data = sections_mod.collect_who(since_hours=args.since)
+    return emit_section(args, data, sections_mod.render_who_text, sections_mod.render_who_plain)
 
 
 def cmd_top(args: argparse.Namespace) -> int:
@@ -103,12 +163,7 @@ def cmd_ports(args: argparse.Namespace) -> int:
     try:
         import psutil  # type: ignore
     except ImportError:
-        msg = "psutil is required for `wtf ports` (install via `pip install wtftools[full]`)"
-        if args.format == "json":
-            print(json.dumps({"error": msg}))
-        else:
-            print(colors.red(msg))
-        return 2
+        return _cmd_ports_fallback(args)
 
     import socket as _socket
 
@@ -167,11 +222,41 @@ def cmd_ports(args: argparse.Namespace) -> int:
     if not rows:
         print(colors.dim("  (none)"))
         return 0
-    print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20} {'PID':>7}  " f"{'USER':<14} COMMAND")
+    print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20} {'PID':>7}  {'USER':<14} COMMAND")
     for r in rows:
         addr = r["addr"] or "*"
         pid_s = str(r["pid"]) if r["pid"] else "-"
-        print(f"  {r['port']:>5}  {r['proto']:<5} {addr:<20} {pid_s:>7}  " f"{(r['user'] or '-')[:14]:<14} {r['command']}")
+        print(f"  {r['port']:>5}  {r['proto']:<5} {addr:<20} {pid_s:>7}  {(r['user'] or '-')[:14]:<14} {r['command']}")
+    return 0
+
+
+def _cmd_ports_fallback(args: argparse.Namespace) -> int:
+    """Listening TCP ports via `ss` when psutil is unavailable (no PID/user info)."""
+    if args.proto == "udp":
+        msg = "udp listing requires psutil (install via `pip install wtftools[full]`)"
+        if args.format == "json":
+            print(json.dumps({"error": msg}))
+        else:
+            print(colors.red(msg))
+        return 2
+    rows = []
+    for p in sysinfo.get_listening_ports():
+        addr = p.get("addr") or "*"
+        if args.public_only and addr.startswith("127."):
+            continue
+        rows.append({"port": p["port"], "proto": "tcp", "addr": addr, "pid": p.get("pid"), "user": "", "command": ""})
+    rows.sort(key=lambda r: r["port"])
+    if args.format == "json":
+        print(json.dumps(rows, indent=2, default=str))
+        return 0
+    print(colors.section("LISTENING PORTS"))
+    if not rows:
+        print(colors.dim("  (none)"))
+        return 0
+    print(colors.dim("  (psutil missing — no PID/user info; `pip install wtftools[full]` for more)"))
+    print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20}")
+    for r in rows:
+        print(f"  {r['port']:>5}  {r['proto']:<5} {r['addr']:<20}")
     return 0
 
 
@@ -263,7 +348,7 @@ def _render_diff(args: argparse.Namespace, old: dict, new_results: List[audit_mo
         else:
             transition = f"{ev['old_status']:>4} → {ev['new_status']:<4}"
         msg = ev.get("new_message") or ev.get("old_message") or ""
-        print(f"  {marker} {ev['name'].ljust(name_width)}  " f"{transition}   {colors.dim(msg)}")
+        print(f"  {marker} {ev['name'].ljust(name_width)}  {transition}   {colors.dim(msg)}")
     return 0
 
 
@@ -306,7 +391,7 @@ def cmd_history(args: argparse.Namespace) -> int:
         fail = sum(1 for r in results if r.get("status") == "fail")
         skip = sum(1 for r in results if r.get("status") == "skip")
         ts = data.get("timestamp", "?")
-        summary = f"{colors.green(f'{ok} ok')} · " f"{colors.yellow(f'{warn} warn')} · " f"{colors.red(f'{fail} fail')} · " f"{colors.dim(f'{skip} skip')}"
+        summary = f"{colors.green(f'{ok} ok')} · {colors.yellow(f'{warn} warn')} · {colors.red(f'{fail} fail')} · {colors.dim(f'{skip} skip')}"
         print(f"  {colors.cyan(ts):<35} {summary}  {colors.dim(os.path.basename(path))}")
     return 0
 
@@ -752,7 +837,7 @@ def cmd_services(args: argparse.Namespace) -> int:
     sub = details.get("SubState", "?")
     result = details.get("Result", "?")
     color_fn = colors.green if active == "active" else (colors.red if active in ("failed",) else colors.yellow)
-    print(f"  state    : {color_fn(f'{active} ({sub})', bold=True)}  " f"{colors.dim(f'· result={result}')}")
+    print(f"  state    : {color_fn(f'{active} ({sub})', bold=True)}  {colors.dim(f'· result={result}')}")
     if details.get("Description"):
         print(f"  desc     : {details['Description']}")
     if details.get("UnitFileState"):
@@ -1129,6 +1214,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=f"Project: {__url__}\n"
         "Examples:\n"
         "  wtf                       # default: short audit summary\n"
+        "  wtf disk --tree           # what is eating the fullest disk\n"
         "  wtf info                  # detailed system snapshot\n"
         "  wtf audit -v              # audit with extra detail per check\n"
         "  wtf crontab               # check standard crontab locations\n"
@@ -1139,13 +1225,48 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show extra detail")
     parser.add_argument("-q", "--quiet", action="store_true", help="Reduce logging output")
-    parser.add_argument("--config", metavar="PATH", help="Path to an extra wtftools config file (INI). Stacks on top " "of the default discovery paths.")
+    parser.add_argument("--config", metavar="PATH", help="Path to an extra wtftools config file (INI). Stacks on top of the default discovery paths.")
 
     subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
 
     info = subparsers.add_parser("info", help="Show summary of system state")
     info.add_argument("--format", choices=["text", "json"], default="text")
     info.set_defaults(func=cmd_info)
+
+    disk = subparsers.add_parser("disk", help="Disk usage per mount; --tree shows what eats the space")
+    disk.add_argument(
+        "--tree",
+        nargs="?",
+        const="auto",
+        metavar="PATH",
+        help="Show largest directories under PATH (default: the fullest mount)",
+    )
+    disk.add_argument("--depth", type=int, default=2, metavar="N", help="Tree depth for --tree (default: 2)")
+    disk.add_argument("--top", type=int, default=15, metavar="N", help="Entries to show for --tree (default: 15)")
+    disk.add_argument("--format", choices=["text", "plain", "json"], default="text")
+    disk.set_defaults(func=cmd_disk)
+
+    cpu = subparsers.add_parser("cpu", help="CPU load, iowait, pressure, top consumers")
+    cpu.add_argument("--format", choices=["text", "plain", "json"], default="text")
+    cpu.set_defaults(func=cmd_cpu)
+
+    mem = subparsers.add_parser("mem", help="Memory/swap usage, OOM kills, top consumers")
+    mem.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window for OOM kills (default: 24)")
+    mem.add_argument("--format", choices=["text", "plain", "json"], default="text")
+    mem.set_defaults(func=cmd_mem)
+
+    net = subparsers.add_parser("net", help="Interfaces, gateway, DNS, errors, listening ports")
+    net.add_argument("--format", choices=["text", "plain", "json"], default="text")
+    net.set_defaults(func=cmd_net)
+
+    io = subparsers.add_parser("io", help="Disk IO rates, pressure, stuck processes")
+    io.add_argument("--format", choices=["text", "plain", "json"], default="text")
+    io.set_defaults(func=cmd_io)
+
+    who = subparsers.add_parser("who", help="Logged-in users, recent logins, failed auth")
+    who.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window for failed auth (default: 24)")
+    who.add_argument("--format", choices=["text", "plain", "json"], default="text")
+    who.set_defaults(func=cmd_who)
 
     audit = subparsers.add_parser("audit", help="Run health audit and show OK/WARN/FAIL")
     audit.add_argument("--format", choices=["text", "json", "prometheus", "csv", "plain", "html"], default="text")
@@ -1162,12 +1283,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         metavar="NAME",
         default=[],
-        help="Skip a check (short-name) or result-name (repeatable). " "e.g. --ignore swap  or  --ignore 'disk /mnt/Backup'",
+        help="Skip a check (short-name) or result-name (repeatable). e.g. --ignore swap  or  --ignore 'disk /mnt/Backup'",
     )
     audit.add_argument("--serial", action="store_true", help="Run checks sequentially (for debugging; default is parallel)")
     audit.add_argument("--check-timeout", type=float, metavar="SECONDS", help="Per-check timeout in seconds (default: 10, overrides config)")
     audit.add_argument(
-        "--alert", metavar="CMD", help="Shell command to invoke when FAIL results exist. " "Audit text is piped to stdin. " "Env: WTF_FAIL_COUNT, WTF_WARN_COUNT, WTF_HOST."
+        "--alert", metavar="CMD", help="Shell command to invoke when FAIL results exist. Audit text is piped to stdin. Env: WTF_FAIL_COUNT, WTF_WARN_COUNT, WTF_HOST."
     )
     audit.add_argument("--alert-on", choices=["fail", "warn", "any"], default="fail", help="When to fire --alert (default: only on FAIL)")
     audit.add_argument("--save", action="store_true", help="Persist the audit result as a snapshot for history/diff")
@@ -1201,7 +1322,7 @@ def build_parser() -> argparse.ArgumentParser:
     problems.set_defaults(func=cmd_problems, list_checks=False, brief=False, save=False, alert=None, alert_on="fail")
 
     diff = subparsers.add_parser("diff", help="Compare current audit (or a snapshot) against a stored snapshot")
-    diff.add_argument("--snapshot", type=int, default=0, metavar="N", help="Compare against the Nth-most-recent snapshot " "(0=latest, 1=one before, …). Default: 0.")
+    diff.add_argument("--snapshot", type=int, default=0, metavar="N", help="Compare against the Nth-most-recent snapshot (0=latest, 1=one before, …). Default: 0.")
     diff.add_argument("--against", nargs=2, metavar=("OLD", "NEW"), help="Diff two snapshot files directly, no live audit")
     diff.add_argument("--format", choices=["text", "json"], default="text")
     diff.set_defaults(func=cmd_diff)
@@ -1217,15 +1338,15 @@ def build_parser() -> argparse.ArgumentParser:
     explain.add_argument("--since", type=int, default=24, metavar="HOURS", help="Look-back window for time-bounded checks (default: 24)")
     explain.add_argument("--all", action="store_true", help="Also explain OK results (default: only WARN/FAIL)")
     explain.add_argument(
-        "--deep", action="store_true", help="Run dynamic investigation per finding (du -d1 on the " "filling mount, docker system df, container/log sizes). " "Slower; opt-in."
+        "--deep", action="store_true", help="Run dynamic investigation per finding (du -d1 on the filling mount, docker system df, container/log sizes). Slower; opt-in."
     )
     explain.add_argument(
-        "--prompt", action="store_true", help="Print an LLM-ready prompt instead of built-in advice. " "Pipe it: `wtf explain --prompt | claude` or `| ollama run llama3`."
+        "--prompt", action="store_true", help="Print an LLM-ready prompt instead of built-in advice. Pipe it: `wtf explain --prompt | claude` or `| ollama run llama3`."
     )
     explain.add_argument(
         "--llm",
         choices=["ollama", "claude", "openai", "auto"],
-        help="Call an LLM directly with the structured prompt and " "print its response. ollama needs the binary; " "claude/openai need the matching Python SDK + API key env.",
+        help="Call an LLM directly with the structured prompt and print its response. ollama needs the binary; claude/openai need the matching Python SDK + API key env.",
     )
     explain.add_argument("--llm-model", metavar="MODEL", help="Override default model name for --llm")
     explain.add_argument("--llm-timeout", type=int, default=60, metavar="SECONDS", help="LLM call timeout (default: 60s)")
@@ -1256,7 +1377,7 @@ def build_parser() -> argparse.ArgumentParser:
     logs.add_argument("--format", choices=["text", "json"], default="text")
     logs.set_defaults(func=cmd_logs)
 
-    services = subparsers.add_parser("services", help="Drilldown for one systemd service")
+    services = subparsers.add_parser("services", aliases=["service"], help="Drilldown for one systemd service")
     services.add_argument("name", help="Service unit name (e.g. nginx or nginx.service)")
     services.add_argument("-n", "--lines", type=int, default=20, help="Recent journal lines to show (default: 20)")
     services.add_argument("--format", choices=["text", "json"], default="text")
