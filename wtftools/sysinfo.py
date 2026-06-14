@@ -5,6 +5,7 @@
 Pure stdlib first, optional psutil for richer data.
 """
 
+import json
 import logging
 import os
 import platform
@@ -1730,3 +1731,190 @@ def get_disk_io_per_device(sample_seconds: float = 0.5, limit: int = 5) -> List[
         )
     results.sort(key=lambda d: (d["util_percent"], d["read_bps"] + d["write_bps"]), reverse=True)
     return results[:limit]
+
+
+def get_proc_info(pid: int) -> Dict[str, Any]:
+    """Best-effort /proc enrichment for a PID: exe, cwd, cmdline, user.
+
+    Reading /proc/<pid>/exe and /cwd needs privilege for other users'
+    processes; unreadable fields come back as None rather than raising.
+    """
+    info: Dict[str, Any] = {"pid": pid, "exe": None, "cwd": None, "cmdline": None, "user": None}
+    try:
+        info["exe"] = os.readlink(f"/proc/{pid}/exe")
+    except OSError:
+        pass
+    try:
+        info["cwd"] = os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        pass
+    raw = read_file(f"/proc/{pid}/cmdline")
+    if raw:
+        info["cmdline"] = raw.replace("\x00", " ").strip()
+    try:
+        import pwd
+
+        uid = os.stat(f"/proc/{pid}").st_uid
+        info["user"] = pwd.getpwuid(uid).pw_name
+    except (OSError, KeyError):
+        pass
+    return info
+
+
+def _port_map_lsof(port: int) -> Optional[List[Dict[str, Any]]]:
+    """Processes on `port` via lsof. None if lsof is unavailable/unusable."""
+    if not shutil.which("lsof"):
+        return None
+    rc, out, _ = run(["lsof", "-nP", f"-i:{port}"], timeout=8)
+    # lsof exits 1 when nothing matches — that is an empty result, not an error.
+    if rc not in (0, 1):
+        return None
+    entries: List[Dict[str, Any]] = []
+    for line in out.splitlines():
+        parts = line.split(None, 8)
+        if len(parts) < 9 or parts[0] == "COMMAND":
+            continue
+        name = parts[8]
+        if f":{port}" not in name:
+            continue
+        try:
+            pid = int(parts[1])
+        except ValueError:
+            continue
+        state = ""
+        addr = name
+        if "(" in name:
+            addr, _, rest = name.partition("(")
+            addr = addr.strip()
+            state = rest.rstrip(")")
+        entries.append({"pid": pid, "command": parts[0], "user": parts[2], "proto": parts[7].lower(), "addr": addr, "state": state})
+    return entries
+
+
+def _port_map_psutil(port: int) -> Optional[List[Dict[str, Any]]]:
+    """Processes on `port` via psutil. None if psutil is unavailable."""
+    if not HAS_PSUTIL:
+        return None
+    try:
+        entries: List[Dict[str, Any]] = []
+        for conn in psutil.net_connections(kind="inet"):
+            if not conn.laddr or conn.laddr.port != port:
+                continue
+            proto = "tcp" if conn.type == socket.SOCK_STREAM else "udp"
+            command = ""
+            user = ""
+            if conn.pid:
+                try:
+                    proc = psutil.Process(conn.pid)
+                    command = proc.name()
+                    user = proc.username()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            entries.append({"pid": conn.pid, "command": command, "user": user, "proto": proto, "addr": f"{conn.laddr.ip}:{conn.laddr.port}", "state": conn.status or ""})
+        return entries
+    except Exception:
+        return None
+
+
+def _port_map_ss(port: int) -> Optional[List[Dict[str, Any]]]:
+    """Processes on `port` via ss. None if ss is unusable."""
+    if not shutil.which("ss"):
+        return None
+    rc, out, _ = run(["ss", "-tulnpH", f"( sport = :{port} )"], timeout=5)
+    if rc != 0:
+        return None
+    entries: List[Dict[str, Any]] = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+        pid = None
+        command = ""
+        pid_match = re.search(r"pid=(\d+)", line)
+        if pid_match:
+            pid = int(pid_match.group(1))
+        name_match = re.search(r'\("([^"]+)"', line)
+        if name_match:
+            command = name_match.group(1)
+        entries.append({"pid": pid, "command": command, "user": "", "proto": parts[0], "addr": parts[4], "state": parts[1]})
+    return entries
+
+
+def get_port_processes(port: int) -> List[Dict[str, Any]]:
+    """Return processes using `port` (any protocol/state), enriched via /proc.
+
+    Source preference: lsof (what the user asked for), then psutil, then ss.
+    Each entry carries proto, addr, state, pid, user, command, exe, cwd, cmdline.
+    """
+    entries = _port_map_lsof(port)
+    if entries is None:
+        entries = _port_map_psutil(port)
+    if entries is None:
+        entries = _port_map_ss(port)
+    entries = entries or []
+    for entry in entries:
+        pid = entry.get("pid")
+        if not pid:
+            entry.setdefault("exe", None)
+            entry.setdefault("cwd", None)
+            entry.setdefault("cmdline", None)
+            continue
+        proc = get_proc_info(pid)
+        entry["exe"] = proc["exe"]
+        entry["cwd"] = proc["cwd"]
+        entry["cmdline"] = proc["cmdline"] or entry.get("command")
+        if not entry.get("user"):
+            entry["user"] = proc["user"]
+    return entries
+
+
+def get_docker_container_origin(name: str) -> Optional[Dict[str, Any]]:
+    """Compose origin for one container via `docker inspect` labels.
+
+    Returns image/status plus the compose project, service, host working
+    directory and config files. None when docker is missing or the container
+    is unknown. `working_dir` is None for non-compose containers (docker does
+    not record the host cwd of a plain `docker run`).
+    """
+    if not shutil.which("docker"):
+        return None
+    rc, out, _ = run(["docker", "inspect", name], timeout=8)
+    if rc != 0 or not out:
+        return None
+    try:
+        data = json.loads(out)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not data:
+        return None
+    container = data[0]
+    config = container.get("Config") or {}
+    labels = config.get("Labels") or {}
+    state = container.get("State") or {}
+    return {
+        "name": (container.get("Name") or name).lstrip("/"),
+        "image": config.get("Image", ""),
+        "status": state.get("Status", ""),
+        "compose_project": labels.get("com.docker.compose.project"),
+        "compose_service": labels.get("com.docker.compose.service"),
+        "working_dir": labels.get("com.docker.compose.project.working_dir"),
+        "config_files": labels.get("com.docker.compose.project.config_files"),
+    }
+
+
+def get_docker_containers() -> Optional[List[Dict[str, Any]]]:
+    """Running containers with their compose origin. None if docker is unusable."""
+    if not shutil.which("docker"):
+        return None
+    rc, out, _ = run(["docker", "ps", "--format", "{{.Names}}"], timeout=8)
+    if rc != 0:
+        return None
+    result: List[Dict[str, Any]] = []
+    for name in out.splitlines():
+        name = name.strip()
+        if not name:
+            continue
+        info = get_docker_container_origin(name)
+        if info:
+            result.append(info)
+    return result

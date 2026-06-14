@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `wtf port <N>` (alias of `wtf ports <N>`) — drill into a single port:
+  which process holds it (PID, user, command), the exact executable file
+  behind it and its working directory, via `lsof` with `/proc` enrichment
+  and psutil/`ss` fallbacks. text/plain/json output.
+- `wtf docker [NAME]` — where a container was started from: the compose
+  project working directory and config files read from the container's
+  labels. With no name it lists running containers and their working dirs.
+
+### CI
+- Bumped GitHub Actions to the Node.js 24 majors (checkout v6,
+  setup-python v6, action-gh-release v3).
+
 ## [0.0.1] - 2026-06-14
 
 ### Added — per-resource subcommands

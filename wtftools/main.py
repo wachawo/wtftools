@@ -165,7 +165,13 @@ def cmd_top(args: argparse.Namespace) -> int:
 
 
 def cmd_ports(args: argparse.Namespace) -> int:
-    """Listening sockets with owning process info."""
+    """Listening sockets with owning process info.
+
+    With a positional port number (`wtf port 5060`) it drills into that one
+    port instead: PID, user, the exact executable file and working directory.
+    """
+    if getattr(args, "port", None) is not None:
+        return _cmd_port_detail(args)
     try:
         import psutil  # type: ignore
     except ImportError:
@@ -271,6 +277,114 @@ def _cmd_ports_fallback(args: argparse.Namespace) -> int:
     print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20}")
     for r in rows:
         print(f"  {r['port']:>5}  {r['proto']:<5} {r['addr']:<20}")
+    return 0
+
+
+def _cmd_port_detail(args: argparse.Namespace) -> int:
+    """Drill into a single port: which process holds it and which file it is."""
+    port = args.port
+    entries = sysinfo.get_port_processes(port)
+
+    if args.format == "json":
+        print(json.dumps({"schema_version": 1, "port": port, "processes": entries}, indent=2, default=str))
+        return 0 if entries else 1
+    if args.format == "plain":
+        for e in entries:
+            print(
+                f"{e.get('proto', '')}\t{e.get('addr', '')}\t{e.get('state', '')}\t"
+                f"{e.get('pid') or '-'}\t{e.get('user') or '-'}\t{e.get('command') or '-'}\t"
+                f"{e.get('exe') or '-'}\t{e.get('cwd') or '-'}"
+            )
+        return 0 if entries else 1
+
+    print(colors.section(f"PORT {port}"))
+    if not entries:
+        print(colors.dim("  (nothing is using this port)"))
+        print(colors.dim("  note: run with sudo to see processes owned by other users"))
+        return 1
+    unreadable = colors.dim("(unreadable — try sudo)")
+    for e in entries:
+        head = f"{e.get('proto', '?')} {e.get('addr', '')}"
+        if e.get("state"):
+            head += f" ({e['state']})"
+        print(f"  {colors.bold(head)}")
+        print(f"    pid     : {e.get('pid') or '-'}")
+        print(f"    user    : {e.get('user') or '-'}")
+        print(f"    command : {e.get('command') or '-'}")
+        if e.get("cmdline"):
+            print(f"    cmdline : {e['cmdline']}")
+        print(f"    exe     : {e.get('exe') or unreadable}")
+        print(f"    cwd     : {e.get('cwd') or unreadable}")
+    return 0
+
+
+def cmd_docker(args: argparse.Namespace) -> int:
+    """Where a container came from: compose project working dir + config files."""
+    if not shutil.which("docker"):
+        msg = "docker not available on this host"
+        if args.format == "json":
+            print(json.dumps({"error": msg}))
+        else:
+            print(colors.red(msg))
+        return 2
+
+    if args.name:
+        info = sysinfo.get_docker_container_origin(args.name)
+        if info is None:
+            msg = f"container '{args.name}' not found (or docker not accessible)"
+            if args.format == "json":
+                print(json.dumps({"error": msg}))
+            else:
+                print(colors.red(msg))
+            return 1
+        items = [info]
+    else:
+        items = sysinfo.get_docker_containers()
+        if items is None:
+            msg = "cannot list containers (is the docker daemon running and accessible?)"
+            if args.format == "json":
+                print(json.dumps({"error": msg}))
+            else:
+                print(colors.red(msg))
+            return 1
+
+    if args.format == "json":
+        print(json.dumps({"schema_version": 1, "containers": items}, indent=2, default=str))
+        return 0
+    if args.format == "plain":
+        for c in items:
+            print(
+                f"{c['name']}\t{c.get('status', '')}\t{c.get('image', '')}\t"
+                f"{c.get('compose_project') or '-'}\t{c.get('compose_service') or '-'}\t"
+                f"{c.get('working_dir') or '-'}\t{c.get('config_files') or '-'}"
+            )
+        return 0
+
+    if args.name:
+        c = items[0]
+        print(colors.section(c["name"]))
+        print(f"  image        : {c.get('image', '')}")
+        print(f"  status       : {c.get('status', '')}")
+        if c.get("working_dir"):
+            project = c.get("compose_project") or "?"
+            service = c.get("compose_service") or "?"
+            print(f"  compose      : {project} / {service}")
+            print(f"  working dir  : {colors.bold(c['working_dir'])}")
+            if c.get("config_files"):
+                print(f"  config files : {c['config_files']}")
+        else:
+            print(colors.dim("  not a compose container — no host working dir recorded"))
+        return 0
+
+    print(colors.section("DOCKER"))
+    if not items:
+        print(colors.dim("  (no running containers)"))
+        return 0
+    name_width = max((len(c["name"]) for c in items), default=12)
+    print(f"  {'NAME'.ljust(name_width)}  {'STATUS':<9} WORKING DIR")
+    for c in items:
+        wd = c.get("working_dir") or colors.dim("(not compose)")
+        print(f"  {c['name'].ljust(name_width)}  {c.get('status', ''):<9} {wd}")
     return 0
 
 
@@ -1418,11 +1532,17 @@ def build_parser() -> argparse.ArgumentParser:
     top.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
     top.set_defaults(func=cmd_top)
 
-    ports = subparsers.add_parser("ports", help="Listening ports with owning process info")
-    ports.add_argument("--proto", choices=["tcp", "udp", "all"], default="tcp", help="Protocol filter (default: tcp)")
+    ports = subparsers.add_parser("ports", aliases=["port"], help="Listening ports; pass a PORT to drill into one (PID, exe file, cwd)")
+    ports.add_argument("port", nargs="?", type=int, help="Drill into one port: which process holds it, its exe file and cwd")
+    ports.add_argument("--proto", choices=["tcp", "udp", "all"], default="tcp", help="Protocol filter for the listing (default: tcp)")
     ports.add_argument("--public-only", action="store_true", help="Skip loopback addresses (127.x)")
     ports.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
     ports.set_defaults(func=cmd_ports)
+
+    docker = subparsers.add_parser("docker", help="Where a container came from: compose working dir by name")
+    docker.add_argument("name", nargs="?", help="Container name; omit to list running containers")
+    docker.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    docker.set_defaults(func=cmd_docker)
 
     problems = subparsers.add_parser("problems", help="Show only WARN+FAIL results (alias: audit --only problem)")
     problems.add_argument("--check", action="append", metavar="NAME", help="Run only the named check (repeatable). See `--list-checks`.")

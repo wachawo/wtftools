@@ -32,6 +32,8 @@ wtf                                     # any FAIL/WARN? what?
 wtf problems -v                         # detail on every problem
 wtf events --since 6                    # last 6h: reboots, OOMs, …
 wtf services <unit>                     # drill into one systemd service
+wtf port 5060                           # who holds a port: PID, exe, cwd
+wtf docker <name>                       # which folder a container started from
 wtf logs --since '2 hours ago'          # ERROR+ journal entries
 wtf explain                             # actionable suggestions per finding
 wtf explain --llm ollama                # or pipe through an LLM

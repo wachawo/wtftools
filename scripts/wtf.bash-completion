@@ -7,7 +7,7 @@ _wtf_complete() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="info disk cpu mem net io who daily audit problems crontab doctor services service config logs explain history diff top ports events"
+    local subcommands="info disk cpu mem net io who daily audit problems crontab doctor services service config logs explain history diff top ports port docker events"
     local global_opts="-h --help -V --version -f --format --no-color -v --verbose -q --quiet --config"
 
     if [[ $COMP_CWORD -eq 1 ]]; then
@@ -97,13 +97,20 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
             ;;
-        ports)
+        ports|port)
             local opts="--proto --public-only --format"
             case "$prev" in
                 --proto)  COMPREPLY=( $(compgen -W "tcp udp all" -- "$cur") ); return 0 ;;
                 --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
             esac
             COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            ;;
+        docker)
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
+            esac
+            local names=$(docker ps --format '{{.Names}}' 2>/dev/null)
+            COMPREPLY=( $(compgen -W "--format $names" -- "$cur") )
             ;;
         services|service)
             local opts="-n --lines --format"

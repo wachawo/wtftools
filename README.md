@@ -104,6 +104,42 @@ wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
 
+### Who is on a port?
+
+`wtf port <N>` (or `wtf ports <N>`) shows which process holds a port — the
+PID, the exact executable file behind it (via `lsof` + `/proc`), and the
+directory it runs from:
+
+```
+$ wtf port 5060
+─────────── PORT 5060 ───────────
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+Run it with `sudo` to see processes owned by other users.
+
+### Where was this container started?
+
+`wtf docker <name>` answers "which folder did `docker compose up` run in?"
+straight from the container's labels — no guessing:
+
+```
+$ wtf docker myapp_web
+─────────── myapp_web ───────────
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+```
+
+`wtf docker` with no name lists every running container and its working dir.
+
 ## Output for scripts: grep, awk, jq
 
 Colors disappear automatically when you pipe, so plain `grep` always works.
@@ -183,6 +219,8 @@ Exit codes are CI/cron-friendly:
 | `wtf info`          | one-page snapshot: all of the above at once                 |
 | `wtf top`           | focused process top: sort by cpu/rss, filter user/name      |
 | `wtf ports`         | listening sockets with owning PID/user/command              |
+| `wtf port NUM`      | drill into one port: PID, executable file, working dir      |
+| `wtf docker [NAME]` | container's compose working dir + config files by name      |
 | `wtf service NAME`  | drilldown one service: state, restarts, mem, ports, journal |
 | `wtf logs`          | recent ERROR+ journal entries grouped by service            |
 | `wtf events`        | chronological timeline: reboots, OOM, failed units, …       |
