@@ -6,12 +6,12 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> One command to see what is going on with your Linux server right now.
+> Um único comando para ver o que está acontecendo com o seu servidor Linux agora mesmo.
 
-**English** | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
+[English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | **Português** | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-You log in to a server and something feels wrong. Instead of running ten
-commands (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) you run one:
+Você acessa um servidor e algo parece errado. Em vez de executar dez
+comandos (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …), você executa um:
 
 ```
 $ wtf
@@ -27,15 +27,15 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Green is fine, yellow needs a look, red needs fixing. That's it.
+Verde está bem, amarelo precisa de atenção, vermelho precisa ser corrigido. É só isso.
 
-## Install
+## Instalação
 
 ```bash
 pipx install wtftools          # recommended — works on any modern distro
 ```
 
-No `pipx`? Any of these works too:
+Não tem `pipx`? Qualquer um destes também funciona:
 
 ```bash
 pip install wtftools           # classic pip (core, no dependencies)
@@ -43,9 +43,9 @@ pip install wtftools[full]     # + psutil for richer process/socket info
 sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
-After install you have the `wtf` command. Try it: `wtf`.
+Após a instalação, você terá o comando `wtf`. Experimente: `wtf`.
 
-## The commands you will actually use
+## Os comandos que você realmente vai usar
 
 ```bash
 wtf              # full health check — start here
@@ -53,7 +53,7 @@ wtf problems     # show ONLY what is wrong (warnings + failures)
 wtf explain      # what to do about each problem, step by step
 ```
 
-Then ask about one resource at a time, like `show` commands on a switch:
+Depois pergunte sobre um recurso de cada vez, como comandos `show` em um switch:
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
@@ -65,7 +65,7 @@ wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
 ```
 
-Example — disk is filling up, find the culprit:
+Exemplo — o disco está enchendo, encontre o culpado:
 
 ```
 $ wtf disk --tree /var
@@ -79,10 +79,10 @@ $ wtf disk --tree /var
        1.8GB  /var/log/app
 ```
 
-`wtf disk --tree` without a path picks the fullest mount automatically.
+`wtf disk --tree` sem um caminho escolhe automaticamente o ponto de montagem mais cheio.
 
-Learning Linux? Add `--show-commands` to any resource command and it also
-prints the classic commands it replaces, so you can run them yourself:
+Aprendendo Linux? Adicione `--show-commands` a qualquer comando de recurso e ele também
+imprime os comandos clássicos que substitui, para que você possa executá-los você mesmo:
 
 ```
 $ wtf cpu --show-commands
@@ -93,7 +93,7 @@ $ wtf cpu --show-commands
     $ ps aux --sort=-%cpu | head
 ```
 
-## When something is broken
+## Quando algo está quebrado
 
 ```bash
 wtf problems -v                 # every problem, with detail
@@ -104,11 +104,11 @@ wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
 
-## Output for scripts: grep, awk, jq
+## Saída para scripts: grep, awk, jq
 
-Colors disappear automatically when you pipe, so plain `grep` always works.
-Every command also has machine-readable formats — `plain` (tab-separated,
-no headers) and `json`. The flag works before the subcommand too:
+As cores desaparecem automaticamente quando você usa um pipe, então o `grep` simples sempre funciona.
+Cada comando também tem formatos legíveis por máquina — `plain` (separado por tabulações,
+sem cabeçalhos) e `json`. A flag também funciona antes do subcomando:
 
 ```bash
 wtf -f json disk                         # same as: wtf disk --format json
@@ -125,26 +125,26 @@ wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
 ```
 
-JSON payloads of the resource commands carry `schema_version` so your
-scripts survive upgrades.
+As cargas JSON dos comandos de recurso incluem `schema_version` para que seus
+scripts sobrevivam a atualizações.
 
-## Daily routine and monitoring
+## Rotina diária e monitoramento
 
-One command for the morning check — audit, what changed since the last run,
-and the event timeline, with a one-line verdict on top:
+Um único comando para a verificação matinal — auditoria, o que mudou desde a última execução,
+e a linha do tempo de eventos, com um veredito de uma linha no topo:
 
 ```bash
 wtf daily                       # audit + diff vs yesterday + events
 ```
 
-It saves a snapshot on every run, so tomorrow's `wtf daily` shows the diff.
-A crontab line for unattended use (mails only when something is wrong):
+Ele salva um snapshot a cada execução, então o `wtf daily` de amanhã mostra a diferença.
+Uma linha de crontab para uso autônomo (envia e-mail apenas quando algo está errado):
 
 ```cron
 0 8 * * * wtf daily --format json > /var/log/wtf-daily.json 2>&1 || mail -s "wtf $(hostname)" you@example.com < /var/log/wtf-daily.json
 ```
 
-The building blocks are also available separately:
+Os blocos de construção também estão disponíveis separadamente:
 
 ```bash
 wtf audit --brief               # one line — perfect for MOTD / SSH banner
@@ -157,46 +157,46 @@ wtf audit --alert 'mail -s "wtf $WTF_HOST" you@example.com'
 wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 ```
 
-Exit codes are CI/cron-friendly:
+Os códigos de saída são amigáveis para CI/cron:
 
-| code | meaning                                          |
+| código | significado                                      |
 |------|--------------------------------------------------|
-| 0    | everything OK                                    |
-| 1    | warnings with `--strict`, or crontab errors      |
-| 2    | audit found a `[FAIL]`                           |
-| 130  | interrupted (Ctrl-C)                             |
+| 0    | tudo OK                                           |
+| 1    | avisos com `--strict`, ou erros de crontab       |
+| 2    | a auditoria encontrou um `[FAIL]`                |
+| 130  | interrompido (Ctrl-C)                             |
 
-## All subcommands
+## Todos os subcomandos
 
-| command             | what it does                                                |
+| comando             | o que faz                                                   |
 |---------------------|-------------------------------------------------------------|
-| `wtf` / `wtf audit` | green/yellow/red checklist: what is OK and what is not      |
-| `wtf problems`      | only WARN+FAIL rows                                         |
-| `wtf daily`         | morning check: audit + diff vs last run + events            |
-| `wtf explain`       | per-check actionable advice; `--llm` to pipe to an LLM      |
-| `wtf disk`          | per-mount usage; `--tree` shows largest directories         |
-| `wtf cpu`           | load, iowait, pressure, top CPU consumers                   |
-| `wtf mem`           | RAM/swap, OOM kills, top memory consumers                   |
-| `wtf net`           | interfaces, gateway, DNS, errors, listening ports           |
-| `wtf io`            | per-device IO rates, pressure, stuck processes              |
-| `wtf who`           | logged-in users, recent logins, failed auth                 |
-| `wtf info`          | one-page snapshot: all of the above at once                 |
-| `wtf top`           | focused process top: sort by cpu/rss, filter user/name      |
-| `wtf ports`         | listening sockets with owning PID/user/command              |
-| `wtf service NAME`  | drilldown one service: state, restarts, mem, ports, journal |
-| `wtf logs`          | recent ERROR+ journal entries grouped by service            |
-| `wtf events`        | chronological timeline: reboots, OOM, failed units, …       |
-| `wtf history`       | list saved audit snapshots (`wtf audit --save` to create)   |
-| `wtf diff`          | compare current state to a saved snapshot                   |
-| `wtf crontab`       | validate all standard crontab locations + per-user crontabs |
-| `wtf doctor`        | self-diagnostic: which tools wtftools can actually use      |
-| `wtf config`        | show effective config / print example                       |
+| `wtf` / `wtf audit` | checklist verde/amarelo/vermelho: o que está OK e o que não está |
+| `wtf problems`      | apenas as linhas WARN+FAIL                                  |
+| `wtf daily`         | verificação matinal: auditoria + diff vs última execução + eventos |
+| `wtf explain`       | conselhos práticos por verificação; `--llm` para enviar a uma LLM |
+| `wtf disk`          | uso por ponto de montagem; `--tree` mostra os maiores diretórios |
+| `wtf cpu`           | carga, iowait, pressão, maiores consumidores de CPU         |
+| `wtf mem`           | RAM/swap, mortes por OOM, maiores consumidores de memória   |
+| `wtf net`           | interfaces, gateway, DNS, erros, portas em escuta           |
+| `wtf io`            | taxas de IO por dispositivo, pressão, processos travados    |
+| `wtf who`           | usuários conectados, logins recentes, autenticações falhas  |
+| `wtf info`          | snapshot de uma página: tudo acima de uma só vez            |
+| `wtf top`           | top de processos focado: ordenar por cpu/rss, filtrar usuário/nome |
+| `wtf ports`         | sockets em escuta com PID/usuário/comando proprietário      |
+| `wtf service NAME`  | detalhamento de um serviço: estado, reinícios, mem, portas, journal |
+| `wtf logs`          | entradas recentes ERROR+ do journal agrupadas por serviço   |
+| `wtf events`        | linha do tempo cronológica: reinicializações, OOM, unidades falhas, … |
+| `wtf history`       | lista os snapshots de auditoria salvos (`wtf audit --save` para criar) |
+| `wtf diff`          | compara o estado atual com um snapshot salvo                |
+| `wtf crontab`       | valida todos os locais padrão de crontab + crontabs por usuário |
+| `wtf doctor`        | autodiagnóstico: quais ferramentas o wtftools pode realmente usar |
+| `wtf config`        | mostra a configuração efetiva / imprime exemplo             |
 
-`wtftools` absorbs and supersedes
-[`checkcrontab`](https://github.com/wachawo/checkcrontab) — the same cron
-validator now lives at `wtf crontab`.
+`wtftools` absorve e substitui
+[`checkcrontab`](https://github.com/wachawo/checkcrontab) — o mesmo validador
+de cron agora reside em `wtf crontab`.
 
-## Advanced audit options
+## Opções avançadas de auditoria
 
 ```bash
 wtf audit -v             # show extra detail (failed units, OOM events)
@@ -210,7 +210,7 @@ wtf audit --format html -o report.html    # self-contained HTML for tickets
 wtf audit --format prometheus             # metrics for node_exporter textfile
 ```
 
-### Built-in checks
+### Verificações integradas
 
 uptime · system state · load average · CPU iowait · PSI cpu/memory/io ·
 TCP retransmits · memory · swap · disk (per mount) · inodes ·
@@ -221,15 +221,15 @@ open file descriptors · process count · failed auth · time sync ·
 pending updates · reboot required · cron daemon · crontab syntax · docker ·
 hw temperatures · disk SMART · DNS · HTTP/TCP probes · fail2ban.
 
-## Config
+## Configuração
 
-Thresholds and ignores live in an INI file at any of:
+Os limiares e as exclusões ficam em um arquivo INI em qualquer um destes locais:
 
 - `/etc/wtftools/config.ini`
 - `/etc/wtf/config.ini`
 - `~/.config/wtftools/config.ini`
 
-Run `wtf config --example` for a fully-commented template. Headlines:
+Execute `wtf config --example` para obter um modelo totalmente comentado. Destaques:
 
 ```ini
 [thresholds]
@@ -244,15 +244,15 @@ result_names =
     disk /mnt/Backup
 ```
 
-## Compatibility
+## Compatibilidade
 
 - Python 3.8+
-- Linux (systemd distributions are the happy path; the tool degrades
-  gracefully when `systemctl` / `journalctl` / `psutil` are missing)
-- No network access required for the core CLI
-- Optional network: `wtf explain --llm claude/openai`, `wtf doctor --check-updates`
+- Linux (as distribuições com systemd são o caminho ideal; a ferramenta se degrada
+  de forma elegante quando `systemctl` / `journalctl` / `psutil` estão ausentes)
+- Nenhum acesso à rede é necessário para a CLI principal
+- Rede opcional: `wtf explain --llm claude/openai`, `wtf doctor --check-updates`
 
-## From source
+## A partir do código-fonte
 
 ```bash
 git clone https://github.com/wachawo/wtftools
@@ -262,6 +262,6 @@ pip install -e .
 python3 wtf.py audit
 ```
 
-## License
+## Licença
 
 MIT

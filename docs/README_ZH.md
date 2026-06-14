@@ -6,12 +6,12 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> One command to see what is going on with your Linux server right now.
+> 一条命令即可查看你的 Linux 服务器此刻的运行状况。
 
-**English** | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
+[English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | **中文** | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-You log in to a server and something feels wrong. Instead of running ten
-commands (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) you run one:
+你登录到一台服务器，感觉有些不对劲。你不必再运行十几条命令
+（`htop`、`df -h`、`journalctl`、`systemctl --failed` ……），只需运行一条：
 
 ```
 $ wtf
@@ -27,15 +27,15 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Green is fine, yellow needs a look, red needs fixing. That's it.
+绿色表示正常，黄色需要留意，红色需要修复。就这么简单。
 
-## Install
+## 安装
 
 ```bash
 pipx install wtftools          # recommended — works on any modern distro
 ```
 
-No `pipx`? Any of these works too:
+没有 `pipx`？以下任意方式都可以：
 
 ```bash
 pip install wtftools           # classic pip (core, no dependencies)
@@ -43,9 +43,9 @@ pip install wtftools[full]     # + psutil for richer process/socket info
 sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
-After install you have the `wtf` command. Try it: `wtf`.
+安装后你就拥有了 `wtf` 命令。试一下：`wtf`。
 
-## The commands you will actually use
+## 你真正会用到的命令
 
 ```bash
 wtf              # full health check — start here
@@ -53,7 +53,7 @@ wtf problems     # show ONLY what is wrong (warnings + failures)
 wtf explain      # what to do about each problem, step by step
 ```
 
-Then ask about one resource at a time, like `show` commands on a switch:
+然后逐个查询资源，就像交换机上的 `show` 命令一样：
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
@@ -65,7 +65,7 @@ wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
 ```
 
-Example — disk is filling up, find the culprit:
+示例——磁盘快满了，找出罪魁祸首：
 
 ```
 $ wtf disk --tree /var
@@ -79,10 +79,10 @@ $ wtf disk --tree /var
        1.8GB  /var/log/app
 ```
 
-`wtf disk --tree` without a path picks the fullest mount automatically.
+`wtf disk --tree` 不带路径时会自动选择最满的挂载点。
 
-Learning Linux? Add `--show-commands` to any resource command and it also
-prints the classic commands it replaces, so you can run them yourself:
+正在学习 Linux？给任意资源命令加上 `--show-commands`，它还会
+打印出所替代的经典命令，方便你自己运行：
 
 ```
 $ wtf cpu --show-commands
@@ -93,7 +93,7 @@ $ wtf cpu --show-commands
     $ ps aux --sort=-%cpu | head
 ```
 
-## When something is broken
+## 当出现故障时
 
 ```bash
 wtf problems -v                 # every problem, with detail
@@ -104,11 +104,11 @@ wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
 
-## Output for scripts: grep, awk, jq
+## 面向脚本的输出：grep、awk、jq
 
-Colors disappear automatically when you pipe, so plain `grep` always works.
-Every command also has machine-readable formats — `plain` (tab-separated,
-no headers) and `json`. The flag works before the subcommand too:
+当你使用管道时颜色会自动消失，因此普通的 `grep` 始终有效。
+每条命令还提供机器可读的格式——`plain`（制表符分隔，无表头）
+和 `json`。该标志也可以放在子命令之前：
 
 ```bash
 wtf -f json disk                         # same as: wtf disk --format json
@@ -125,26 +125,26 @@ wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
 ```
 
-JSON payloads of the resource commands carry `schema_version` so your
-scripts survive upgrades.
+资源命令的 JSON 负载带有 `schema_version`，因此你的脚本在
+升级后仍能正常运行。
 
-## Daily routine and monitoring
+## 日常例行检查与监控
 
-One command for the morning check — audit, what changed since the last run,
-and the event timeline, with a one-line verdict on top:
+一条命令完成早晨检查——审计、自上次运行以来的变化，
+以及事件时间线，并在顶部给出一行结论：
 
 ```bash
 wtf daily                       # audit + diff vs yesterday + events
 ```
 
-It saves a snapshot on every run, so tomorrow's `wtf daily` shows the diff.
-A crontab line for unattended use (mails only when something is wrong):
+它在每次运行时都会保存一份快照，因此明天的 `wtf daily` 会显示差异。
+用于无人值守的 crontab 行（仅在出现问题时发送邮件）：
 
 ```cron
 0 8 * * * wtf daily --format json > /var/log/wtf-daily.json 2>&1 || mail -s "wtf $(hostname)" you@example.com < /var/log/wtf-daily.json
 ```
 
-The building blocks are also available separately:
+这些构建模块也可单独使用：
 
 ```bash
 wtf audit --brief               # one line — perfect for MOTD / SSH banner
@@ -157,46 +157,46 @@ wtf audit --alert 'mail -s "wtf $WTF_HOST" you@example.com'
 wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 ```
 
-Exit codes are CI/cron-friendly:
+退出码对 CI/cron 友好：
 
-| code | meaning                                          |
+| 退出码 | 含义                                              |
 |------|--------------------------------------------------|
-| 0    | everything OK                                    |
-| 1    | warnings with `--strict`, or crontab errors      |
-| 2    | audit found a `[FAIL]`                           |
-| 130  | interrupted (Ctrl-C)                             |
+| 0    | 一切正常                                           |
+| 1    | 使用 `--strict` 时出现警告，或 crontab 错误         |
+| 2    | 审计发现了 `[FAIL]`                                |
+| 130  | 被中断（Ctrl-C）                                   |
 
-## All subcommands
+## 所有子命令
 
-| command             | what it does                                                |
+| 命令                 | 作用                                                        |
 |---------------------|-------------------------------------------------------------|
-| `wtf` / `wtf audit` | green/yellow/red checklist: what is OK and what is not      |
-| `wtf problems`      | only WARN+FAIL rows                                         |
-| `wtf daily`         | morning check: audit + diff vs last run + events            |
-| `wtf explain`       | per-check actionable advice; `--llm` to pipe to an LLM      |
-| `wtf disk`          | per-mount usage; `--tree` shows largest directories         |
-| `wtf cpu`           | load, iowait, pressure, top CPU consumers                   |
-| `wtf mem`           | RAM/swap, OOM kills, top memory consumers                   |
-| `wtf net`           | interfaces, gateway, DNS, errors, listening ports           |
-| `wtf io`            | per-device IO rates, pressure, stuck processes              |
-| `wtf who`           | logged-in users, recent logins, failed auth                 |
-| `wtf info`          | one-page snapshot: all of the above at once                 |
-| `wtf top`           | focused process top: sort by cpu/rss, filter user/name      |
-| `wtf ports`         | listening sockets with owning PID/user/command              |
-| `wtf service NAME`  | drilldown one service: state, restarts, mem, ports, journal |
-| `wtf logs`          | recent ERROR+ journal entries grouped by service            |
-| `wtf events`        | chronological timeline: reboots, OOM, failed units, …       |
-| `wtf history`       | list saved audit snapshots (`wtf audit --save` to create)   |
-| `wtf diff`          | compare current state to a saved snapshot                   |
-| `wtf crontab`       | validate all standard crontab locations + per-user crontabs |
-| `wtf doctor`        | self-diagnostic: which tools wtftools can actually use      |
-| `wtf config`        | show effective config / print example                       |
+| `wtf` / `wtf audit` | 绿/黄/红检查清单：什么正常、什么不正常                          |
+| `wtf problems`      | 仅显示 WARN+FAIL 行                                          |
+| `wtf daily`         | 早晨检查：审计 + 与上次运行的差异 + 事件                       |
+| `wtf explain`       | 针对每项检查给出可操作建议；用 `--llm` 传给 LLM                |
+| `wtf disk`          | 各挂载点用量；`--tree` 显示最大的目录                         |
+| `wtf cpu`           | 负载、iowait、压力、CPU 占用最高的进程                        |
+| `wtf mem`           | RAM/swap、OOM kill、内存占用最高的进程                        |
+| `wtf net`           | 网络接口、网关、DNS、错误、监听端口                            |
+| `wtf io`            | 各设备的 IO 速率、压力、卡住的进程                            |
+| `wtf who`           | 已登录用户、近期登录、失败的认证                              |
+| `wtf info`          | 一页式快照：以上全部一次性呈现                                |
+| `wtf top`           | 聚焦的进程 top：按 cpu/rss 排序，按用户/名称过滤              |
+| `wtf ports`         | 监听套接字及其所属 PID/用户/命令                              |
+| `wtf service NAME`  | 深入查看某个服务：状态、重启、内存、端口、日志                 |
+| `wtf logs`          | 按服务分组的近期 ERROR+ 日志条目                              |
+| `wtf events`        | 按时间顺序的时间线：重启、OOM、失败的单元……                   |
+| `wtf history`       | 列出已保存的审计快照（用 `wtf audit --save` 创建）            |
+| `wtf diff`          | 将当前状态与已保存的快照进行比较                              |
+| `wtf crontab`       | 校验所有标准 crontab 位置 + 每个用户的 crontab                |
+| `wtf doctor`        | 自我诊断：wtftools 实际能使用哪些工具                         |
+| `wtf config`        | 显示生效的配置 / 打印示例                                     |
 
-`wtftools` absorbs and supersedes
-[`checkcrontab`](https://github.com/wachawo/checkcrontab) — the same cron
-validator now lives at `wtf crontab`.
+`wtftools` 吸收并取代了
+[`checkcrontab`](https://github.com/wachawo/checkcrontab)——同一个 cron
+校验器现在位于 `wtf crontab`。
 
-## Advanced audit options
+## 高级审计选项
 
 ```bash
 wtf audit -v             # show extra detail (failed units, OOM events)
@@ -210,7 +210,7 @@ wtf audit --format html -o report.html    # self-contained HTML for tickets
 wtf audit --format prometheus             # metrics for node_exporter textfile
 ```
 
-### Built-in checks
+### 内置检查项
 
 uptime · system state · load average · CPU iowait · PSI cpu/memory/io ·
 TCP retransmits · memory · swap · disk (per mount) · inodes ·
@@ -221,15 +221,15 @@ open file descriptors · process count · failed auth · time sync ·
 pending updates · reboot required · cron daemon · crontab syntax · docker ·
 hw temperatures · disk SMART · DNS · HTTP/TCP probes · fail2ban.
 
-## Config
+## 配置
 
-Thresholds and ignores live in an INI file at any of:
+阈值和忽略项保存在 INI 文件中，可位于以下任意位置：
 
 - `/etc/wtftools/config.ini`
 - `/etc/wtf/config.ini`
 - `~/.config/wtftools/config.ini`
 
-Run `wtf config --example` for a fully-commented template. Headlines:
+运行 `wtf config --example` 可获得带完整注释的模板。要点如下：
 
 ```ini
 [thresholds]
@@ -244,15 +244,15 @@ result_names =
     disk /mnt/Backup
 ```
 
-## Compatibility
+## 兼容性
 
 - Python 3.8+
-- Linux (systemd distributions are the happy path; the tool degrades
-  gracefully when `systemctl` / `journalctl` / `psutil` are missing)
-- No network access required for the core CLI
-- Optional network: `wtf explain --llm claude/openai`, `wtf doctor --check-updates`
+- Linux（systemd 发行版是最理想的运行环境；当缺少
+  `systemctl` / `journalctl` / `psutil` 时，工具会优雅降级）
+- 核心 CLI 无需网络访问
+- 可选网络功能：`wtf explain --llm claude/openai`、`wtf doctor --check-updates`
 
-## From source
+## 从源码安装
 
 ```bash
 git clone https://github.com/wachawo/wtftools
@@ -262,6 +262,6 @@ pip install -e .
 python3 wtf.py audit
 ```
 
-## License
+## 许可证
 
 MIT
