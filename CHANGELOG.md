@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-06-14
+
 ### Added — per-resource subcommands
 - `wtf disk` — per-mount usage with inode percent and read-only flags;
   `--tree [PATH]` lists the largest directories (du-based, `--depth`,
