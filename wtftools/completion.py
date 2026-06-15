@@ -1,4 +1,13 @@
-# bash completion for `wtf` / `wtftools`
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Shell-completion scripts for wtf, and `wtf completion` rendering.
+
+This module is the single source of truth for the bash completion script.
+`scripts/wtf.bash-completion` is a generated mirror (`wtf completion bash`),
+and a test asserts the two never drift.
+"""
+
+BASH = r"""# bash completion for `wtf` / `wtftools`
 # Enable:  eval "$(wtf completion bash)"   (add that line to ~/.bashrc),
 #          or copy this script to /etc/bash_completion.d/wtf
 
@@ -171,3 +180,38 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
 
 complete -F _wtf_complete wtf
 complete -F _wtf_complete wtftools
+"""
+
+# zsh ships bash-completion compatibility via bashcompinit; loading it lets the
+# same `complete -F`/`compgen` script work under zsh.
+ZSH_PREAMBLE = """# zsh completion for `wtf` — enable with:  eval "$(wtf completion zsh)"
+autoload -Uz +X compinit 2>/dev/null && compinit 2>/dev/null
+autoload -Uz +X bashcompinit && bashcompinit
+"""
+
+
+def bash() -> str:
+    """The bash completion script."""
+    return BASH
+
+
+def zsh() -> str:
+    """The bash completion script wrapped so it loads under zsh."""
+    return ZSH_PREAMBLE + BASH
+
+
+def instructions() -> str:
+    """Human setup instructions printed by bare `wtf completion`."""
+    return (
+        "Enable <Tab> completion for wtf:\n"
+        "\n"
+        "bash — add to ~/.bashrc:\n"
+        '    eval "$(wtf completion bash)"\n'
+        "  or install once (no per-shell cost):\n"
+        "    wtf completion bash > ~/.local/share/bash-completion/completions/wtf\n"
+        "\n"
+        "zsh — add to ~/.zshrc:\n"
+        '    eval "$(wtf completion zsh)"\n'
+        "\n"
+        "Then restart your shell (or source the rc file). Try:  wtf <Tab>"
+    )

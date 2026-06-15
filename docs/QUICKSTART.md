@@ -9,6 +9,8 @@ pip install wtftools[full]     # + psutil (recommended)
 
 Or `apt install wtftools` (see README for the .deb workflow).
 
+Tab-completion: `echo 'eval "$(wtf completion bash)"' >> ~/.bashrc` (or `zsh`).
+
 ## First 60 seconds
 
 ```bash

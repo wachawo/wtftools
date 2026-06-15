@@ -25,6 +25,9 @@ from wtftools import (
     audit as audit_mod,
 )
 from wtftools import (
+    completion as completion_mod,
+)
+from wtftools import (
     config as config_mod,
 )
 from wtftools import (
@@ -77,6 +80,18 @@ def emit_section(args: argparse.Namespace, data: dict, render_text, render_plain
         print(render_text(data))
         if section and getattr(args, "show_commands", False):
             print(sections_mod.render_equivalents(section))
+    return 0
+
+
+def cmd_completion(args: argparse.Namespace) -> int:
+    """Print a shell-completion script (bash/zsh) or setup instructions."""
+    shell = getattr(args, "shell", None)
+    if shell == "bash":
+        print(completion_mod.bash())
+    elif shell == "zsh":
+        print(completion_mod.zsh())
+    else:
+        print(completion_mod.instructions())
     return 0
 
 
@@ -1743,6 +1758,10 @@ def build_parser() -> argparse.ArgumentParser:
     cfg.add_argument("--example", action="store_true", help="Print a fully-commented example config and exit")
     cfg.add_argument("--format", choices=["text", "json"], default=argparse.SUPPRESS)
     cfg.set_defaults(func=cmd_config)
+
+    comp = subparsers.add_parser("completion", help="Print a bash/zsh completion script to enable <Tab> completion")
+    comp.add_argument("shell", nargs="?", choices=["bash", "zsh"], help="Shell to emit a script for; omit for setup instructions")
+    comp.set_defaults(func=cmd_completion)
 
     crontab = subparsers.add_parser("crontab", help="Validate crontab files (system + user)")
     crontab.add_argument("targets", nargs="*", help="Files, directories, or usernames")

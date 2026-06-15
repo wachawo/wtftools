@@ -45,6 +45,15 @@ sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 
 After install you have the `wtf` command. Try it: `wtf`.
 
+Tab-completion (optional) — add one line to your shell rc and press `<Tab>`:
+
+```bash
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
+```
+
+Run `wtf completion` with no argument for the full instructions.
+
 ## The commands you will actually use
 
 ```bash
@@ -280,6 +289,7 @@ Exit codes are CI/cron-friendly:
 | `wtf crontab`       | validate all standard crontab locations + per-user crontabs |
 | `wtf doctor`        | self-diagnostic: which tools wtftools can actually use      |
 | `wtf config`        | show effective config / print example                       |
+| `wtf completion`    | print a bash/zsh `<Tab>`-completion script (or setup help)   |
 
 `wtftools` absorbs and supersedes
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) — the same cron

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `wtf completion [bash|zsh]` — print a shell-completion script to enable
+  `<Tab>` completion (`eval "$(wtf completion bash)"`); bare `wtf completion`
+  prints setup instructions. The bash script lives in `wtftools/completion.py`
+  as the single source of truth; `scripts/wtf.bash-completion` is a generated
+  mirror (a test guards against drift).
+
 ### Changed — `wtf disk` folder usage
 - `wtf disk <path>` now breaks a directory down by folder size, biggest first
   (like `du -sh <path>/* | sort`), as `# DISK USAGE <path>` rows of
