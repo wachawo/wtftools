@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+- README is now a concise landing page (what it is, capabilities, install, a
+  linked command reference). The detailed per-command examples moved into
+  `docs/AUDIT.md`, `docs/RESOURCES.md`, `docs/OUTPUT.md` and `docs/CONFIG.md`,
+  linked from the command tables. Translations mirror the landing README;
+  the deep reference pages are English.
+
 ### Added
 - `wtf completion [bash|zsh]` — print a shell-completion script to enable
   `<Tab>` completion (`eval "$(wtf completion bash)"`); bare `wtf completion`
