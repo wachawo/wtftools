@@ -29,10 +29,14 @@ _wtf_complete() {
         disk)
             local opts="--tree --depth --top --format --show-commands"
             case "$prev" in
-                --tree)   COMPREPLY=( $(compgen -d -- "$cur") ); return 0 ;;
-                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
+                --format)        COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
+                --tree|--depth|--top) return 0 ;;
             esac
-            COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            if [[ "$cur" == -* ]]; then
+                COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+            else
+                COMPREPLY=( $(compgen -d -- "$cur") )   # a PATH to break down
+            fi
             ;;
         cpu|net|io)
             COMPREPLY=( $(compgen -W "--format --show-commands" -- "$cur") )

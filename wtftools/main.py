@@ -81,19 +81,26 @@ def emit_section(args: argparse.Namespace, data: dict, render_text, render_plain
 
 
 def cmd_disk(args: argparse.Namespace) -> int:
-    """Per-mount disk usage; --tree shows the largest directories."""
-    tree_root = None
-    if args.tree is not None:
-        tree_root = sections_mod.pick_fullest_mount() if args.tree == "auto" else args.tree
-        if not os.path.isdir(tree_root):
-            msg = f"not a directory: {tree_root}"
-            if args.format == "json":
-                print(json.dumps({"error": msg}))
-            else:
-                print(colors.red(msg))
-            return 2
-    data = sections_mod.collect_disk(tree_root=tree_root, depth=args.depth, top=args.top)
-    return emit_section(args, data, sections_mod.render_disk_text, sections_mod.render_disk_plain, section="disk")
+    """Mount overview, or a folder usage breakdown of a path."""
+    path = getattr(args, "path", None)
+    tree = getattr(args, "tree", 0) or 0
+
+    # No path and no expansion → the per-mount overview ("is there space?").
+    if path is None and tree == 0:
+        data = sections_mod.collect_disk()
+        return emit_section(args, data, sections_mod.render_disk_text, sections_mod.render_disk_plain, section="disk")
+
+    # Usage breakdown of a path (or the fullest mount when no path is given).
+    root = path if path is not None else sections_mod.pick_fullest_mount()
+    if not os.path.isdir(root):
+        msg = f"not a directory: {root}"
+        if getattr(args, "format", "text") == "json":
+            print(json.dumps({"error": msg}))
+        else:
+            print(colors.red(msg))
+        return 2
+    data = sections_mod.collect_disk_usage(root, tree=tree, depth=args.depth, top=args.top)
+    return emit_section(args, data, sections_mod.render_disk_usage_text, sections_mod.render_disk_usage_plain, section="disk")
 
 
 def cmd_cpu(args: argparse.Namespace) -> int:
@@ -1528,7 +1535,8 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=f"Project: {__url__}\n"
         "Examples:\n"
         "  wtf                       # default: short audit summary\n"
-        "  wtf disk --tree           # what is eating the fullest disk\n"
+        "  wtf disk /var             # what folders eat space under /var\n"
+        "  wtf disk / --tree         # drill into the biggest folders of /\n"
         "  wtf info                  # detailed system snapshot\n"
         "  wtf audit -v              # audit with extra detail per check\n"
         "  wtf crontab               # check standard crontab locations\n"
@@ -1554,16 +1562,19 @@ def build_parser() -> argparse.ArgumentParser:
     info.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
     info.set_defaults(func=cmd_info)
 
-    disk = subparsers.add_parser("disk", help="Disk usage per mount; --tree shows what eats the space")
+    disk = subparsers.add_parser("disk", help="Mounts overview, or folder usage of a PATH (`wtf disk /home`)")
+    disk.add_argument("path", nargs="?", default=None, help="Directory to break down by folder size (omit for the mount overview)")
     disk.add_argument(
         "--tree",
         nargs="?",
-        const="auto",
-        metavar="PATH",
-        help="Show largest directories under PATH (default: the fullest mount)",
+        type=int,
+        const=1,
+        default=0,
+        metavar="N",
+        help="Expand the N largest folders at each level (bare --tree = 1; omit = flat, no expansion)",
     )
-    disk.add_argument("--depth", type=int, default=2, metavar="N", help="Tree depth for --tree (default: 2)")
-    disk.add_argument("--top", type=int, default=15, metavar="N", help="Entries to show for --tree (default: 15)")
+    disk.add_argument("--depth", type=int, default=3, metavar="N", help="Levels to show when expanding with --tree (default: 3)")
+    disk.add_argument("--top", type=int, default=0, metavar="N", help="Cap children shown per level (default: 0 = all)")
     disk.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
     disk.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     disk.set_defaults(func=cmd_disk)

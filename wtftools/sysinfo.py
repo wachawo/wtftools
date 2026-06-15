@@ -1678,32 +1678,32 @@ def get_logged_in_users() -> List[Dict[str, str]]:
     return result
 
 
-def get_du_tree(directory: str, depth: int = 2, limit: int = 15) -> List[Dict[str, Any]]:
-    """Largest directories under `directory`, up to `depth` levels deep.
+def get_du_map(directory: str, max_depth: int = 1, timeout: int = 120) -> Dict[str, int]:
+    """Map {abspath: cumulative_bytes} under `directory`, down to max_depth.
 
-    Uses `du -x` (single filesystem). du exits non-zero on permission errors
-    but still prints what it could read, so only an empty stdout is fatal.
+    `max_depth` counts levels below `directory` (1 = immediate children). Uses
+    `du -x` (single filesystem). du exits non-zero on permission errors but
+    still prints what it could read, so partial output is kept; an empty result
+    means nothing was readable or the scan timed out. The timeout is generous
+    because a cold scan of a multi-terabyte tree can take a minute or more.
     """
     if not shutil.which("du") or not os.path.isdir(directory):
-        return []
-    rc, out, _ = run(["du", "-x", f"-d{depth}", "--block-size=1", directory], timeout=30)
+        return {}
+    directory = os.path.abspath(directory).rstrip("/") or "/"
+    rc, out, _ = run(["du", "-x", f"-d{max_depth}", "--block-size=1", directory], timeout=timeout)
     if not out:
-        return []
-    results: List[Dict[str, Any]] = []
+        return {}
+    sizes: Dict[str, int] = {}
     for line in out.splitlines():
-        parts = line.split("\t")
+        parts = line.split("\t", 1)
         if len(parts) != 2:
             continue
         try:
             size = int(parts[0])
         except ValueError:
             continue
-        path = parts[1]
-        if path.rstrip("/") == directory.rstrip("/"):
-            continue
-        results.append({"path": path, "bytes": size})
-    results.sort(key=lambda r: r["bytes"], reverse=True)
-    return results[:limit]
+        sizes[parts[1].rstrip("/") or "/"] = size
+    return sizes
 
 
 def get_disk_io_per_device(sample_seconds: float = 0.5, limit: int = 5) -> List[Dict[str, Any]]:

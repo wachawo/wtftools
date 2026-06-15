@@ -57,7 +57,8 @@ Then ask about one resource at a time, like `show` commands on a switch:
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf disk /var    # WHAT is eating space under /var (largest folders)
+wtf disk / --tree  # drill into the biggest folders, level by level
 wtf cpu          # load, iowait, top CPU consumers
 wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
@@ -66,21 +67,44 @@ wtf who          # who is logged in, recent logins, failed auth
 wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
-Example — disk is filling up, find the culprit:
+`wtf disk` with no path is the mount overview — full path, used/total, percent
+and a usage bar:
 
 ```
-$ wtf disk --tree /var
+$ wtf disk
 # DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
-
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
+  /            1.4TB / 1.8TB   79%  [████████████████····]  ext4
+  /boot      216.4MB / 1.9GB   11%  [██··················]  ext4
+  /mnt/Data    5.3TB / 13.9TB  38%  [████████············]  ext4
 ```
 
-`wtf disk --tree` without a path picks the fullest mount automatically.
+Example — disk is filling up, find the culprit. `wtf disk <path>` lists the
+folders directly under it, biggest first (`path/  size  % of root  depth`):
+
+```
+$ wtf disk /var
+# DISK USAGE /var
+  lib/      15.0GB  75%  0
+  log/       3.1GB  16%  0
+  cache/     1.2GB   6%  0
+```
+
+Add `--tree` to drill into the biggest folder, level by level (`--depth`,
+default 3); `--tree N` opens the N largest at each level. The trailing number
+is the depth:
+
+```
+$ wtf disk / --tree
+# DISK USAGE /
+  home/                 1021.0GB  70%  0
+  home/wachawo/         1021.0GB  70%  1
+  home/wachawo/myApps/   429.7GB  30%  2
+  usr/                   207.9GB  14%  0
+  var/                   206.5GB  14%  0
+```
+
+`wtf disk --tree` without a path drills the fullest mount. Run with `sudo` to
+read root-owned folders. The `# DISK` mount overview (no path) is unchanged.
 
 Learning Linux? Add `--show-commands` to any resource command and it also
 prints the classic commands it replaces, so you can run them yourself:
@@ -184,7 +208,7 @@ wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
 wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 
 # top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+wtf disk /var --format plain | awk -F'\t' 'NR==1 {print $3, $1}'   # biggest folder: path, bytes
 ```
 
 JSON payloads of the resource commands carry `schema_version` so your
@@ -236,7 +260,7 @@ Exit codes are CI/cron-friendly:
 | `wtf problems`      | only WARN+FAIL rows                                         |
 | `wtf daily`         | morning check: audit + diff vs last run + events            |
 | `wtf explain`       | per-check actionable advice; `--llm` to pipe to an LLM      |
-| `wtf disk`          | per-mount usage; `--tree` shows largest directories         |
+| `wtf disk [PATH]`   | mounts overview; with PATH, largest folders; `--tree` drills |
 | `wtf cpu`           | load, iowait, pressure, top CPU consumers                   |
 | `wtf mem`           | RAM/swap, OOM kills, top memory consumers                   |
 | `wtf net`           | interfaces, gateway, DNS, errors, listening ports           |

@@ -34,7 +34,7 @@ def render_equivalents(section: str) -> str:
     return "\n".join(lines)
 
 
-def render_bar(percent: int, width: int = 20) -> str:
+def render_bar(percent: int, width: int = 20, show_percent: bool = True) -> str:
     """ASCII usage bar colored by severity."""
     percent = max(0, min(100, percent))
     filled = int(round(width * percent / 100))
@@ -45,7 +45,7 @@ def render_bar(percent: int, width: int = 20) -> str:
         bar = colors.yellow(bar)
     else:
         bar = colors.green(bar)
-    return f"[{bar}] {percent:3d}%"
+    return f"[{bar}] {percent:3d}%" if show_percent else f"[{bar}]"
 
 
 def get_inode_percent(target: str) -> Optional[int]:
@@ -72,7 +72,8 @@ def pick_fullest_mount() -> str:
 # Disk
 
 
-def collect_disk(tree_root: Optional[str] = None, depth: int = 2, top: int = 15) -> Dict[str, Any]:
+def collect_disk() -> Dict[str, Any]:
+    """Per-mount usage overview (the `is there space?` view)."""
     readonly = set(sysinfo.get_readonly_mounts())
     mounts: List[Dict[str, Any]] = []
     for disk in sysinfo.get_disks():
@@ -87,37 +88,26 @@ def collect_disk(tree_root: Optional[str] = None, depth: int = 2, top: int = 15)
                 "inode_percent": get_inode_percent(disk["target"]),
             }
         )
-    data: Dict[str, Any] = {"schema_version": SCHEMA_VERSION, "mounts": mounts}
-    if tree_root is not None:
-        data["tree"] = {
-            "root": tree_root,
-            "depth": depth,
-            "entries": sysinfo.get_du_tree(tree_root, depth=depth, limit=top),
-        }
-    return data
+    return {"schema_version": SCHEMA_VERSION, "mounts": mounts}
 
 
 def render_disk_text(data: Dict[str, Any]) -> str:
     out = [colors.section("DISK")]
-    if not data["mounts"]:
+    mounts = data["mounts"]
+    if not mounts:
         out.append(colors.dim("  no mounts found"))
-    for m in data["mounts"]:
-        label = m["target"] if len(m["target"]) <= 16 else "…" + m["target"][-15:]
+        return "\n".join(out)
+    # Columns: full path · used/total · percent · bar (· fstype/flags).
+    path_w = max(len(m["target"]) for m in mounts)
+    for m in mounts:
+        size_cell = f"{sysinfo.format_bytes(m['used'])} / {sysinfo.format_bytes(m['total'])}"
         flags = []
         if m["readonly"]:
             flags.append(colors.red("READ-ONLY", bold=True))
         if m["inode_percent"] is not None and m["inode_percent"] >= 85:
             flags.append(colors.yellow(f"inodes {m['inode_percent']}%"))
         suffix = ("  " + " ".join(flags)) if flags else ""
-        out.append(f"  {label:<16} {render_bar(m['percent'])}  {sysinfo.format_bytes(m['used'])} / {sysinfo.format_bytes(m['total'])}  {colors.dim(m['fstype'])}{suffix}")
-    tree = data.get("tree")
-    if tree is not None:
-        out.append("")
-        out.append(colors.section(f"LARGEST UNDER {tree['root']}"))
-        if not tree["entries"]:
-            out.append(colors.dim("  (nothing readable — try with sudo)"))
-        for entry in tree["entries"]:
-            out.append(f"  {sysinfo.format_bytes(entry['bytes']):>10}  {entry['path']}")
+        out.append(f"  {m['target']:<{path_w}}  {size_cell:>19}  {m['percent']:>3}%  {render_bar(m['percent'], show_percent=False)}  {colors.dim(m['fstype'])}{suffix}")
     return "\n".join(out)
 
 
@@ -127,11 +117,89 @@ def render_disk_plain(data: Dict[str, Any]) -> str:
         inode = m["inode_percent"] if m["inode_percent"] is not None else "-"
         ro = "ro" if m["readonly"] else "rw"
         lines.append(f"mount\t{m['target']}\t{m['used']}\t{m['total']}\t{m['percent']}\t{m['fstype']}\t{ro}\t{inode}")
-    tree = data.get("tree")
-    if tree is not None:
-        for entry in tree["entries"]:
-            lines.append(f"tree\t{entry['bytes']}\t{entry['path']}")
     return "\n".join(lines)
+
+
+def collect_disk_usage(root: str, tree: int = 0, depth: int = 3, top: int = 0) -> Dict[str, Any]:
+    """Folder usage breakdown of `root`, like `du -sh */ | sort` with drill-down.
+
+    `tree` is how many of the largest folders to expand at each level (0 = flat,
+    immediate children only). `depth` is how many levels deep an expansion goes
+    (default 3 → depths 0,1,2). `top` caps the children shown per level (0 =
+    all). Percentages are a share of the analysed root's total size, so a child
+    is never larger than its parent.
+    """
+    root = os.path.abspath(root).rstrip("/") or "/"
+    max_depth = depth if tree > 0 else 1
+    sizes = sysinfo.get_du_map(root, max_depth=max_depth)
+    root_total = sizes.get(root, 0)
+
+    children: Dict[str, List[str]] = {}
+    for path in sizes:
+        if path == root:
+            continue
+        parent = os.path.dirname(path) or "/"
+        children.setdefault(parent, []).append(path)
+
+    def percent_of(num_bytes: int) -> int:
+        return round(num_bytes / root_total * 100) if root_total else 0
+
+    def rel_path(path: str) -> str:
+        return os.path.relpath(path, root) + "/"
+
+    entries: List[Dict[str, Any]] = []
+
+    def walk(node: str, node_depth: int) -> None:
+        kids = sorted(children.get(node, []), key=lambda c: sizes.get(c, 0), reverse=True)
+        # Root level lists every child; expanded deeper levels show only top-N.
+        shown = kids if node_depth == 0 else kids[:tree]
+        if top > 0:
+            shown = shown[:top]
+        for index, kid in enumerate(shown):
+            kid_bytes = sizes.get(kid, 0)
+            entries.append(
+                {
+                    "depth": node_depth,
+                    "path": kid,
+                    "rel": rel_path(kid),
+                    "bytes": kid_bytes,
+                    "percent": percent_of(kid_bytes),
+                }
+            )
+            if tree > 0 and index < tree and node_depth + 1 < depth:
+                walk(kid, node_depth + 1)
+
+    walk(root, 0)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "root": root,
+        "total_bytes": root_total,
+        "depth": depth,
+        "tree": tree,
+        "entries": entries,
+    }
+
+
+def render_disk_usage_text(data: Dict[str, Any]) -> str:
+    out = [colors.section(f"DISK USAGE {data['root']}")]
+    entries = data["entries"]
+    if not entries:
+        out.append(colors.dim("  (nothing to show — run with sudo for root-owned dirs, or the folder is empty)"))
+        return "\n".join(out)
+    rel_width = min(60, max(len(e["rel"]) for e in entries))
+    for e in entries:
+        rel = e["rel"]
+        if len(rel) > rel_width:
+            rel = "…" + rel[-(rel_width - 1) :]
+        size = sysinfo.format_bytes(e["bytes"])
+        # Columns: path · size · percent · depth-index (index moved last).
+        out.append(f"  {rel:<{rel_width}} {size:>9} {e['percent']:>3}%  {e['depth']}")
+    return "\n".join(out)
+
+
+def render_disk_usage_plain(data: Dict[str, Any]) -> str:
+    # bytes · percent · path · depth (index last, matching the text view).
+    return "\n".join(f"{e['bytes']}\t{e['percent']}\t{e['path']}\t{e['depth']}" for e in data["entries"])
 
 
 # CPU

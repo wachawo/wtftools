@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed — `wtf disk` folder usage
+- `wtf disk <path>` now breaks a directory down by folder size, biggest first
+  (like `du -sh <path>/* | sort`), as `# DISK USAGE <path>` rows of
+  `path/  size  % of analysed root  depth` (the depth index is the last
+  column). `wtf disk` with no path still shows the per-mount overview, now laid
+  out as `full path  used/total  percent  bar` (full mount paths, no
+  truncation).
+- `--tree [N]` drills into the N largest folders at each level (bare `--tree` =
+  1 → a single dominant chain); `--depth D` sets how deep (default 3). Output
+  is parse-first: `plain` is `bytes<TAB>percent<TAB>abspath<TAB>depth`, `json`
+  is a flat `entries` list with absolute `path` + relative `rel`.
+- **Breaking:** `--tree` used to take a PATH (`wtf disk --tree /var`); the path
+  is now the positional argument (`wtf disk /var --tree`) and `--tree` is the
+  expansion count. The `du` scan timeout was raised (30→120s) so large
+  filesystems no longer return an empty result.
+
 ## [0.0.1] - 2026-06-14
 
 ### Added — port, docker and temperature views
