@@ -152,6 +152,9 @@ def test_cmd_docker_name(monkeypatch):
             "compose_service": "web",
             "working_dir": "/srv/proj",
             "config_files": "/srv/proj/docker-compose.yml",
+            "image_bytes": 150_000_000,
+            "container_bytes": 2_000_000,
+            "logs_bytes": 5_000_000,
         },
     )
     rc, out = _capture(["docker", "web"])
@@ -159,6 +162,32 @@ def test_cmd_docker_name(monkeypatch):
     assert "proj / web" in out
     assert "/srv/proj" in out
     assert "docker-compose.yml" in out
+    assert "image size" in out
+    assert "writable layer" in out
+    assert "5MB" in out  # logs size rendered, decimal units
+
+
+def test_cmd_docker_name_logs_unreadable(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr(
+        main.sysinfo,
+        "get_docker_container_origin",
+        lambda name: {
+            "name": "web",
+            "image": "nginx",
+            "status": "running",
+            "compose_project": "proj",
+            "compose_service": "web",
+            "working_dir": "/srv/proj",
+            "config_files": "/srv/proj/docker-compose.yml",
+            "image_bytes": 1024,
+            "container_bytes": 0,
+            "logs_bytes": None,
+        },
+    )
+    rc, out = _capture(["docker", "web"])
+    assert rc == 0
+    assert "run with sudo" in out
 
 
 def test_cmd_docker_name_not_found(monkeypatch):
@@ -183,12 +212,15 @@ def test_cmd_docker_list_plain(monkeypatch):
                 "compose_service": "web",
                 "working_dir": "/srv/proj",
                 "config_files": "/srv/proj/docker-compose.yml",
+                "image_bytes": 100,
+                "container_bytes": 20,
+                "logs_bytes": None,
             }
         ],
     )
     rc, out = _capture(["docker", "--format", "plain"])
     assert rc == 0
-    assert out.strip() == "web\trunning\tnginx\tproj\tweb\t/srv/proj\t/srv/proj/docker-compose.yml"
+    assert out.strip() == "web\trunning\tnginx\tproj\tweb\t/srv/proj\t/srv/proj/docker-compose.yml\t100\t20\t-"
 
 
 def test_cmd_docker_non_compose(monkeypatch):
@@ -218,15 +250,32 @@ def test_get_docker_container_origin_parses(monkeypatch):
                     },
                 },
                 "State": {"Status": "running"},
+                "Image": "sha256:deadbeef",
+                "SizeRw": 2000,
+                "SizeRootFs": 5000,
+                "LogPath": "",
             }
         ]
     )
     monkeypatch.setattr(sysinfo.shutil, "which", lambda name: "/usr/bin/docker")
-    monkeypatch.setattr(sysinfo, "run", lambda cmd, timeout=5: (0, inspect, ""))
+    monkeypatch.setattr(sysinfo, "run", lambda cmd, timeout=10: (0, inspect, ""))
     info = sysinfo.get_docker_container_origin("web")
     assert info["name"] == "web"
     assert info["working_dir"] == "/srv/proj"
     assert info["compose_project"] == "proj"
+    assert info["image_id"] == "sha256:deadbeef"
+    assert info["container_bytes"] == 2000
+    assert info["image_bytes"] == 3000  # SizeRootFs - SizeRw
+    assert info["logs_bytes"] is None  # empty LogPath
+
+
+def test_docker_log_bytes(monkeypatch, tmp_path):
+    assert sysinfo._docker_log_bytes(None) is None
+    assert sysinfo._docker_log_bytes("<no value>") is None
+    assert sysinfo._docker_log_bytes("/no/such/path.log") is None
+    log = tmp_path / "c-json.log"
+    log.write_bytes(b"x" * 42)
+    assert sysinfo._docker_log_bytes(str(log)) == 42
 
 
 def test_cmd_port_text_empty(monkeypatch):
@@ -295,6 +344,104 @@ def test_get_port_processes_no_pid(monkeypatch):
     entries = sysinfo.get_port_processes(5060)
     assert entries[0]["exe"] is None
     assert entries[0]["cwd"] is None
+
+
+def test_format_bytes_si_matches_docker():
+    # Decimal (1000-based) units, like `docker` output.
+    assert sysinfo.format_bytes_si(7_440_000_000) == "7.44GB"
+    assert sysinfo.format_bytes_si(267_000_000) == "267MB"
+    assert sysinfo.format_bytes_si(704) == "704B"
+    assert sysinfo.format_bytes_si(0) == "0B"
+
+
+def test_cmd_docker_total_dedupes_shared_image_and_logs(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    # Two containers share the same image (same image_id) → image total must
+    # count it once, not twice. Logs unreadable → total logs is "?", not 0.
+    monkeypatch.setattr(
+        main.sysinfo,
+        "get_docker_containers",
+        lambda: [
+            {
+                "name": "bot1",
+                "image": "mobs",
+                "image_id": "sha:1",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "bot1",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 7_000_000_000,
+                "container_bytes": 0,
+                "logs_bytes": None,
+            },
+            {
+                "name": "bot2",
+                "image": "mobs",
+                "image_id": "sha:1",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "bot2",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 7_000_000_000,
+                "container_bytes": 100,
+                "logs_bytes": None,
+            },
+        ],
+    )
+    rc, out = _capture(["docker"])
+    assert rc == 0
+    total_line = [ln for ln in out.splitlines() if "TOTAL" in ln][0]
+    assert "7GB" in total_line  # 7GB once, not 14GB
+    assert "14GB" not in total_line
+    assert "counts shared layers once" in out
+    assert "logs need sudo" in out
+    # Logs total must not read as a real 0B when nothing is readable.
+    assert total_line.rstrip().endswith("?")
+
+
+def test_cmd_docker_total_note_logs_when_readable(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr(
+        main.sysinfo,
+        "get_docker_containers",
+        lambda: [
+            {
+                "name": "a",
+                "image": "i",
+                "image_id": "sha:1",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "a",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 1000,
+                "container_bytes": 10,
+                "logs_bytes": 500,
+            },
+            {
+                "name": "b",
+                "image": "j",
+                "image_id": "sha:2",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "b",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 2000,
+                "container_bytes": 20,
+                "logs_bytes": 700,
+            },
+        ],
+    )
+    rc, out = _capture(["docker"])
+    assert rc == 0
+    # Logs readable → note explains them instead of telling the user to sudo.
+    assert "logs are json driver files" in out
+    assert "logs need sudo" not in out
+    total_line = [ln for ln in out.splitlines() if "TOTAL" in ln][0]
+    assert "1.2kB" in total_line  # 500 + 700 = 1200 B logs total, decimal
 
 
 def test_get_docker_containers_lists(monkeypatch):

@@ -108,12 +108,28 @@ def format_duration(seconds: float) -> str:
 
 
 def format_bytes(num_bytes: float) -> str:
-    """Render bytes as KB/MB/GB/TB."""
+    """Render bytes as KB/MB/GB/TB (binary, 1024-based)."""
     for unit in ("B", "KB", "MB", "GB", "TB", "PB"):
         if abs(num_bytes) < 1024.0:
             return f"{num_bytes:3.1f}{unit}"
         num_bytes /= 1024.0
     return f"{num_bytes:.1f}EB"
+
+
+def format_bytes_si(num_bytes: float) -> str:
+    """Render bytes with decimal (1000-based) units, matching `docker` output.
+
+    Docker formats sizes with SI units (1GB = 1000MB), so `wtf docker` uses
+    this to line up with `docker ps -s` / `docker container ls --size`.
+    """
+    value = float(num_bytes)
+    for unit in ("B", "kB", "MB", "GB", "TB", "PB"):
+        if abs(value) < 1000.0:
+            if unit == "B":
+                return f"{int(value)}B"
+            return f"{value:.3g}{unit}"
+        value /= 1000.0
+    return f"{value:.3g}EB"
 
 
 def get_loadavg() -> Tuple[float, float, float]:
@@ -1868,17 +1884,34 @@ def get_port_processes(port: int) -> List[Dict[str, Any]]:
     return entries
 
 
-def get_docker_container_origin(name: str) -> Optional[Dict[str, Any]]:
-    """Compose origin for one container via `docker inspect` labels.
+def _docker_log_bytes(log_path: Optional[str]) -> Optional[int]:
+    """Stat a container's json-file log on the host. None if absent/unreadable.
 
-    Returns image/status plus the compose project, service, host working
-    directory and config files. None when docker is missing or the container
-    is unknown. `working_dir` is None for non-compose containers (docker does
-    not record the host cwd of a plain `docker run`).
+    Requires read access to the path under /var/lib/docker — usually root or
+    the docker group. Permission errors degrade to None, not a crash.
+    """
+    if not log_path or log_path == "<no value>":
+        return None
+    try:
+        return os.path.getsize(log_path)
+    except OSError:
+        return None
+
+
+def get_docker_container_origin(name: str) -> Optional[Dict[str, Any]]:
+    """Compose origin and on-disk sizes for one container via `docker inspect`.
+
+    Returns image/status, the compose project/service/host working directory
+    and config files, plus byte sizes: `image_bytes` (read-only image layers),
+    `container_bytes` (the writable layer) and `logs_bytes` (json-file log).
+    None when docker is missing or the container is unknown. `working_dir` is
+    None for non-compose containers (docker does not record the host cwd of a
+    plain `docker run`). Size fields are None when docker cannot report them
+    (e.g. log file not readable without root).
     """
     if not shutil.which("docker"):
         return None
-    rc, out, _ = run(["docker", "inspect", name], timeout=8)
+    rc, out, _ = run(["docker", "inspect", "--size", name], timeout=10)
     if rc != 0 or not out:
         return None
     try:
@@ -1891,14 +1924,21 @@ def get_docker_container_origin(name: str) -> Optional[Dict[str, Any]]:
     config = container.get("Config") or {}
     labels = config.get("Labels") or {}
     state = container.get("State") or {}
+    size_rw = container.get("SizeRw")
+    size_root = container.get("SizeRootFs")
+    image_bytes = size_root - size_rw if isinstance(size_rw, int) and isinstance(size_root, int) else size_root
     return {
         "name": (container.get("Name") or name).lstrip("/"),
         "image": config.get("Image", ""),
+        "image_id": container.get("Image"),  # sha256 id, for deduping shared layers
         "status": state.get("Status", ""),
         "compose_project": labels.get("com.docker.compose.project"),
         "compose_service": labels.get("com.docker.compose.service"),
         "working_dir": labels.get("com.docker.compose.project.working_dir"),
         "config_files": labels.get("com.docker.compose.project.config_files"),
+        "image_bytes": image_bytes,
+        "container_bytes": size_rw,
+        "logs_bytes": _docker_log_bytes(container.get("LogPath")),
     }
 
 

@@ -222,7 +222,7 @@ def test_cli_explain_deep_renders_investigation(monkeypatch):
     )
     monkeypatch.setattr(explain, "investigate", lambda r: ["Top dirs:", "  5GB  /var/log"])
     rc, out = _capture(["explain", "--deep"])
-    assert "── investigation ──" in out
+    assert "# investigation" in out
     assert "/var/log" in out
 
 
@@ -251,4 +251,4 @@ def test_cli_explain_without_deep_no_investigation(monkeypatch):
     # explain.investigate should not run when --deep absent
     monkeypatch.setattr(explain, "investigate", lambda r: (_ for _ in ()).throw(AssertionError("called!")))
     rc, out = _capture(["explain"])
-    assert "── investigation ──" not in out
+    assert "# investigation" not in out

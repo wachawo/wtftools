@@ -13,7 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and psutil/`ss` fallbacks. text/plain/json output.
 - `wtf docker [NAME]` — where a container was started from: the compose
   project working directory and config files read from the container's
-  labels. With no name it lists running containers and their working dirs.
+  labels, plus on-disk sizes (image layers, writable container layer and
+  json log). With no name it lists running containers as a table with
+  image/container/log size columns and a TOTAL row. Sizes use decimal units
+  (1GB = 1000MB) to match `docker container ls --size`; the image total
+  dedupes shared layers so it is not inflated by reused images. Log sizes
+  need read access under `/var/lib/docker` (run with `sudo`); otherwise the
+  column and its total show `?`, not a misleading `0B`.
+- `wtf temp` (aliases `temps`, `temperature`) — hardware temperatures from
+  `/sys/class/hwmon` sensors, sorted hottest-first and colored against the
+  configured warn/fail thresholds. text/plain/json output.
+
+### Changed
+- Section headers are now plain `# TITLE` lines instead of full-width
+  centered box-drawing rules, so the output greps cleanly (`grep '^#'`).
 
 ### CI
 - Bumped GitHub Actions to the Node.js 24 majors (checkout v6,
