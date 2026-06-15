@@ -439,21 +439,17 @@ def cmd_docker(args: argparse.Namespace) -> int:
     name_width = max((len(c["name"]) for c in items), default=12)
     header = f"  {'NAME'.ljust(name_width)}  {'STATUS':<9} {'IMAGE':>8} {'CONTNR':>8} {'LOGS':>8}  WORKING DIR"
     print(colors.bold(header))
-    # Image layers are shared between containers — dedupe by image id for the
-    # total so it is not inflated by counting the same image many times.
+    # Same image used by many containers is counted once (dedupe by image id).
     unique_images: Dict[str, int] = {}
     tot_cnt = 0
     cnt_known = False
     tot_log = 0
     log_known = False
-    img_rows = 0
     for c in items:
         wd = c.get("working_dir") or colors.dim("(not compose)")
         img, cnt, log = c.get("image_bytes"), c.get("container_bytes"), c.get("logs_bytes")
         if isinstance(img, int):
-            img_rows += 1
-            key = c.get("image_id") or c.get("image") or c["name"]
-            unique_images[key] = img
+            unique_images[c.get("image_id") or c.get("image") or c["name"]] = img
         if isinstance(cnt, int):
             tot_cnt += cnt
             cnt_known = True
@@ -462,15 +458,26 @@ def cmd_docker(args: argparse.Namespace) -> int:
             log_known = True
         print(f"  {c['name'].ljust(name_width)}  {c.get('status', ''):<9} {_bytes_human(img):>8} {_bytes_human(cnt):>8} {_bytes_human(log):>8}  {wd}")
     if len(items) > 1:
+        # Image total dedupes by id so one image is not counted per container.
+        # Different images can still share base layers on disk, so this is the
+        # logical unique-images total, not exact disk — `docker system df`
+        # reports the real layer-deduplicated figure. Container writable layers
+        # and logs are per-container, so those totals are exact.
         img_cell = sysinfo.format_bytes_si(sum(unique_images.values())) if unique_images else "?"
         cnt_cell = sysinfo.format_bytes_si(tot_cnt) if cnt_known else "?"
         log_cell = sysinfo.format_bytes_si(tot_log) if log_known else "?"
         print(colors.bold(f"  {'TOTAL'.ljust(name_width)}  {'':<9} {img_cell:>8} {cnt_cell:>8} {log_cell:>8}"))
-        notes = []
-        if len(unique_images) < img_rows:
-            notes.append("image total counts shared layers once")
+        # The image total dedupes by id, but different images still share base
+        # layers on disk, so it overstates real usage. Surface the true
+        # layer-deduplicated figure from `docker system df`.
+        df = sysinfo.get_docker_disk_usage()
+        images_row = next((r for r in df if r.get("type", "").lower().startswith("image")), None) if df else None
+        if images_row:
+            notes = [f"IMAGE total is logical (images share layers); real disk {images_row['size']}, {images_row['reclaimable']} reclaimable — docker system df"]
+        else:
+            notes = ["IMAGE total is logical (images share base layers); `docker system df` for real disk"]
         if log_known:
-            notes.append("logs are json driver files, cap with max-size")
+            notes.append("logs cap with max-size")
         else:
             notes.append("logs need sudo")
         notes.append("decimal units, like docker")

@@ -287,6 +287,7 @@ def test_cmd_port_text_empty(monkeypatch):
 
 def test_cmd_docker_list_text(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr(main.sysinfo, "get_docker_disk_usage", lambda: None)
     monkeypatch.setattr(
         main.sysinfo,
         "get_docker_containers",
@@ -354,10 +355,11 @@ def test_format_bytes_si_matches_docker():
     assert sysinfo.format_bytes_si(0) == "0B"
 
 
-def test_cmd_docker_total_dedupes_shared_image_and_logs(monkeypatch):
+def test_cmd_docker_total_dedupes_image_by_id(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
-    # Two containers share the same image (same image_id) → image total must
-    # count it once, not twice. Logs unreadable → total logs is "?", not 0.
+    monkeypatch.setattr(main.sysinfo, "get_docker_disk_usage", lambda: None)
+    # Two containers reference the SAME image id → image total counts it once
+    # (7GB), never 14GB. Logs unreadable → total logs is "?", not 0.
     monkeypatch.setattr(
         main.sysinfo,
         "get_docker_containers",
@@ -393,16 +395,59 @@ def test_cmd_docker_total_dedupes_shared_image_and_logs(monkeypatch):
     rc, out = _capture(["docker"])
     assert rc == 0
     total_line = [ln for ln in out.splitlines() if "TOTAL" in ln][0]
-    assert "7GB" in total_line  # 7GB once, not 14GB
-    assert "14GB" not in total_line
-    assert "counts shared layers once" in out
+    assert "7GB" in total_line  # one image, counted once
+    assert "14GB" not in total_line  # not summed per container
+    assert "IMAGE total is logical" in out
     assert "logs need sudo" in out
     # Logs total must not read as a real 0B when nothing is readable.
     assert total_line.rstrip().endswith("?")
 
 
+def test_cmd_docker_total_distinct_images_sum(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr(main.sysinfo, "get_docker_disk_usage", lambda: None)
+    # Distinct image ids → their sizes add up in the total.
+    monkeypatch.setattr(
+        main.sysinfo,
+        "get_docker_containers",
+        lambda: [
+            {
+                "name": "a",
+                "image": "i",
+                "image_id": "sha:1",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "a",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 3_000_000_000,
+                "container_bytes": 10,
+                "logs_bytes": 500,
+            },
+            {
+                "name": "b",
+                "image": "j",
+                "image_id": "sha:2",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "b",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 4_000_000_000,
+                "container_bytes": 20,
+                "logs_bytes": 700,
+            },
+        ],
+    )
+    rc, out = _capture(["docker"])
+    assert rc == 0
+    total_line = [ln for ln in out.splitlines() if "TOTAL" in ln][0]
+    assert "7GB" in total_line  # 3GB + 4GB distinct images
+
+
 def test_cmd_docker_total_note_logs_when_readable(monkeypatch):
     monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr(main.sysinfo, "get_docker_disk_usage", lambda: None)
     monkeypatch.setattr(
         main.sysinfo,
         "get_docker_containers",
@@ -438,10 +483,55 @@ def test_cmd_docker_total_note_logs_when_readable(monkeypatch):
     rc, out = _capture(["docker"])
     assert rc == 0
     # Logs readable → note explains them instead of telling the user to sudo.
-    assert "logs are json driver files" in out
+    assert "logs cap with max-size" in out
     assert "logs need sudo" not in out
     total_line = [ln for ln in out.splitlines() if "TOTAL" in ln][0]
     assert "1.2kB" in total_line  # 500 + 700 = 1200 B logs total, decimal
+
+
+def test_cmd_docker_total_shows_real_disk_from_system_df(monkeypatch):
+    monkeypatch.setattr(main.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.setattr(
+        main.sysinfo,
+        "get_docker_disk_usage",
+        lambda: [{"type": "Images", "count": "5", "size": "150GB", "reclaimable": "70GB (47%)"}],
+    )
+    monkeypatch.setattr(
+        main.sysinfo,
+        "get_docker_containers",
+        lambda: [
+            {
+                "name": "a",
+                "image": "i",
+                "image_id": "sha:1",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "a",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 1000,
+                "container_bytes": 10,
+                "logs_bytes": 500,
+            },
+            {
+                "name": "b",
+                "image": "j",
+                "image_id": "sha:2",
+                "status": "running",
+                "compose_project": "p",
+                "compose_service": "b",
+                "working_dir": "/srv/p",
+                "config_files": "/srv/p/dc.yml",
+                "image_bytes": 2000,
+                "container_bytes": 20,
+                "logs_bytes": 700,
+            },
+        ],
+    )
+    rc, out = _capture(["docker"])
+    assert rc == 0
+    # Real layer-deduplicated disk surfaced alongside the logical image total.
+    assert "real disk 150GB, 70GB (47%) reclaimable" in out
 
 
 def test_get_docker_containers_lists(monkeypatch):

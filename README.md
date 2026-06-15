@@ -15,7 +15,7 @@ commands (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) you run one:
 
 ```
 $ wtf
-─────────── AUDIT ────────────
+# AUDIT
 [ OK ] uptime                  3d 4h 12m
 [ OK ] load average            0.42 0.51 0.55 / 8 CPU
 [ OK ] memory                  4.1GB / 16.0GB used (25%)
@@ -70,11 +70,11 @@ Example — disk is filling up, find the culprit:
 
 ```
 $ wtf disk --tree /var
-────────────── DISK ──────────────
+# DISK
   /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
   /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
 
-───────── LARGEST UNDER /var ─────────
+# LARGEST UNDER /var
       15.0GB  /var/lib
        3.1GB  /var/log
        1.8GB  /var/log/app
@@ -113,7 +113,7 @@ directory it runs from:
 
 ```
 $ wtf port 5060
-─────────── PORT 5060 ───────────
+# PORT 5060
   tcp *:5060 (LISTEN)
     pid     : 1234
     user    : asterisk
@@ -132,7 +132,7 @@ layers, the writable container layer, and the json log):
 
 ```
 $ wtf docker myapp_web
-─────────── myapp_web ───────────
+# myapp_web
   image        : myapp:latest
   status       : running
   compose      : myapp / web
@@ -153,13 +153,18 @@ $ sudo wtf docker
   myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
   myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
   TOTAL                     440MB    267MB   57.8MB
-  note: image total counts shared layers once; logs are json driver files, cap with max-size; decimal units, like docker
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
 ```
 
 Sizes use decimal units (1GB = 1000MB), so they line up with
-`docker container ls --size`. The image total counts shared image layers
-once (many containers can reuse one image). Log sizes need read access under
-`/var/lib/docker` — run with `sudo`, otherwise they show `?`.
+`docker container ls --size`. Per-row IMAGE is the image's full logical size
+(what `docker` calls the *virtual* size). The IMAGE total dedupes by image id,
+so one image shared by many containers is counted once — not once per
+container. **But** different images still share base layers on disk, so even
+that deduped sum overstates real usage; the note line shows the true
+layer-deduplicated disk straight from `docker system df`. CONTNR (writable
+layer) and LOGS are per-container, so those totals are exact. Log sizes need
+read access under `/var/lib/docker` — run with `sudo`, otherwise they show `?`.
 
 ## Output for scripts: grep, awk, jq
 
