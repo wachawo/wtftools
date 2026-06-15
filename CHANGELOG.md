@@ -4,9 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ## [0.0.1] - 2026-06-14
+
+### Added — port, docker and temperature views
+- `wtf port <N>` (alias of `wtf ports <N>`) — drill into a single port:
+  which process holds it (PID, user, command), the exact executable file
+  behind it and its working directory, via `lsof` with `/proc` enrichment
+  and psutil/`ss` fallbacks. text/plain/json output.
+- `wtf docker [NAME]` — where a container was started from: the compose
+  project working directory and config files read from the container's
+  labels, plus on-disk sizes (image layers, writable container layer and
+  json log). With no name it lists running containers as a table with
+  image/container/log size columns and a TOTAL row. Sizes use decimal units
+  (1GB = 1000MB) to match `docker container ls --size`. The image total
+  dedupes by image id (one image shared by many containers counted once); it is
+  the logical unique-images size, and since different images still share base
+  layers on disk, the real layer-deduplicated disk is shown alongside it from
+  `docker system df`. Container (writable layer) and log totals are exact. Log
+  sizes need read access under `/var/lib/docker` (run with `sudo`); otherwise
+  the column and its total show `?`, not a misleading `0B`.
+- `wtf temp` (aliases `temps`, `temperature`) — hardware temperatures from
+  `/sys/class/hwmon` sensors, sorted hottest-first and colored against the
+  configured warn/fail thresholds. text/plain/json output.
+
+### Changed — output
+- Section headers are now plain `# TITLE` lines instead of full-width
+  centered box-drawing rules, so the output greps cleanly (`grep '^#'`).
+
+### CI
+- Bumped GitHub Actions to the Node.js 24 majors (checkout v6,
+  setup-python v6, action-gh-release v3).
 
 ### Added — per-resource subcommands
 - `wtf disk` — per-mount usage with inode percent and read-only flags;

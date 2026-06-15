@@ -15,7 +15,7 @@ comandos (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …), você execu
 
 ```
 $ wtf
-─────────── AUDIT ────────────
+# AUDIT
 [ OK ] uptime                  3d 4h 12m
 [ OK ] load average            0.42 0.51 0.55 / 8 CPU
 [ OK ] memory                  4.1GB / 16.0GB used (25%)
@@ -69,11 +69,11 @@ Exemplo — o disco está enchendo, encontre o culpado:
 
 ```
 $ wtf disk --tree /var
-────────────── DISK ──────────────
+# DISK
   /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
   /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
 
-───────── LARGEST UNDER /var ─────────
+# LARGEST UNDER /var
       15.0GB  /var/lib
        3.1GB  /var/log
        1.8GB  /var/log/app

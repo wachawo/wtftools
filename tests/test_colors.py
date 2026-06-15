@@ -72,20 +72,19 @@ def test_status_marker_each_status():
     assert colors.status_marker("unknown") == "[UNKNOWN]"
 
 
-def test_section_with_width():
+def test_section_markdown_prefix():
+    out = colors.section("HELLO")
+    assert "# HELLO" in out
+    # No box-drawing flank characters.
+    assert "─" not in out
+
+
+def test_section_width_arg_ignored():
+    # width is accepted for backward compatibility but does not pad/center.
     out = colors.section("HELLO", width=20)
-    assert "HELLO" in out
+    assert "# HELLO" in out
 
 
-def test_section_default_width():
-    import os as _os
-
-    with mock.patch("wtftools.colors.shutil.get_terminal_size", return_value=_os.terminal_size((80, 24))):
-        out = colors.section("HELLO")
-    assert "HELLO" in out
-
-
-def test_section_oversized_title():
-    # title longer than width — still contains text
+def test_section_long_title():
     out = colors.section("A very long title that exceeds width", width=10)
-    assert "very long title" in out
+    assert "# A very long title that exceeds width" in out

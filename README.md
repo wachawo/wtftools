@@ -15,7 +15,7 @@ commands (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) you run one:
 
 ```
 $ wtf
-─────────── AUDIT ────────────
+# AUDIT
 [ OK ] uptime                  3d 4h 12m
 [ OK ] load average            0.42 0.51 0.55 / 8 CPU
 [ OK ] memory                  4.1GB / 16.0GB used (25%)
@@ -63,17 +63,18 @@ wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
 wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
+wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
 Example — disk is filling up, find the culprit:
 
 ```
 $ wtf disk --tree /var
-────────────── DISK ──────────────
+# DISK
   /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
   /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
 
-───────── LARGEST UNDER /var ─────────
+# LARGEST UNDER /var
       15.0GB  /var/lib
        3.1GB  /var/log
        1.8GB  /var/log/app
@@ -103,6 +104,67 @@ wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
 wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
+
+### Who is on a port?
+
+`wtf port <N>` (or `wtf ports <N>`) shows which process holds a port — the
+PID, the exact executable file behind it (via `lsof` + `/proc`), and the
+directory it runs from:
+
+```
+$ wtf port 5060
+# PORT 5060
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+Run it with `sudo` to see processes owned by other users.
+
+### Where was this container started?
+
+`wtf docker <name>` answers "which folder did `docker compose up` run in?"
+straight from the container's labels — and how much disk it eats (image
+layers, the writable container layer, and the json log):
+
+```
+$ wtf docker myapp_web
+# myapp_web
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+  image size   : 156.4MB
+  container    : 254.3MB (writable layer)
+  logs         : 53.8MB
+```
+
+`wtf docker` with no name lists every running container with its size
+columns and working dir, plus a TOTAL row:
+
+```
+$ sudo wtf docker
+# DOCKER
+  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
+  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
+  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
+  TOTAL                     440MB    267MB   57.8MB
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
+```
+
+Sizes use decimal units (1GB = 1000MB), so they line up with
+`docker container ls --size`. Per-row IMAGE is the image's full logical size
+(what `docker` calls the *virtual* size). The IMAGE total dedupes by image id,
+so one image shared by many containers is counted once — not once per
+container. **But** different images still share base layers on disk, so even
+that deduped sum overstates real usage; the note line shows the true
+layer-deduplicated disk straight from `docker system df`. CONTNR (writable
+layer) and LOGS are per-container, so those totals are exact. Log sizes need
+read access under `/var/lib/docker` — run with `sudo`, otherwise they show `?`.
 
 ## Output for scripts: grep, awk, jq
 
@@ -180,9 +242,12 @@ Exit codes are CI/cron-friendly:
 | `wtf net`           | interfaces, gateway, DNS, errors, listening ports           |
 | `wtf io`            | per-device IO rates, pressure, stuck processes              |
 | `wtf who`           | logged-in users, recent logins, failed auth                 |
+| `wtf temp`          | hardware temperatures from /sys/class/hwmon sensors         |
 | `wtf info`          | one-page snapshot: all of the above at once                 |
 | `wtf top`           | focused process top: sort by cpu/rss, filter user/name      |
 | `wtf ports`         | listening sockets with owning PID/user/command              |
+| `wtf port NUM`      | drill into one port: PID, executable file, working dir      |
+| `wtf docker [NAME]` | container compose working dir + image/container/log sizes    |
 | `wtf service NAME`  | drilldown one service: state, restarts, mem, ports, journal |
 | `wtf logs`          | recent ERROR+ journal entries grouped by service            |
 | `wtf events`        | chronological timeline: reboots, OOM, failed units, …       |

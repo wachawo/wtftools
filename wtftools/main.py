@@ -126,6 +126,45 @@ def cmd_who(args: argparse.Namespace) -> int:
     return emit_section(args, data, sections_mod.render_who_text, sections_mod.render_who_plain, section="who")
 
 
+def cmd_temp(args: argparse.Namespace) -> int:
+    """Hardware temperatures from /sys/class/hwmon sensors."""
+    temps = sysinfo.get_temperatures()
+    cfg = config_mod.get_config()
+
+    if args.format == "json":
+        payload = {
+            "schema_version": 1,
+            "warn_c": cfg.temp_warn_c,
+            "fail_c": cfg.temp_fail_c,
+            "sensors": temps,
+        }
+        print(json.dumps(payload, indent=2, default=str))
+        return 0
+    if args.format == "plain":
+        for t in temps:
+            print(f"{t['celsius']}\t{t['sensor']}\t{t['label']}")
+        return 0
+
+    if not temps:
+        print(colors.dim("no /sys/class/hwmon sensors found (common inside VMs/containers)"))
+        return 0
+
+    print(colors.section("TEMP"))
+    for t in sorted(temps, key=lambda t: t["celsius"], reverse=True):
+        c = t["celsius"]
+        cell = f"{c:5.1f}°C"
+        if c >= cfg.temp_fail_c:
+            cell = colors.red(cell)
+        elif c >= cfg.temp_warn_c:
+            cell = colors.yellow(cell)
+        else:
+            cell = colors.green(cell)
+        print(f"  {cell}  {t['sensor']}/{t['label']}")
+    hottest = max(temps, key=lambda t: t["celsius"])
+    print(colors.dim(f"  hottest {hottest['celsius']:.1f}°C · warn >={cfg.temp_warn_c:.0f}°C · fail >={cfg.temp_fail_c:.0f}°C · {len(temps)} sensor(s)"))
+    return 0
+
+
 def cmd_top(args: argparse.Namespace) -> int:
     """Focused live top — by CPU or RSS, optionally filtered by user/name."""
     by = args.sort
@@ -165,7 +204,13 @@ def cmd_top(args: argparse.Namespace) -> int:
 
 
 def cmd_ports(args: argparse.Namespace) -> int:
-    """Listening sockets with owning process info."""
+    """Listening sockets with owning process info.
+
+    With a positional port number (`wtf port 5060`) it drills into that one
+    port instead: PID, user, the exact executable file and working directory.
+    """
+    if getattr(args, "port", None) is not None:
+        return _cmd_port_detail(args)
     try:
         import psutil  # type: ignore
     except ImportError:
@@ -271,6 +316,172 @@ def _cmd_ports_fallback(args: argparse.Namespace) -> int:
     print(f"  {'PORT':>5}  {'PROTO':<5} {'ADDR':<20}")
     for r in rows:
         print(f"  {r['port']:>5}  {r['proto']:<5} {r['addr']:<20}")
+    return 0
+
+
+def _cmd_port_detail(args: argparse.Namespace) -> int:
+    """Drill into a single port: which process holds it and which file it is."""
+    port = args.port
+    entries = sysinfo.get_port_processes(port)
+
+    if args.format == "json":
+        print(json.dumps({"schema_version": 1, "port": port, "processes": entries}, indent=2, default=str))
+        return 0 if entries else 1
+    if args.format == "plain":
+        for e in entries:
+            print(
+                f"{e.get('proto', '')}\t{e.get('addr', '')}\t{e.get('state', '')}\t"
+                f"{e.get('pid') or '-'}\t{e.get('user') or '-'}\t{e.get('command') or '-'}\t"
+                f"{e.get('exe') or '-'}\t{e.get('cwd') or '-'}"
+            )
+        return 0 if entries else 1
+
+    print(colors.section(f"PORT {port}"))
+    if not entries:
+        print(colors.dim("  (nothing is using this port)"))
+        print(colors.dim("  note: run with sudo to see processes owned by other users"))
+        return 1
+    unreadable = colors.dim("(unreadable — try sudo)")
+    for e in entries:
+        head = f"{e.get('proto', '?')} {e.get('addr', '')}"
+        if e.get("state"):
+            head += f" ({e['state']})"
+        print(f"  {colors.bold(head)}")
+        print(f"    pid     : {e.get('pid') or '-'}")
+        print(f"    user    : {e.get('user') or '-'}")
+        print(f"    command : {e.get('command') or '-'}")
+        if e.get("cmdline"):
+            print(f"    cmdline : {e['cmdline']}")
+        print(f"    exe     : {e.get('exe') or unreadable}")
+        print(f"    cwd     : {e.get('cwd') or unreadable}")
+    return 0
+
+
+def cmd_docker(args: argparse.Namespace) -> int:
+    """Where a container came from: compose project working dir + config files."""
+    if not shutil.which("docker"):
+        msg = "docker not available on this host"
+        if args.format == "json":
+            print(json.dumps({"error": msg}))
+        else:
+            print(colors.red(msg))
+        return 2
+
+    if args.name:
+        info = sysinfo.get_docker_container_origin(args.name)
+        if info is None:
+            msg = f"container '{args.name}' not found (or docker not accessible)"
+            if args.format == "json":
+                print(json.dumps({"error": msg}))
+            else:
+                print(colors.red(msg))
+            return 1
+        items = [info]
+    else:
+        items = sysinfo.get_docker_containers()
+        if items is None:
+            msg = "cannot list containers (is the docker daemon running and accessible?)"
+            if args.format == "json":
+                print(json.dumps({"error": msg}))
+            else:
+                print(colors.red(msg))
+            return 1
+
+    if args.format == "json":
+        print(json.dumps({"schema_version": 1, "containers": items}, indent=2, default=str))
+        return 0
+
+    def _bytes_cell(value: Optional[int]) -> str:
+        return str(value) if isinstance(value, int) else "-"
+
+    if args.format == "plain":
+        for c in items:
+            print(
+                f"{c['name']}\t{c.get('status', '')}\t{c.get('image', '')}\t"
+                f"{c.get('compose_project') or '-'}\t{c.get('compose_service') or '-'}\t"
+                f"{c.get('working_dir') or '-'}\t{c.get('config_files') or '-'}\t"
+                f"{_bytes_cell(c.get('image_bytes'))}\t{_bytes_cell(c.get('container_bytes'))}\t"
+                f"{_bytes_cell(c.get('logs_bytes'))}"
+            )
+        return 0
+
+    # Sizes are formatted with decimal units so they line up with `docker`.
+    def _bytes_human(value: Optional[int]) -> str:
+        return sysinfo.format_bytes_si(value) if isinstance(value, int) else "?"
+
+    if args.name:
+        c = items[0]
+        print(colors.section(c["name"]))
+        print(f"  image        : {c.get('image', '')}")
+        print(f"  status       : {c.get('status', '')}")
+        if c.get("working_dir"):
+            project = c.get("compose_project") or "?"
+            service = c.get("compose_service") or "?"
+            print(f"  compose      : {project} / {service}")
+            print(f"  working dir  : {colors.bold(c['working_dir'])}")
+            if c.get("config_files"):
+                print(f"  config files : {c['config_files']}")
+        else:
+            print(colors.dim("  not a compose container — no host working dir recorded"))
+        print(f"  image size   : {_bytes_human(c.get('image_bytes'))}")
+        print(f"  container    : {_bytes_human(c.get('container_bytes'))} (writable layer)")
+        logs = c.get("logs_bytes")
+        if isinstance(logs, int):
+            print(f"  logs         : {_bytes_human(logs)}")
+        else:
+            print(colors.dim("  logs         : ? (run with sudo to read the log file)"))
+        return 0
+
+    print(colors.section("DOCKER"))
+    if not items:
+        print(colors.dim("  (no running containers)"))
+        return 0
+    name_width = max((len(c["name"]) for c in items), default=12)
+    header = f"  {'NAME'.ljust(name_width)}  {'STATUS':<9} {'IMAGE':>8} {'CONTNR':>8} {'LOGS':>8}  WORKING DIR"
+    print(colors.bold(header))
+    # Same image used by many containers is counted once (dedupe by image id).
+    unique_images: Dict[str, int] = {}
+    tot_cnt = 0
+    cnt_known = False
+    tot_log = 0
+    log_known = False
+    for c in items:
+        wd = c.get("working_dir") or colors.dim("(not compose)")
+        img, cnt, log = c.get("image_bytes"), c.get("container_bytes"), c.get("logs_bytes")
+        if isinstance(img, int):
+            unique_images[c.get("image_id") or c.get("image") or c["name"]] = img
+        if isinstance(cnt, int):
+            tot_cnt += cnt
+            cnt_known = True
+        if isinstance(log, int):
+            tot_log += log
+            log_known = True
+        print(f"  {c['name'].ljust(name_width)}  {c.get('status', ''):<9} {_bytes_human(img):>8} {_bytes_human(cnt):>8} {_bytes_human(log):>8}  {wd}")
+    if len(items) > 1:
+        # Image total dedupes by id so one image is not counted per container.
+        # Different images can still share base layers on disk, so this is the
+        # logical unique-images total, not exact disk — `docker system df`
+        # reports the real layer-deduplicated figure. Container writable layers
+        # and logs are per-container, so those totals are exact.
+        img_cell = sysinfo.format_bytes_si(sum(unique_images.values())) if unique_images else "?"
+        cnt_cell = sysinfo.format_bytes_si(tot_cnt) if cnt_known else "?"
+        log_cell = sysinfo.format_bytes_si(tot_log) if log_known else "?"
+        print(colors.bold(f"  {'TOTAL'.ljust(name_width)}  {'':<9} {img_cell:>8} {cnt_cell:>8} {log_cell:>8}"))
+        # The image total dedupes by id, but different images still share base
+        # layers on disk, so it overstates real usage. Surface the true
+        # layer-deduplicated figure from `docker system df`.
+        df = sysinfo.get_docker_disk_usage()
+        images_row = next((r for r in df if r.get("type", "").lower().startswith("image")), None) if df else None
+        if images_row:
+            notes = [f"IMAGE total is logical (images share layers); real disk {images_row['size']}, {images_row['reclaimable']} reclaimable — docker system df"]
+        else:
+            notes = ["IMAGE total is logical (images share base layers); `docker system df` for real disk"]
+        if log_known:
+            notes.append("logs cap with max-size")
+        else:
+            notes.append("logs need sudo")
+        notes.append("decimal units, like docker")
+        print(colors.dim("  note: " + "; ".join(notes)))
     return 0
 
 
@@ -692,7 +903,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
         for paragraph in s.advice.split("\n"):
             print(f"      {paragraph}")
         if s.investigation:
-            print(f"      {colors.dim('── investigation ──')}")
+            print(f"      {colors.dim('# investigation')}")
             for line in s.investigation:
                 print(f"      {line}")
         print("")
@@ -1384,6 +1595,10 @@ def build_parser() -> argparse.ArgumentParser:
     who.add_argument("--show-commands", action="store_true", help="Also print the classic commands this view replaces")
     who.set_defaults(func=cmd_who)
 
+    temp = subparsers.add_parser("temp", aliases=["temps", "temperature"], help="Hardware temperatures from /sys/class/hwmon sensors")
+    temp.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    temp.set_defaults(func=cmd_temp)
+
     audit = subparsers.add_parser("audit", help="Run health audit and show OK/WARN/FAIL")
     audit.add_argument("--format", choices=["text", "json", "prometheus", "csv", "plain", "html"], default=argparse.SUPPRESS)
     audit.add_argument("--output", "-o", metavar="FILE", help="Write the audit to FILE instead of stdout (drops ANSI colors)")
@@ -1418,11 +1633,17 @@ def build_parser() -> argparse.ArgumentParser:
     top.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
     top.set_defaults(func=cmd_top)
 
-    ports = subparsers.add_parser("ports", help="Listening ports with owning process info")
-    ports.add_argument("--proto", choices=["tcp", "udp", "all"], default="tcp", help="Protocol filter (default: tcp)")
+    ports = subparsers.add_parser("ports", aliases=["port"], help="Listening ports; pass a PORT to drill into one (PID, exe file, cwd)")
+    ports.add_argument("port", nargs="?", type=int, help="Drill into one port: which process holds it, its exe file and cwd")
+    ports.add_argument("--proto", choices=["tcp", "udp", "all"], default="tcp", help="Protocol filter for the listing (default: tcp)")
     ports.add_argument("--public-only", action="store_true", help="Skip loopback addresses (127.x)")
     ports.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
     ports.set_defaults(func=cmd_ports)
+
+    docker = subparsers.add_parser("docker", help="Where a container came from: compose working dir by name")
+    docker.add_argument("name", nargs="?", help="Container name; omit to list running containers")
+    docker.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    docker.set_defaults(func=cmd_docker)
 
     problems = subparsers.add_parser("problems", help="Show only WARN+FAIL results (alias: audit --only problem)")
     problems.add_argument("--check", action="append", metavar="NAME", help="Run only the named check (repeatable). See `--list-checks`.")

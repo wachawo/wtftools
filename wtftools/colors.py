@@ -3,7 +3,6 @@
 """ANSI color helpers for wtftools terminal output."""
 
 import os
-import shutil
 import sys
 from typing import Optional
 
@@ -94,18 +93,9 @@ def status_marker(status: str) -> str:
 
 
 def section(title: str, width: Optional[int] = None) -> str:
-    """Render a section header."""
-    if width is None:
-        try:
-            width = shutil.get_terminal_size((80, 24)).columns
-        except OSError:
-            width = 80
-    title = f" {title.strip()} "
-    if len(title) >= width:
-        return bold(title)
-    side = (width - len(title)) // 2
-    bar = "─" * side
-    line = f"{bar}{title}{bar}"
-    if len(line) < width:
-        line += "─"
-    return cyan(line, bold=True)
+    """Render a section header as a plain `# TITLE` line.
+
+    The `width` argument is accepted for backward compatibility but ignored —
+    headers are left-aligned and not padded to the terminal width.
+    """
+    return cyan(f"# {title.strip()}", bold=True)

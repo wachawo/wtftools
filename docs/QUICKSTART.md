@@ -19,6 +19,7 @@ wtf disk --tree    # is there space, and WHAT is eating it
 wtf cpu            # load, iowait, top CPU consumers
 wtf mem            # RAM/swap, OOM kills, top RAM consumers
 wtf net            # interfaces, gateway, DNS, listening ports
+wtf temp           # hardware temperatures (CPU/disk/board)
 wtf info           # all of the above on one page
 wtf doctor         # which tools are actually available
 ```
@@ -32,6 +33,8 @@ wtf                                     # any FAIL/WARN? what?
 wtf problems -v                         # detail on every problem
 wtf events --since 6                    # last 6h: reboots, OOMs, …
 wtf services <unit>                     # drill into one systemd service
+wtf port 5060                           # who holds a port: PID, exe, cwd
+wtf docker <name>                       # container's folder + image/container/log sizes
 wtf logs --since '2 hours ago'          # ERROR+ journal entries
 wtf explain                             # actionable suggestions per finding
 wtf explain --llm ollama                # or pipe through an LLM
