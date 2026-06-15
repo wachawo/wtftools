@@ -45,6 +45,15 @@ sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 
 Dopo l'installazione hai il comando `wtf`. Provalo: `wtf`.
 
+Completamento con Tab (opzionale) — aggiungi una riga al file rc della tua shell e premi `<Tab>`:
+
+```bash
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
+```
+
+Esegui `wtf completion` senza argomenti per le istruzioni complete.
+
 ## I comandi che userai davvero
 
 ```bash
@@ -57,7 +66,8 @@ Poi chiedi informazioni su una risorsa alla volta, come i comandi `show` su uno 
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf disk /var    # WHAT is eating space under /var (largest folders)
+wtf disk / --tree  # drill into the biggest folders, level by level
 wtf cpu          # load, iowait, top CPU consumers
 wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
@@ -66,21 +76,45 @@ wtf who          # who is logged in, recent logins, failed auth
 wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
-Esempio — il disco si sta riempiendo, trova il colpevole:
+`wtf disk` senza un percorso è la panoramica dei mount — percorso completo,
+usato/totale, percentuale e una barra di utilizzo:
 
 ```
-$ wtf disk --tree /var
+$ wtf disk
 # DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
-
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
+  /            1.4TB / 1.8TB   79%  [████████████████····]  ext4
+  /boot      216.4MB / 1.9GB   11%  [██··················]  ext4
+  /mnt/Data    5.3TB / 13.9TB  38%  [████████············]  ext4
 ```
 
-`wtf disk --tree` senza un percorso sceglie automaticamente il mount più pieno.
+Esempio — il disco si sta riempiendo, trova il colpevole. `wtf disk <path>` elenca
+le cartelle direttamente sotto di esso, le più grandi per prime (`path/  size  % of root  depth`):
+
+```
+$ wtf disk /var
+# DISK USAGE /var
+  lib/      15.0GB  75%  0
+  log/       3.1GB  16%  0
+  cache/     1.2GB   6%  0
+```
+
+Aggiungi `--tree` per addentrarti nella cartella più grande, livello per livello
+(`--depth`, default 3); `--tree N` apre le N più grandi a ogni livello. Il numero
+finale è la profondità:
+
+```
+$ wtf disk / --tree
+# DISK USAGE /
+  home/                 1021.0GB  70%  0
+  home/wachawo/         1021.0GB  70%  1
+  home/wachawo/myApps/   429.7GB  30%  2
+  usr/                   207.9GB  14%  0
+  var/                   206.5GB  14%  0
+```
+
+`wtf disk --tree` senza un percorso analizza il mount più pieno. Esegui con `sudo`
+per leggere le cartelle di proprietà di root. La panoramica dei mount `# DISK`
+(senza percorso) resta invariata.
 
 Stai imparando Linux? Aggiungi `--show-commands` a qualsiasi comando di risorsa e
 stamperà anche i comandi classici che sostituisce, così puoi eseguirli da solo:
@@ -187,7 +221,7 @@ wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
 wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 
 # top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+wtf disk /var --format plain | awk -F'\t' 'NR==1 {print $3, $1}'   # biggest folder: path, bytes
 ```
 
 I payload JSON dei comandi di risorsa includono `schema_version`, così i tuoi script
@@ -240,7 +274,7 @@ I codici di uscita sono adatti a CI/cron:
 | `wtf problems`      | solo le righe WARN+FAIL                                     |
 | `wtf daily`         | controllo mattutino: audit + diff dall'ultima esecuzione + eventi |
 | `wtf explain`       | consigli pratici per ogni controllo; `--llm` per inviarli a un LLM |
-| `wtf disk`          | utilizzo per mount; `--tree` mostra le directory più grandi |
+| `wtf disk [PATH]`   | panoramica dei mount; con PATH, le cartelle più grandi; `--tree` analizza |
 | `wtf cpu`           | carico, iowait, pressione, principali consumatori di CPU    |
 | `wtf mem`           | RAM/swap, OOM kill, principali consumatori di memoria       |
 | `wtf net`           | interfacce, gateway, DNS, errori, porte in ascolto          |
@@ -260,6 +294,7 @@ I codici di uscita sono adatti a CI/cron:
 | `wtf crontab`       | valida tutte le posizioni standard di crontab + i crontab per utente |
 | `wtf doctor`        | autodiagnosi: quali strumenti wtftools può effettivamente usare |
 | `wtf config`        | mostra la configurazione effettiva / stampa un esempio      |
+| `wtf completion`    | stampa uno script di completamento `<Tab>` per bash/zsh (o l'aiuto per la configurazione) |
 
 `wtftools` assorbe e sostituisce
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) — lo stesso validatore

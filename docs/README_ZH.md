@@ -45,6 +45,15 @@ sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 
 安装后你就拥有了 `wtf` 命令。试一下：`wtf`。
 
+Tab 自动补全（可选）——在你的 shell rc 中加上一行，然后按 `<Tab>`：
+
+```bash
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
+```
+
+不带参数运行 `wtf completion` 可查看完整说明。
+
 ## 你真正会用到的命令
 
 ```bash
@@ -57,7 +66,8 @@ wtf explain      # what to do about each problem, step by step
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf disk /var    # WHAT is eating space under /var (largest folders)
+wtf disk / --tree  # drill into the biggest folders, level by level
 wtf cpu          # load, iowait, top CPU consumers
 wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
@@ -66,21 +76,43 @@ wtf who          # who is logged in, recent logins, failed auth
 wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
-示例——磁盘快满了，找出罪魁祸首：
+`wtf disk` 不带路径时显示挂载点概览——完整路径、已用/总量、百分比
+以及一个用量条：
 
 ```
-$ wtf disk --tree /var
+$ wtf disk
 # DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
-
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
+  /            1.4TB / 1.8TB   79%  [████████████████····]  ext4
+  /boot      216.4MB / 1.9GB   11%  [██··················]  ext4
+  /mnt/Data    5.3TB / 13.9TB  38%  [████████············]  ext4
 ```
 
-`wtf disk --tree` 不带路径时会自动选择最满的挂载点。
+示例——磁盘快满了，找出罪魁祸首。`wtf disk <path>` 会列出该路径下
+直接的文件夹，最大的排在前面（`path/  size  % of root  depth`）：
+
+```
+$ wtf disk /var
+# DISK USAGE /var
+  lib/      15.0GB  75%  0
+  log/       3.1GB  16%  0
+  cache/     1.2GB   6%  0
+```
+
+加上 `--tree` 可逐层深入最大的文件夹（`--depth`，默认 3）；
+`--tree N` 会在每一层展开最大的 N 个。末尾的数字表示深度：
+
+```
+$ wtf disk / --tree
+# DISK USAGE /
+  home/                 1021.0GB  70%  0
+  home/wachawo/         1021.0GB  70%  1
+  home/wachawo/myApps/   429.7GB  30%  2
+  usr/                   207.9GB  14%  0
+  var/                   206.5GB  14%  0
+```
+
+`wtf disk --tree` 不带路径时会深入最满的挂载点。用 `sudo` 运行可读取
+root 拥有的文件夹。`# DISK` 挂载点概览（不带路径）保持不变。
 
 正在学习 Linux？给任意资源命令加上 `--show-commands`，它还会
 打印出所替代的经典命令，方便你自己运行：
@@ -184,7 +216,7 @@ wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
 wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 
 # top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+wtf disk /var --format plain | awk -F'\t' 'NR==1 {print $3, $1}'   # biggest folder: path, bytes
 ```
 
 资源命令的 JSON 负载带有 `schema_version`，因此你的脚本在
@@ -236,7 +268,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf problems`      | 仅显示 WARN+FAIL 行                                          |
 | `wtf daily`         | 早晨检查：审计 + 与上次运行的差异 + 事件                       |
 | `wtf explain`       | 针对每项检查给出可操作建议；用 `--llm` 传给 LLM                |
-| `wtf disk`          | 各挂载点用量；`--tree` 显示最大的目录                         |
+| `wtf disk [PATH]`   | 挂载点概览；带 PATH 时显示最大的文件夹；`--tree` 逐层深入       |
 | `wtf cpu`           | 负载、iowait、压力、CPU 占用最高的进程                        |
 | `wtf mem`           | RAM/swap、OOM kill、内存占用最高的进程                        |
 | `wtf net`           | 网络接口、网关、DNS、错误、监听端口                            |
@@ -256,6 +288,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf crontab`       | 校验所有标准 crontab 位置 + 每个用户的 crontab                |
 | `wtf doctor`        | 自我诊断：wtftools 实际能使用哪些工具                         |
 | `wtf config`        | 显示生效的配置 / 打印示例                                     |
+| `wtf completion`    | 打印 bash/zsh `<Tab>` 自动补全脚本（或安装帮助）              |
 
 `wtftools` 吸收并取代了
 [`checkcrontab`](https://github.com/wachawo/checkcrontab)——同一个 cron

@@ -45,6 +45,15 @@ sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 
 इंस्टॉल के बाद आपके पास `wtf` कमांड होता है। इसे आज़माएँ: `wtf`।
 
+Tab-completion (वैकल्पिक) — अपने shell rc में एक पंक्ति जोड़ें और `<Tab>` दबाएँ:
+
+```bash
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
+```
+
+पूरे निर्देशों के लिए बिना किसी तर्क के `wtf completion` चलाएँ।
+
 ## वे कमांड जिन्हें आप वास्तव में इस्तेमाल करेंगे
 
 ```bash
@@ -57,7 +66,8 @@ wtf explain      # what to do about each problem, step by step
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf disk /var    # WHAT is eating space under /var (largest folders)
+wtf disk / --tree  # drill into the biggest folders, level by level
 wtf cpu          # load, iowait, top CPU consumers
 wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
@@ -66,21 +76,45 @@ wtf who          # who is logged in, recent logins, failed auth
 wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
-उदाहरण — डिस्क भर रही है, दोषी को खोजें:
+बिना पथ के `wtf disk` माउंट का अवलोकन है — पूरा पथ, उपयोग/कुल, प्रतिशत
+और एक उपयोग-बार:
 
 ```
-$ wtf disk --tree /var
+$ wtf disk
 # DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
-
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
+  /            1.4TB / 1.8TB   79%  [████████████████····]  ext4
+  /boot      216.4MB / 1.9GB   11%  [██··················]  ext4
+  /mnt/Data    5.3TB / 13.9TB  38%  [████████············]  ext4
 ```
 
-बिना पथ के `wtf disk --tree` अपने आप सबसे भरे हुए माउंट को चुन लेता है।
+उदाहरण — डिस्क भर रही है, दोषी को खोजें। `wtf disk <path>` ठीक उसके नीचे की
+फ़ोल्डरों को सबसे बड़ी से शुरू करते हुए सूचीबद्ध करता है (`path/  size  % of root  depth`):
+
+```
+$ wtf disk /var
+# DISK USAGE /var
+  lib/      15.0GB  75%  0
+  log/       3.1GB  16%  0
+  cache/     1.2GB   6%  0
+```
+
+सबसे बड़े फ़ोल्डर में स्तर-दर-स्तर गहराई से जाने के लिए `--tree` जोड़ें (`--depth`,
+डिफ़ॉल्ट 3); `--tree N` हर स्तर पर N सबसे बड़े खोलता है। अंत में दी गई संख्या
+गहराई है:
+
+```
+$ wtf disk / --tree
+# DISK USAGE /
+  home/                 1021.0GB  70%  0
+  home/wachawo/         1021.0GB  70%  1
+  home/wachawo/myApps/   429.7GB  30%  2
+  usr/                   207.9GB  14%  0
+  var/                   206.5GB  14%  0
+```
+
+बिना पथ के `wtf disk --tree` सबसे भरे हुए माउंट में गहराई से जाता है। root के
+स्वामित्व वाले फ़ोल्डरों को पढ़ने के लिए `sudo` के साथ चलाएँ। `# DISK` माउंट
+अवलोकन (बिना पथ) अपरिवर्तित है।
 
 Linux सीख रहे हैं? किसी भी संसाधन कमांड में `--show-commands` जोड़ें और यह उन
 क्लासिक कमांड को भी प्रिंट करता है जिन्हें यह बदलता है, ताकि आप उन्हें खुद चला सकें:
@@ -185,7 +219,7 @@ wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
 wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 
 # top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+wtf disk /var --format plain | awk -F'\t' 'NR==1 {print $3, $1}'   # biggest folder: path, bytes
 ```
 
 संसाधन कमांड के JSON पेलोड में `schema_version` होता है, ताकि आपकी
@@ -237,7 +271,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf problems`      | केवल WARN+FAIL पंक्तियाँ                                     |
 | `wtf daily`         | सुबह की जाँच: ऑडिट + पिछली बार के मुक़ाबले diff + इवेंट        |
 | `wtf explain`       | प्रति-जाँच व्यावहारिक सलाह; LLM को भेजने के लिए `--llm`        |
-| `wtf disk`          | प्रति-माउंट उपयोग; `--tree` सबसे बड़ी डायरेक्टरी दिखाता है     |
+| `wtf disk [PATH]`   | माउंट अवलोकन; PATH के साथ, सबसे बड़ी फ़ोल्डर; `--tree` गहराई में जाता है |
 | `wtf cpu`           | लोड, iowait, प्रेशर, शीर्ष CPU उपभोक्ता                       |
 | `wtf mem`           | RAM/swap, OOM kills, शीर्ष मेमोरी उपभोक्ता                    |
 | `wtf net`           | इंटरफ़ेस, गेटवे, DNS, त्रुटियाँ, सुनने वाले पोर्ट             |
@@ -257,6 +291,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf crontab`       | सभी मानक crontab स्थानों + प्रति-उपयोगकर्ता crontab को मान्य करें |
 | `wtf doctor`        | स्व-निदान: wtftools वास्तव में किन उपकरणों का उपयोग कर सकता है |
 | `wtf config`        | प्रभावी कॉन्फ़िग दिखाएँ / उदाहरण प्रिंट करें                  |
+| `wtf completion`    | bash/zsh `<Tab>`-completion स्क्रिप्ट प्रिंट करें (या सेटअप मदद) |
 
 `wtftools`,
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) को अपने में समेट लेता है और उसकी जगह लेता है —

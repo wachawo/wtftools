@@ -46,6 +46,15 @@ sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 
 インストール後は `wtf` コマンドが使えます。試してみてください。`wtf`。
 
+タブ補完（任意）— シェルの rc ファイルに1行追加して `<Tab>` を押します。
+
+```bash
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
+```
+
+詳しい手順は `wtf completion` を引数なしで実行すると表示されます。
+
 ## 実際によく使うコマンド
 
 ```bash
@@ -58,7 +67,8 @@ wtf explain      # what to do about each problem, step by step
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf disk /var    # WHAT is eating space under /var (largest folders)
+wtf disk / --tree  # drill into the biggest folders, level by level
 wtf cpu          # load, iowait, top CPU consumers
 wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
@@ -67,21 +77,44 @@ wtf who          # who is logged in, recent logins, failed auth
 wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
-例 — ディスクがいっぱいになりつつあるので、原因を突き止めます。
+`wtf disk` をパスなしで実行するとマウントの概要になります — フルパス、使用量／合計、
+パーセント、そして使用率バーが表示されます。
 
 ```
-$ wtf disk --tree /var
+$ wtf disk
 # DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
-
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
+  /            1.4TB / 1.8TB   79%  [████████████████····]  ext4
+  /boot      216.4MB / 1.9GB   11%  [██··················]  ext4
+  /mnt/Data    5.3TB / 13.9TB  38%  [████████············]  ext4
 ```
 
-`wtf disk --tree` をパスなしで実行すると、最も使用率の高いマウントが自動的に選ばれます。
+例 — ディスクがいっぱいになりつつあるので、原因を突き止めます。`wtf disk <path>` は、
+その直下のフォルダを大きい順に一覧表示します（`path/  size  % of root  depth`）。
+
+```
+$ wtf disk /var
+# DISK USAGE /var
+  lib/      15.0GB  75%  0
+  log/       3.1GB  16%  0
+  cache/     1.2GB   6%  0
+```
+
+`--tree` を付けると、最大のフォルダを階層ごとに掘り下げます（`--depth`、デフォルトは3）。
+`--tree N` は各階層で最大 N 件を開きます。末尾の数字は深さを表します。
+
+```
+$ wtf disk / --tree
+# DISK USAGE /
+  home/                 1021.0GB  70%  0
+  home/wachawo/         1021.0GB  70%  1
+  home/wachawo/myApps/   429.7GB  30%  2
+  usr/                   207.9GB  14%  0
+  var/                   206.5GB  14%  0
+```
+
+`wtf disk --tree` をパスなしで実行すると、最も使用率の高いマウントを掘り下げます。
+root 所有のフォルダを読むには `sudo` を付けて実行してください。`# DISK` マウント概要
+（パスなし）は変更ありません。
 
 Linux を学習中ですか？ 任意のリソースコマンドに `--show-commands` を付けると、それが
 置き換えている従来のコマンドも表示されるので、自分で実行してみることができます。
@@ -185,7 +218,7 @@ wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
 wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 
 # top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+wtf disk /var --format plain | awk -F'\t' 'NR==1 {print $3, $1}'   # biggest folder: path, bytes
 ```
 
 リソースコマンドの JSON ペイロードには `schema_version` が含まれているので、
@@ -237,7 +270,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf problems`      | WARN+FAIL の行のみ                                           |
 | `wtf daily`         | 朝のチェック: 監査 + 前回実行との差分 + イベント                |
 | `wtf explain`       | チェックごとの実行可能なアドバイス。`--llm` で LLM にパイプ      |
-| `wtf disk`          | マウントごとの使用率。`--tree` で最大のディレクトリを表示        |
+| `wtf disk [PATH]`   | マウント概要。PATH を付けると最大のフォルダ。`--tree` で掘り下げ |
 | `wtf cpu`           | 負荷、iowait、プレッシャー、CPU 消費上位                       |
 | `wtf mem`           | RAM/swap、OOM kill、メモリ消費上位                            |
 | `wtf net`           | インターフェース、ゲートウェイ、DNS、エラー、待ち受けポート       |
@@ -257,6 +290,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf crontab`       | 標準の全 crontab 配置 + ユーザーごとの crontab を検証           |
 | `wtf doctor`        | 自己診断: wtftools が実際に使えるツールはどれか                 |
 | `wtf config`        | 有効な設定を表示／例を出力                                     |
+| `wtf completion`    | bash/zsh の `<Tab>` 補完スクリプトを出力（または設定ヘルプ）     |
 
 `wtftools` は
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) を取り込み、置き換えます。

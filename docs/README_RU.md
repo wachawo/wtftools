@@ -45,6 +45,15 @@ sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 
 После установки у вас есть команда `wtf`. Попробуйте: `wtf`.
 
+Автодополнение по Tab (необязательно) — добавьте одну строку в rc-файл вашей оболочки и нажмите `<Tab>`:
+
+```bash
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
+```
+
+Запустите `wtf completion` без аргумента, чтобы увидеть полную инструкцию.
+
 ## Команды, которыми вы действительно будете пользоваться
 
 ```bash
@@ -57,7 +66,8 @@ wtf explain      # what to do about each problem, step by step
 
 ```bash
 wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
+wtf disk /var    # WHAT is eating space under /var (largest folders)
+wtf disk / --tree  # drill into the biggest folders, level by level
 wtf cpu          # load, iowait, top CPU consumers
 wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
@@ -66,21 +76,44 @@ wtf who          # who is logged in, recent logins, failed auth
 wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
-Пример — диск заполняется, найдём виновника:
+`wtf disk` без пути — это обзор разделов: полный путь, использовано/всего, процент
+и полоса заполнения:
 
 ```
-$ wtf disk --tree /var
+$ wtf disk
 # DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
-
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
+  /            1.4TB / 1.8TB   79%  [████████████████····]  ext4
+  /boot      216.4MB / 1.9GB   11%  [██··················]  ext4
+  /mnt/Data    5.3TB / 13.9TB  38%  [████████············]  ext4
 ```
 
-`wtf disk --tree` без указания пути автоматически выбирает самый заполненный раздел.
+Пример — диск заполняется, найдём виновника. `wtf disk <path>` выводит папки
+непосредственно внутри него, начиная с самых больших (`path/  size  % of root  depth`):
+
+```
+$ wtf disk /var
+# DISK USAGE /var
+  lib/      15.0GB  75%  0
+  log/       3.1GB  16%  0
+  cache/     1.2GB   6%  0
+```
+
+Добавьте `--tree`, чтобы спуститься в самую большую папку, уровень за уровнем (`--depth`,
+по умолчанию 3); `--tree N` раскрывает N крупнейших на каждом уровне. Завершающее число —
+это глубина:
+
+```
+$ wtf disk / --tree
+# DISK USAGE /
+  home/                 1021.0GB  70%  0
+  home/wachawo/         1021.0GB  70%  1
+  home/wachawo/myApps/   429.7GB  30%  2
+  usr/                   207.9GB  14%  0
+  var/                   206.5GB  14%  0
+```
+
+`wtf disk --tree` без пути спускается по самому заполненному разделу. Запускайте с `sudo`,
+чтобы читать папки, принадлежащие root. Обзор разделов `# DISK` (без пути) остаётся без изменений.
 
 Изучаете Linux? Добавьте `--show-commands` к любой команде ресурса, и она также
 выведет классические команды, которые заменяет, чтобы вы могли запустить их сами:
@@ -185,7 +218,7 @@ wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
 wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
 
 # top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
+wtf disk /var --format plain | awk -F'\t' 'NR==1 {print $3, $1}'   # biggest folder: path, bytes
 ```
 
 JSON-данные команд ресурсов содержат `schema_version`, чтобы ваши
@@ -237,7 +270,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf problems`      | только строки WARN+FAIL                                      |
 | `wtf daily`         | утренняя проверка: аудит + изменения с прошлого запуска + события |
 | `wtf explain`       | практические советы по каждой проверке; `--llm` для передачи в LLM |
-| `wtf disk`          | использование по разделам; `--tree` показывает крупнейшие каталоги |
+| `wtf disk [PATH]`   | обзор разделов; с PATH — крупнейшие папки; `--tree` раскрывает |
 | `wtf cpu`           | нагрузка, iowait, давление, главные потребители CPU         |
 | `wtf mem`           | RAM/swap, OOM-убийства, главные потребители памяти          |
 | `wtf net`           | интерфейсы, шлюз, DNS, ошибки, прослушиваемые порты         |
@@ -257,6 +290,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf crontab`       | проверка всех стандартных расположений crontab + crontab по пользователям |
 | `wtf doctor`        | самодиагностика: какие инструменты wtftools реально может использовать |
 | `wtf config`        | показать действующую конфигурацию / вывести пример          |
+| `wtf completion`    | вывести скрипт автодополнения `<Tab>` для bash/zsh (или справку по настройке) |
 
 `wtftools` поглощает и заменяет
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) — тот же валидатор
