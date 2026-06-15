@@ -63,6 +63,7 @@ wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
 wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
+wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
 示例——磁盘快满了，找出罪魁祸首：
@@ -103,6 +104,67 @@ wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
 wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
+
+### 谁占用了某个端口？
+
+`wtf port <N>`（或 `wtf ports <N>`）会显示哪个进程占用了某个端口——
+PID、其背后确切的可执行文件（通过 `lsof` + `/proc`），以及它的
+运行目录：
+
+```
+$ wtf port 5060
+# PORT 5060
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+用 `sudo` 运行它即可看到属于其他用户的进程。
+
+### 这个容器是在哪里启动的？
+
+`wtf docker <name>` 直接从容器的标签回答“`docker compose up` 是在哪个
+文件夹里运行的？”——以及它占用了多少磁盘（镜像层、可写容器层，
+以及 json 日志）：
+
+```
+$ wtf docker myapp_web
+# myapp_web
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+  image size   : 156.4MB
+  container    : 254.3MB (writable layer)
+  logs         : 53.8MB
+```
+
+`wtf docker` 不带名称时会列出每个正在运行的容器及其大小列和
+工作目录，外加一行 TOTAL：
+
+```
+$ sudo wtf docker
+# DOCKER
+  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
+  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
+  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
+  TOTAL                     440MB    267MB   57.8MB
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
+```
+
+大小使用十进制单位（1GB = 1000MB），因此它们与
+`docker container ls --size` 对齐。每行的 IMAGE 是镜像的完整逻辑大小
+（即 `docker` 所称的 *virtual* 大小）。IMAGE 总计按镜像 id 去重，
+因此被多个容器共享的同一镜像只计一次——而非每个容器计一次。
+**但是**不同镜像在磁盘上仍会共享基础层，所以即便这个去重后的总和
+也会高估真实使用量；note 那一行直接从 `docker system df` 显示真实的
+按层去重的磁盘占用。CONTNR（可写层）和 LOGS 是按容器统计的，
+因此这些总计是精确的。日志大小需要 `/var/lib/docker` 下的读取权限——
+用 `sudo` 运行，否则它们会显示为 `?`。
 
 ## 面向脚本的输出：grep、awk、jq
 
@@ -180,9 +242,12 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf net`           | 网络接口、网关、DNS、错误、监听端口                            |
 | `wtf io`            | 各设备的 IO 速率、压力、卡住的进程                            |
 | `wtf who`           | 已登录用户、近期登录、失败的认证                              |
+| `wtf temp`          | 来自 /sys/class/hwmon 传感器的硬件温度                        |
 | `wtf info`          | 一页式快照：以上全部一次性呈现                                |
 | `wtf top`           | 聚焦的进程 top：按 cpu/rss 排序，按用户/名称过滤              |
 | `wtf ports`         | 监听套接字及其所属 PID/用户/命令                              |
+| `wtf port NUM`      | 深入查看某个端口：PID、可执行文件、工作目录                    |
+| `wtf docker [NAME]` | 容器 compose 工作目录 + 镜像/容器/日志大小                    |
 | `wtf service NAME`  | 深入查看某个服务：状态、重启、内存、端口、日志                 |
 | `wtf logs`          | 按服务分组的近期 ERROR+ 日志条目                              |
 | `wtf events`        | 按时间顺序的时间线：重启、OOM、失败的单元……                   |

@@ -63,6 +63,7 @@ wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
 wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
+wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
 Пример — диск заполняется, найдём виновника:
@@ -103,6 +104,68 @@ wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
 wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
+
+### Кто занимает порт?
+
+`wtf port <N>` (или `wtf ports <N>`) показывает, какой процесс держит порт — PID,
+точный исполняемый файл за ним (через `lsof` + `/proc`) и каталог, из которого он
+запущен:
+
+```
+$ wtf port 5060
+# PORT 5060
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+Запустите с `sudo`, чтобы увидеть процессы, принадлежащие другим пользователям.
+
+### Откуда был запущен этот контейнер?
+
+`wtf docker <name>` отвечает на вопрос «в какой папке выполнялся `docker compose up`?»
+прямо из меток контейнера — а также сколько диска он съедает (слои образа,
+записываемый слой контейнера и json-лог):
+
+```
+$ wtf docker myapp_web
+# myapp_web
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+  image size   : 156.4MB
+  container    : 254.3MB (writable layer)
+  logs         : 53.8MB
+```
+
+`wtf docker` без имени выводит каждый запущенный контейнер со столбцами размеров
+и рабочим каталогом, плюс строку TOTAL:
+
+```
+$ sudo wtf docker
+# DOCKER
+  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
+  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
+  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
+  TOTAL                     440MB    267MB   57.8MB
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
+```
+
+Размеры используют десятичные единицы (1GB = 1000MB), поэтому они совпадают с
+`docker container ls --size`. Значение IMAGE в строке — полный логический размер
+образа (то, что `docker` называет *virtual* size). Итог по IMAGE дедуплицирует по id
+образа, поэтому один образ, общий для многих контейнеров, считается один раз — а не
+по разу на контейнер. **Но** разные образы всё равно разделяют базовые слои на диске,
+поэтому даже эта дедуплицированная сумма завышает реальное использование; строка note
+показывает истинный объём диска с дедупликацией слоёв прямо из `docker system df`.
+CONTNR (записываемый слой) и LOGS считаются по каждому контейнеру, поэтому эти итоги
+точны. Размеры логов требуют доступа на чтение в `/var/lib/docker` — запускайте с
+`sudo`, иначе они показывают `?`.
 
 ## Вывод для скриптов: grep, awk, jq
 
@@ -180,9 +243,12 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf net`           | интерфейсы, шлюз, DNS, ошибки, прослушиваемые порты         |
 | `wtf io`            | скорости IO по устройствам, давление, зависшие процессы     |
 | `wtf who`           | вошедшие пользователи, недавние входы, неудачная аутентификация |
+| `wtf temp`          | температуры оборудования с датчиков /sys/class/hwmon         |
 | `wtf info`          | одностраничный снимок: всё вышеперечисленное сразу          |
 | `wtf top`           | фокусированный топ процессов: сортировка по cpu/rss, фильтр по пользователю/имени |
 | `wtf ports`         | прослушиваемые сокеты с владеющим PID/пользователем/командой |
+| `wtf port NUM`      | детальный разбор одного порта: PID, исполняемый файл, рабочий каталог |
+| `wtf docker [NAME]` | рабочий каталог compose контейнера + размеры образа/контейнера/логов |
 | `wtf service NAME`  | детальный разбор одной службы: состояние, перезапуски, память, порты, журнал |
 | `wtf logs`          | недавние записи журнала уровня ERROR+, сгруппированные по службам |
 | `wtf events`        | хронологическая лента: перезагрузки, OOM, упавшие юниты, …  |

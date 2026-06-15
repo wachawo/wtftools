@@ -63,6 +63,7 @@ wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
 wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
+wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
 Ejemplo: el disco se está llenando, encuentra al culpable:
@@ -103,6 +104,69 @@ wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
 wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
+
+### ¿Quién está en un puerto?
+
+`wtf port <N>` (o `wtf ports <N>`) muestra qué proceso ocupa un puerto: el
+PID, el archivo ejecutable exacto detrás de él (vía `lsof` + `/proc`) y el
+directorio desde el que se ejecuta:
+
+```
+$ wtf port 5060
+# PORT 5060
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+Ejecútalo con `sudo` para ver procesos de otros usuarios.
+
+### ¿Dónde se inició este contenedor?
+
+`wtf docker <name>` responde a "¿en qué carpeta se ejecutó `docker compose up`?"
+directamente desde las etiquetas del contenedor, y cuánto disco consume (capas
+de la imagen, la capa de contenedor escribible y el log json):
+
+```
+$ wtf docker myapp_web
+# myapp_web
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+  image size   : 156.4MB
+  container    : 254.3MB (writable layer)
+  logs         : 53.8MB
+```
+
+`wtf docker` sin nombre lista todos los contenedores en ejecución con sus
+columnas de tamaño y directorio de trabajo, más una fila TOTAL:
+
+```
+$ sudo wtf docker
+# DOCKER
+  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
+  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
+  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
+  TOTAL                     440MB    267MB   57.8MB
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
+```
+
+Los tamaños usan unidades decimales (1GB = 1000MB), así que coinciden con
+`docker container ls --size`. El IMAGE por fila es el tamaño lógico completo
+de la imagen (lo que `docker` llama tamaño *virtual*). El total de IMAGE
+deduplica por id de imagen, así que una imagen compartida por muchos
+contenedores se cuenta una sola vez, no una por contenedor. **Pero**
+imágenes distintas igualmente comparten capas base en disco, así que incluso
+esa suma deduplicada sobreestima el uso real; la línea de nota muestra el
+disco real con capas deduplicadas directamente desde `docker system df`.
+CONTNR (capa escribible) y LOGS son por contenedor, así que esos totales son
+exactos. Los tamaños de los logs requieren acceso de lectura bajo
+`/var/lib/docker`: ejecútalo con `sudo`, de lo contrario muestran `?`.
 
 ## Salida para scripts: grep, awk, jq
 
@@ -180,9 +244,12 @@ Los códigos de salida son compatibles con CI/cron:
 | `wtf net`           | interfaces, gateway, DNS, errores, puertos en escucha       |
 | `wtf io`            | tasas de IO por dispositivo, presión, procesos bloqueados   |
 | `wtf who`           | usuarios conectados, inicios de sesión recientes, autenticaciones fallidas |
+| `wtf temp`          | temperaturas de hardware desde los sensores /sys/class/hwmon |
 | `wtf info`          | instantánea de una página: todo lo anterior a la vez        |
 | `wtf top`           | top de procesos enfocado: ordena por cpu/rss, filtra usuario/nombre |
 | `wtf ports`         | sockets en escucha con PID/usuario/comando propietario      |
+| `wtf port NUM`      | detalle de un puerto: PID, archivo ejecutable, directorio de trabajo |
+| `wtf docker [NAME]` | directorio de trabajo compose del contenedor + tamaños de imagen/contenedor/log |
 | `wtf service NAME`  | detalle de un servicio: estado, reinicios, mem, puertos, journal |
 | `wtf logs`          | entradas recientes ERROR+ del journal agrupadas por servicio |
 | `wtf events`        | línea de tiempo cronológica: reinicios, OOM, unidades fallidas, … |

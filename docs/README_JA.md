@@ -64,6 +64,7 @@ wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
 wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
+wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
 例 — ディスクがいっぱいになりつつあるので、原因を突き止めます。
@@ -104,6 +105,67 @@ wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
 wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
+
+### ポートを使っているのは誰か？
+
+`wtf port <N>`（または `wtf ports <N>`）は、どのプロセスがそのポートを保持しているのかを
+表示します — PID、その背後にある正確な実行ファイル（`lsof` + `/proc` 経由）、そして
+それが動作しているディレクトリです。
+
+```
+$ wtf port 5060
+# PORT 5060
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+他のユーザーが所有するプロセスも見るには `sudo` を付けて実行してください。
+
+### このコンテナはどこで起動されたのか？
+
+`wtf docker <name>` は、「どのフォルダで `docker compose up` を実行したのか？」という
+疑問に、コンテナのラベルから直接答えます — さらに、どれだけディスクを消費しているか
+（イメージレイヤー、書き込み可能なコンテナレイヤー、そして json ログ）も示します。
+
+```
+$ wtf docker myapp_web
+# myapp_web
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+  image size   : 156.4MB
+  container    : 254.3MB (writable layer)
+  logs         : 53.8MB
+```
+
+`wtf docker` を名前なしで実行すると、実行中のすべてのコンテナを、サイズの列と作業
+ディレクトリ、そして TOTAL 行付きで一覧表示します。
+
+```
+$ sudo wtf docker
+# DOCKER
+  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
+  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
+  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
+  TOTAL                     440MB    267MB   57.8MB
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
+```
+
+サイズは十進単位（1GB = 1000MB）を使うので、`docker container ls --size` と一致します。
+行ごとの IMAGE は、そのイメージの完全な論理サイズ（`docker` が *virtual* サイズと呼ぶもの）
+です。IMAGE の合計はイメージ ID で重複排除されるので、多くのコンテナで共有された1つの
+イメージは、コンテナごとに数えられるのではなく、一度だけ数えられます。**しかし**、異なる
+イメージでもディスク上ではベースレイヤーを共有するので、重複排除後の合計ですら実際の
+使用量を過大に見積もります。note 行は、`docker system df` から直接得た、真にレイヤー
+重複排除されたディスク容量を示します。CONTNR（書き込み可能レイヤー）と LOGS はコンテナ
+ごとなので、それらの合計は正確です。ログサイズの取得には `/var/lib/docker` 配下への
+読み取りアクセスが必要です — `sudo` で実行してください。そうでないと `?` と表示されます。
 
 ## スクリプト向けの出力: grep、awk、jq
 
@@ -169,7 +231,7 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 
 ## すべてのサブコマンド
 
-| コマンド             | 機能                                                         |
+| command             | 機能                                                         |
 |---------------------|-------------------------------------------------------------|
 | `wtf` / `wtf audit` | 緑／黄／赤のチェックリスト: 何が正常で何が異常かを表示          |
 | `wtf problems`      | WARN+FAIL の行のみ                                           |
@@ -181,9 +243,12 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf net`           | インターフェース、ゲートウェイ、DNS、エラー、待ち受けポート       |
 | `wtf io`            | デバイスごとの IO レート、プレッシャー、停止したプロセス          |
 | `wtf who`           | ログイン中のユーザー、最近のログイン、認証失敗                   |
+| `wtf temp`          | /sys/class/hwmon センサーからのハードウェア温度                |
 | `wtf info`          | 1ページのスナップショット: 上記すべてを一度に                   |
 | `wtf top`           | プロセスの絞り込み top: cpu/rss でソート、user/name でフィルタ  |
 | `wtf ports`         | 所有 PID/ユーザー/コマンド付きの待ち受けソケット                 |
+| `wtf port NUM`      | 1つのポートを掘り下げ: PID、実行ファイル、作業ディレクトリ        |
+| `wtf docker [NAME]` | コンテナの compose 作業ディレクトリ + イメージ/コンテナ/ログサイズ |
 | `wtf service NAME`  | 1つのサービスを詳細に: 状態、再起動、メモリ、ポート、ジャーナル   |
 | `wtf logs`          | サービスごとにグループ化した最近の ERROR+ ジャーナルエントリ      |
 | `wtf events`        | 時系列のタイムライン: 再起動、OOM、失敗ユニット、…              |

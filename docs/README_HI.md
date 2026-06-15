@@ -63,6 +63,7 @@ wtf mem          # RAM/swap, OOM kills, top memory consumers
 wtf net          # interfaces, IPs, gateway, DNS, listening ports
 wtf io           # disk read/write rates, IO-stuck processes
 wtf who          # who is logged in, recent logins, failed auth
+wtf temp         # hardware temperatures (CPU/disk/board sensors)
 ```
 
 उदाहरण — डिस्क भर रही है, दोषी को खोजें:
@@ -103,6 +104,68 @@ wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
 wtf explain                     # actionable advice per finding
 wtf explain --llm ollama        # or let a local LLM summarize it
 ```
+
+### पोर्ट पर कौन है?
+
+`wtf port <N>` (या `wtf ports <N>`) दिखाता है कि कौन-सी प्रक्रिया किसी पोर्ट को
+धारण किए हुए है — PID, उसके पीछे का सटीक एक्ज़ीक्यूटेबल फ़ाइल (`lsof` + `/proc`
+के ज़रिए), और वह डायरेक्टरी जहाँ से वह चलती है:
+
+```
+$ wtf port 5060
+# PORT 5060
+  tcp *:5060 (LISTEN)
+    pid     : 1234
+    user    : asterisk
+    command : asterisk
+    exe     : /usr/sbin/asterisk
+    cwd     : /var/lib/asterisk
+```
+
+अन्य उपयोगकर्ताओं के स्वामित्व वाली प्रक्रियाएँ देखने के लिए इसे `sudo` के साथ चलाएँ।
+
+### यह कंटेनर कहाँ से शुरू हुआ था?
+
+`wtf docker <name>` इस सवाल का जवाब देता है कि "`docker compose up` किस फ़ोल्डर में
+चला था?" — सीधे कंटेनर के लेबल से — और यह कितनी डिस्क खाता है (image परतें,
+लिखने-योग्य कंटेनर परत, और json log):
+
+```
+$ wtf docker myapp_web
+# myapp_web
+  image        : myapp:latest
+  status       : running
+  compose      : myapp / web
+  working dir  : /home/deploy/myapp
+  config files : /home/deploy/myapp/docker-compose.yml
+  image size   : 156.4MB
+  container    : 254.3MB (writable layer)
+  logs         : 53.8MB
+```
+
+बिना नाम के `wtf docker` हर चल रहे कंटेनर को उसके आकार-कॉलम और working dir के साथ
+सूचीबद्ध करता है, साथ में एक TOTAL पंक्ति भी:
+
+```
+$ sudo wtf docker
+# DOCKER
+  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
+  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
+  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
+  TOTAL                     440MB    267MB   57.8MB
+  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
+```
+
+आकार दशमलव इकाइयों का उपयोग करते हैं (1GB = 1000MB), ताकि वे
+`docker container ls --size` के साथ पंक्तिबद्ध रहें। प्रति-पंक्ति IMAGE उस image
+का पूरा तार्किक आकार है (जिसे `docker` *virtual* आकार कहता है)। IMAGE का योग
+image id के अनुसार डुप्लीकेट हटाता है, इसलिए कई कंटेनरों द्वारा साझा एक image को
+एक ही बार गिना जाता है — हर कंटेनर के लिए एक बार नहीं। **लेकिन** अलग-अलग images
+फिर भी डिस्क पर बेस परतें साझा करती हैं, इसलिए वह डुप्लीकेट-हटाया गया योग भी असली
+उपयोग को बढ़ा-चढ़ाकर दिखाता है; note पंक्ति `docker system df` से सीधे असली
+परत-डुप्लीकेट-हटाई गई डिस्क दिखाती है। CONTNR (लिखने-योग्य परत) और LOGS
+प्रति-कंटेनर हैं, इसलिए वे योग सटीक हैं। Log आकारों के लिए `/var/lib/docker` के
+तहत पठन-पहुँच चाहिए — `sudo` के साथ चलाएँ, अन्यथा वे `?` दिखाते हैं।
 
 ## स्क्रिप्ट के लिए आउटपुट: grep, awk, jq
 
@@ -180,9 +243,12 @@ wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
 | `wtf net`           | इंटरफ़ेस, गेटवे, DNS, त्रुटियाँ, सुनने वाले पोर्ट             |
 | `wtf io`            | प्रति-डिवाइस IO दरें, प्रेशर, अटकी हुई प्रक्रियाएँ            |
 | `wtf who`           | लॉग-इन उपयोगकर्ता, हाल के लॉगिन, असफल प्रमाणीकरण              |
+| `wtf temp`          | /sys/class/hwmon सेंसर से हार्डवेयर तापमान                    |
 | `wtf info`          | एक-पृष्ठ स्नैपशॉट: ऊपर का सब कुछ एक साथ                       |
 | `wtf top`           | केंद्रित प्रक्रिया top: cpu/rss से सॉर्ट, उपयोगकर्ता/नाम फ़िल्टर |
 | `wtf ports`         | सुनने वाले सॉकेट उनके स्वामी PID/उपयोगकर्ता/कमांड के साथ      |
+| `wtf port NUM`      | एक पोर्ट में गहराई से जाएँ: PID, एक्ज़ीक्यूटेबल फ़ाइल, working dir |
+| `wtf docker [NAME]` | कंटेनर compose working dir + image/container/log आकार         |
 | `wtf service NAME`  | एक सेवा का विवरण: स्थिति, रीस्टार्ट, मेमोरी, पोर्ट, journal   |
 | `wtf logs`          | सेवा के अनुसार समूहित हाल की ERROR+ journal प्रविष्टियाँ      |
 | `wtf events`        | कालक्रमिक टाइमलाइन: रीबूट, OOM, असफल यूनिट, …                 |
