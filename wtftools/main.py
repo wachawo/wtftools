@@ -1827,6 +1827,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         argv_list = argv if argv is not None else sys.argv[1:]
         args = parser.parse_args([*argv_list, "audit"])
 
+    # csv/html/prometheus are audit-only. The per-subcommand --format already
+    # rejects them, but the global `-f` is parsed before the subcommand and
+    # would otherwise be silently ignored (falling back to text) on other
+    # commands. Reject it explicitly instead.
+    if getattr(args, "format", "text") in ("csv", "html", "prometheus") and args.command not in ("audit", "problems", "daily"):
+        print(f"error: --format {args.format} is audit-only; '{args.command}' supports text/plain/json (use it with `wtf audit`)", file=sys.stderr)
+        return 2
+
     try:
         return args.func(args)
     except KeyboardInterrupt:

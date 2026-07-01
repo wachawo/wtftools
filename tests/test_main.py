@@ -294,3 +294,16 @@ def test_toplevel_exception_reraises_with_verbose(monkeypatch):
     monkeypatch.setattr(audit, "run_audit", boom)
     with pytest.raises(RuntimeError):
         main.main(["--verbose", "audit"])
+
+
+def test_global_audit_only_format_rejected_on_non_audit():
+    # `-f csv` (global) on a resource command is rejected, not silently ignored.
+    rc, _ = _capture(["-f", "csv", "cpu"])
+    assert rc == 2
+
+
+def test_global_audit_only_format_allowed_on_audit(monkeypatch):
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
+    rc, out = _capture(["-f", "csv", "audit"])
+    assert rc == 0
+    assert "name,status,message,detail" in out
