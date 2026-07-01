@@ -39,7 +39,7 @@ def test_check_load_levels(monkeypatch):
     monkeypatch.setattr(audit.sysinfo, "get_loadavg", lambda: (1.0, 1.0, 1.0))
     assert audit._check_load().status == "ok"
     monkeypatch.setattr(audit.sysinfo, "get_loadavg", lambda: (5.0, 5.0, 5.0))
-    assert audit._check_load().status == "ok" or audit._check_load().status == "warn"
+    assert audit._check_load().status == "warn"  # 5.0 / 4 CPUs = 1.25x → warn band
     monkeypatch.setattr(audit.sysinfo, "get_loadavg", lambda: (10.0, 10.0, 10.0))
     assert audit._check_load().status == "fail"
 

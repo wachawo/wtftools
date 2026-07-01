@@ -729,6 +729,19 @@ def _emit_audit(args: argparse.Namespace, results: List[audit_mod.CheckResult]) 
         return 1
 
 
+def _csv_safe(value: str) -> str:
+    """Guard against CSV/spreadsheet formula injection.
+
+    A cell beginning with = + - @ (or a control char) is treated as a formula
+    by Excel/LibreOffice. Prefix such cells with a single quote so the value is
+    shown literally.
+    """
+    text = str(value)
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
+
+
 def _emit_audit_to(args, results, sink) -> int:
     """Render audit results into `sink`. Sink is a file-like wrapper."""
     if args.format == "prometheus":
@@ -743,7 +756,7 @@ def _emit_audit_to(args, results, sink) -> int:
         writer = csv.writer(sink.stream)
         writer.writerow(["name", "status", "message", "detail"])
         for r in results:
-            writer.writerow([r.name, r.status, r.message, " | ".join(r.detail)])
+            writer.writerow([_csv_safe(r.name), _csv_safe(r.status), _csv_safe(r.message), _csv_safe(" | ".join(r.detail))])
         return _audit_exit_code(args, results)
     if args.format == "plain":
         # Tab-separated, no headers/colors/summary — best for shell pipelines:
@@ -923,10 +936,32 @@ def cmd_explain(args: argparse.Namespace) -> int:
     return 0
 
 
+def _confirm_llm_egress(args: argparse.Namespace) -> bool:
+    """Disclose remote-LLM egress and, on a TTY, require confirmation."""
+    vendor = {"claude": "Anthropic", "openai": "OpenAI"}.get(args.llm, args.llm)
+    print(f"note: sending this host's name and audit findings to {vendor} ({args.llm}).", file=sys.stderr)
+    if getattr(args, "yes", False) or os.environ.get("WTFTOOLS_LLM_YES"):
+        return True
+    if not sys.stdin.isatty():
+        return True  # non-interactive: don't block a pipeline; the notice above already disclosed
+    try:
+        reply = input("Proceed? [y/N] ").strip().lower()
+    except EOFError:
+        reply = ""
+    return reply in ("y", "yes")
+
+
 def _explain_via_llm(args: argparse.Namespace, results: List[audit_mod.CheckResult]) -> int:
     """Render the structured prompt, ship it through the chosen LLM backend."""
     host = sysinfo.get_hostname()
     prompt = explain_mod.render_prompt(results, host=host)
+    if args.llm in llm_mod.REMOTE_BACKENDS and not _confirm_llm_egress(args):
+        msg = "aborted: remote LLM call not confirmed"
+        if args.format == "json":
+            print(json.dumps({"error": msg, "backend": args.llm}))
+        else:
+            print(colors.red(msg))
+        return 1
     text, info = llm_mod.call_llm(args.llm, prompt, model=args.llm_model, timeout=args.llm_timeout)
     if text is None:
         msg = f"LLM call failed: {info}"
@@ -1704,6 +1739,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     explain.add_argument("--llm-model", metavar="MODEL", help="Override default model name for --llm")
     explain.add_argument("--llm-timeout", type=int, default=60, metavar="SECONDS", help="LLM call timeout (default: 60s)")
+    explain.add_argument("-y", "--yes", action="store_true", help="Skip the confirmation prompt before sending data to a remote LLM (claude/openai)")
     explain.add_argument("--format", choices=["text", "json"], default=argparse.SUPPRESS)
     explain.add_argument("--serial", action="store_true", help="Run audit sequentially (passes through to underlying audit)")
     explain.add_argument("--check-timeout", type=float, metavar="SECONDS", help="Per-check timeout in seconds (passes through to audit)")
@@ -1785,30 +1821,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         logging.getLogger().setLevel(logging.ERROR)
 
     if not args.command:
-        # default action: short audit summary (args.format comes from the
-        # top-level -f/--format default)
-        args.command = "audit"
-        args.strict = False
-        args.exit_zero = False
-        args.check = None
-        args.only = None
-        args.since = 24
-        args.list_checks = False
-        args.brief = False
-        args.ignore = []
-        args.serial = False
-        args.check_timeout = None
-        args.alert = None
-        args.alert_on = "fail"
-        args.save = False
-        args.output = None
-        args.func = cmd_audit
+        # No subcommand → default to `audit`, preserving any global flags the
+        # user passed (e.g. `wtf -f json`). Re-parsing keeps the audit defaults
+        # in one place instead of mirroring them here.
+        argv_list = argv if argv is not None else sys.argv[1:]
+        args = parser.parse_args([*argv_list, "audit"])
 
     try:
         return args.func(args)
     except KeyboardInterrupt:
         print("\ninterrupted")
         return 130
+    except Exception as exc:
+        if getattr(args, "verbose", False) or os.environ.get("WTFTOOLS_DEBUG"):
+            raise
+        print(f"error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

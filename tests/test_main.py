@@ -204,13 +204,29 @@ def test_default_command_runs_audit(monkeypatch):
 
 
 def test_verbose_sets_logging(monkeypatch):
+    import logging
+
+    root = logging.getLogger()
+    prev = root.level
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
-    _capture(["--verbose", "audit"])
+    try:
+        _capture(["--verbose", "audit"])
+        assert root.level == logging.INFO
+    finally:
+        root.setLevel(prev)
 
 
 def test_quiet_sets_logging(monkeypatch):
+    import logging
+
+    root = logging.getLogger()
+    prev = root.level
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
-    _capture(["--quiet", "audit"])
+    try:
+        _capture(["--quiet", "audit"])
+        assert root.level == logging.ERROR
+    finally:
+        root.setLevel(prev)
 
 
 def test_keyboard_interrupt(monkeypatch):
@@ -243,3 +259,38 @@ def test_cmd_audit_runs_default_when_no_subcommand(monkeypatch):
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
     rc, _ = _capture([])
     assert rc == 2
+
+
+def test_default_command_preserves_global_format(monkeypatch):
+    # `wtf -f json` (no subcommand) must default to audit AND keep -f json.
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
+    rc, out = _capture(["-f", "json"])
+    assert rc == 0
+    assert '"schema_version"' in out
+
+
+def test_csv_safe_quotes_formula_cells():
+    assert main._csv_safe("=cmd()") == "'=cmd()"
+    assert main._csv_safe("+1") == "'+1"
+    assert main._csv_safe("-2") == "'-2"
+    assert main._csv_safe("@x") == "'@x"
+    assert main._csv_safe("normal") == "normal"
+    assert main._csv_safe("") == ""
+
+
+def test_toplevel_exception_returns_error_code(monkeypatch):
+    def boom(names=None, ignore=None):
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setattr(audit, "run_audit", boom)
+    rc, _ = _capture(["audit"])
+    assert rc == 1  # one-line error to stderr, no traceback dumped at the user
+
+
+def test_toplevel_exception_reraises_with_verbose(monkeypatch):
+    def boom(names=None, ignore=None):
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setattr(audit, "run_audit", boom)
+    with pytest.raises(RuntimeError):
+        main.main(["--verbose", "audit"])
