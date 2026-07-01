@@ -27,8 +27,10 @@ A `--format` placed **after** the subcommand wins over the global one:
 wtf -f plain disk --format json    # JSON: the later --format takes precedence
 ```
 
-All commands support `text` / `plain` / `json`. The extra formats `csv`, `html`
-and `prometheus` are audit-only (`wtf audit --format csv|html|prometheus`).
+Every command supports `text` and `json`. `plain` (tab-separated) is available
+on the resource views (`disk`, `cpu`, `mem`, `net`, `io`, `who`, `temp`, `top`,
+`ports`, `docker`, `info`) and on `audit`. The extra formats `csv`, `html` and
+`prometheus` are audit-only (`wtf audit --format csv|html|prometheus`).
 
 ### Field layouts (plain)
 

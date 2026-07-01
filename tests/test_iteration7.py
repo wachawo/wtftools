@@ -200,8 +200,9 @@ def test_cmd_top_json(monkeypatch):
     monkeypatch.setattr(sysinfo, "get_top_processes", lambda by, limit: [{"pid": 1, "user": "u", "cpu_percent": 5.0, "rss": 100, "name": "x"}])
     rc, out = _capture(["top", "--format", "json"])
     data = json.loads(out)
-    assert len(data) == 1
-    assert data[0]["pid"] == 1
+    assert data["schema_version"] == 1
+    assert len(data["processes"]) == 1
+    assert data["processes"][0]["pid"] == 1
 
 
 def test_cmd_top_filter_by_user(monkeypatch):
@@ -385,7 +386,8 @@ def test_cmd_ports_json(monkeypatch):
     monkeypatch.setattr("builtins.__import__", fake_import)
     rc, out = _capture(["ports", "--format", "json"])
     data = json.loads(out)
-    assert data == []
+    assert data["schema_version"] == 1
+    assert data["ports"] == []
 
 
 # NB: `wtf motd-install` was removed in v0.1.0 cleanup. To install the
