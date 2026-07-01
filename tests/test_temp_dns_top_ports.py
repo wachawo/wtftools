@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 7: hw-temp, dns check, wtf top, wtf ports, wtf motd-install, CSV output."""
+"""Hardware temperature, DNS check, wtf top, wtf ports, and CSV output."""
 
 import io
 import json
@@ -388,11 +388,6 @@ def test_cmd_ports_json(monkeypatch):
     data = json.loads(out)
     assert data["schema_version"] == 1
     assert data["ports"] == []
-
-
-# NB: `wtf motd-install` was removed in v0.1.0 cleanup. To install the
-# brief banner manually: `sudo cp <…> /etc/update-motd.d/99-wtf-brief`
-# with a `#!/bin/sh\nexec wtf audit --brief --no-color` body.
 
 
 # ---- CSV format ----

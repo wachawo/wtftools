@@ -125,7 +125,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `wtftools/checks/plugins.py` — discovery / executor / parser for
   `/etc/wtf/checks.d/` scripts (bash + Python).
 - `_plugin_to_check` + `_all_check_callables` glue in `wtftools/audit.py`.
-- `tests/test_plugins.py`, `tests/test_iteration16.py`.
 - README's «Plugins» section and QUICKSTART's «Custom checks (plugins)»
   section.
 
@@ -198,7 +197,7 @@ Initial public release. Highlights:
   release workflow.
 - **724 tests, 92.6 % coverage.**
 
-### Added — Plugin SDK & docs (final iteration)
+### Added — Plugin SDK & docs
 - **`wtftools.plugin_sdk`** — tiny helper module so Python plugins don't have
   to remember exit codes or hand-roll JSON:
 

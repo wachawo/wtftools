@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 10: LLM bridge, HTML output, --output, fail2ban check."""
+"""LLM bridge, HTML output, --output, and the fail2ban check."""
 
 import io
 import json

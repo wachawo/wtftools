@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration-3 additions: TCP retransmits, wtf services, --ignore, config integration."""
+"""TCP-retransmit check, wtf services, the --ignore flag, and config integration."""
 
 import io
 import json

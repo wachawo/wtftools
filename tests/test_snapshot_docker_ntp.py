@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 6: snapshot/diff/history, docker, NTP drift, prometheus, info --watch."""
+"""Snapshot/diff/history, the docker check, NTP drift, and Prometheus output."""
 
 import io
 import json
@@ -324,11 +324,6 @@ def test_cli_prometheus_format(monkeypatch):
     rc, out = _capture(["audit", "--format", "prometheus"])
     assert "wtf_check_status" in out
     assert rc == 0
-
-
-# NB: --watch / --diff flags removed from audit/info in v0.1.0 cleanup
-# (one-shot CLI scope). Diff functionality lives on as `wtf diff` standalone;
-# tested separately in test_iteration8.py.
 
 
 def test_audit_save_writes_file(monkeypatch, tmp_path):
