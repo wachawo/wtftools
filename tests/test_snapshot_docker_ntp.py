@@ -78,9 +78,19 @@ def test_save_snapshot_write_failure(tmp_path, monkeypatch):
     def boom(*a, **kw):
         raise OSError("disk full")
 
-    monkeypatch.setattr("builtins.open", boom)
+    monkeypatch.setattr("os.open", boom)
     result = snapshot.save_snapshot([audit.CheckResult("a", "ok", "x")], host="h", directory=str(tmp_path))
     assert result is None
+
+
+def test_save_snapshot_restrictive_perms(tmp_path):
+    import stat
+
+    target = tmp_path / "snaps"  # not pre-created, so ensure_dir creates it
+    path = snapshot.save_snapshot([audit.CheckResult("x", "ok", "fine")], host="h", directory=str(target))
+    assert path is not None
+    assert stat.S_IMODE(os.stat(str(target)).st_mode) == 0o700
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
 
 
 def test_rotate_keeps_newest(tmp_path):

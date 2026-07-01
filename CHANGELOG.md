@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`python3-wtftools_*.deb`).
 - Unexpected errors now print a one-line message instead of dumping a raw
   Python traceback; set `WTFTOOLS_DEBUG=1` or pass `--verbose` for the trace.
+- `requirements.txt` no longer pulls `psutil` — the core install stays
+  dependency-free; use `pip install "wtftools[full]"` for psutil.
 
 ### Security
 - `wtf explain --llm claude|openai` discloses (to stderr) that the host name
@@ -57,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer silently escalates to a remote model — it uses local `ollama` only.
 - `wtf audit --format csv` escapes cells beginning with `= + - @` to prevent
   spreadsheet formula injection.
+- Snapshot files and their directory are created `0600`/`0700`, so root's audit
+  history is not world-readable on a multi-user host.
+- `wtf crontab -u <user>` validates the username (same rule as positional
+  targets) before shelling out to `crontab -l -u`, avoiding argument injection.
 
 ## [0.0.1] - 2026-06-14
 

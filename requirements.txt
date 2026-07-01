@@ -1,3 +1,7 @@
-# Core wtftools has zero hard dependencies — only stdlib + standard Linux CLI.
-# psutil is optional; install for richer metrics (top processes, listening sockets).
-psutil>=5.9.0
+# wtftools core has ZERO runtime dependencies — Python stdlib + standard Linux
+# CLI tools only, so there is nothing to install here.
+#
+# For richer metrics (top processes, listening sockets) install the optional
+# extra instead:
+#
+#     pip install "wtftools[full]"     # adds psutil

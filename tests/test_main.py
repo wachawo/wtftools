@@ -196,6 +196,16 @@ def test_cmd_crontab_no_targets_json(monkeypatch):
     assert data["files"] == []
 
 
+def test_cmd_crontab_invalid_username_skipped(monkeypatch):
+    calls = []
+    monkeypatch.setattr(main.cron, "find_user_crontab", lambda n: calls.append(n) or None)
+    monkeypatch.setattr(main.cron, "discover_default_targets", lambda: [])
+    _capture(["crontab", "-u", "bad;name"])
+    assert "bad;name" not in calls  # rejected before reaching `crontab -l -u <name>`
+    _capture(["crontab", "-u", "alice"])
+    assert "alice" in calls  # a valid name still goes through
+
+
 def test_default_command_runs_audit(monkeypatch):
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
     rc, out = _capture([])

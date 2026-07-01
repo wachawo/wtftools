@@ -47,7 +47,9 @@ def default_snapshot_dir() -> str:
 def ensure_dir(path: str) -> bool:
     """Create the snapshot dir if missing. Returns True on success."""
     try:
-        os.makedirs(path, exist_ok=True)
+        # 0o700: snapshots hold host diagnostics; keep them private, especially
+        # under /var/lib/wtftools when running as root on a multi-user host.
+        os.makedirs(path, mode=0o700, exist_ok=True)
         return True
     except OSError as exc:
         logger.warning(f"cannot create snapshot dir {path}: {exc}")
@@ -68,7 +70,9 @@ def save_snapshot(results: List[CheckResult], host: str, directory: Optional[str
         "results": [asdict(r) for r in results],
     }
     try:
-        with open(path, "w", encoding="utf-8") as f:
+        # 0o600 via os.open so the file is never briefly world-readable.
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, default=str)
     except OSError as exc:
         logger.warning(f"cannot write snapshot {path}: {exc}")
