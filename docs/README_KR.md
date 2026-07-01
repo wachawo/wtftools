@@ -52,7 +52,7 @@ $ wtf
 pipx install wtftools          # recommended — works on any modern distro
 pip install wtftools           # or classic pip (core, no dependencies)
 pip install wtftools[full]     # + psutil for richer process/socket info
-sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
+sudo dpkg -i python3-wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
 설치 후에는 `wtf` 명령을 사용할 수 있습니다. 셸 rc 파일에 한 줄을 추가하면
@@ -63,52 +63,52 @@ echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
 echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 ```
 
-처음이신가요? [5분 빠른 시작](docs/QUICKSTART.md)부터 시작하세요.
+처음이신가요? [5분 빠른 시작](QUICKSTART.md)부터 시작하세요.
 
 ## Commands
 
 플래그는 `wtf <command> --help`로 확인하세요. 각 명령은 예시가 포함된
 참조 페이지로 연결됩니다.
 
-### Health & monitoring — [docs/AUDIT.md](docs/AUDIT.md)
+### Health & monitoring — [docs/AUDIT.md](AUDIT.md)
 
 | command | what it does |
 |---------|--------------|
-| [`wtf` / `wtf audit`](docs/AUDIT.md#wtf-audit) | 무엇이 정상이고 무엇이 아닌지 보여주는 초록/노랑/빨강 체크리스트 |
-| [`wtf problems`](docs/AUDIT.md#wtf-problems) | WARN+FAIL 행만 표시 |
-| [`wtf daily`](docs/AUDIT.md#wtf-daily) | 아침 점검: 감사 + 마지막 실행 대비 변경 + 이벤트 |
-| [`wtf explain`](docs/AUDIT.md#wtf-explain) | 점검별 실행 가능한 조언; `--llm`으로 LLM에 파이프 연결 |
-| [`wtf events`](docs/AUDIT.md#wtf-events) | 타임라인: 재부팅, OOM 종료, 실패한 유닛, … |
-| [`wtf logs`](docs/AUDIT.md#wtf-logs) | 서비스별로 묶인 최근 ERROR+ 저널 항목 |
-| [`wtf services`](docs/AUDIT.md#wtf-services) | 유닛 하나를 자세히: 상태, 재시작, 포트, 저널 |
-| [`wtf diff`](docs/AUDIT.md#wtf-diff) | 현재 상태를 저장된 스냅샷과 비교 |
-| [`wtf history`](docs/AUDIT.md#wtf-history) | 저장된 감사 스냅샷 목록 |
-| [`wtf crontab`](docs/AUDIT.md#wtf-crontab) | 시스템 + 사용자별 crontab 검증 |
-| [`wtf doctor`](docs/AUDIT.md#wtf-doctor) | 자가 진단: wtf가 사용할 수 있는 도구/파일 |
+| [`wtf` / `wtf audit`](AUDIT.md#wtf-audit) | 무엇이 정상이고 무엇이 아닌지 보여주는 초록/노랑/빨강 체크리스트 |
+| [`wtf problems`](AUDIT.md#wtf-problems) | WARN+FAIL 행만 표시 |
+| [`wtf daily`](AUDIT.md#wtf-daily) | 아침 점검: 감사 + 마지막 실행 대비 변경 + 이벤트 |
+| [`wtf explain`](AUDIT.md#wtf-explain) | 점검별 실행 가능한 조언; `--llm`으로 LLM에 파이프 연결 |
+| [`wtf events`](AUDIT.md#wtf-events) | 타임라인: 재부팅, OOM 종료, 실패한 유닛, … |
+| [`wtf logs`](AUDIT.md#wtf-logs) | 서비스별로 묶인 최근 ERROR+ 저널 항목 |
+| [`wtf services`](AUDIT.md#wtf-services) | 유닛 하나를 자세히: 상태, 재시작, 포트, 저널 |
+| [`wtf diff`](AUDIT.md#wtf-diff) | 현재 상태를 저장된 스냅샷과 비교 |
+| [`wtf history`](AUDIT.md#wtf-history) | 저장된 감사 스냅샷 목록 |
+| [`wtf crontab`](AUDIT.md#wtf-crontab) | 시스템 + 사용자별 crontab 검증 |
+| [`wtf doctor`](AUDIT.md#wtf-doctor) | 자가 진단: wtf가 사용할 수 있는 도구/파일 |
 
-### Resource views — [docs/RESOURCES.md](docs/RESOURCES.md)
+### Resource views — [docs/RESOURCES.md](RESOURCES.md)
 
 | command | what it does |
 |---------|--------------|
-| [`wtf disk [PATH]`](docs/RESOURCES.md#wtf-disk) | 마운트 개요; PATH가 있으면 가장 큰 폴더; `--tree`로 파고들기 |
-| [`wtf cpu`](docs/RESOURCES.md#wtf-cpu) | 부하, iowait, 압력, CPU를 가장 많이 쓰는 프로세스 |
-| [`wtf mem`](docs/RESOURCES.md#wtf-mem) | RAM/스왑, OOM 종료, 메모리를 가장 많이 쓰는 프로세스 |
-| [`wtf net`](docs/RESOURCES.md#wtf-net) | 인터페이스, 게이트웨이, DNS, 오류, 수신 대기 포트 |
-| [`wtf io`](docs/RESOURCES.md#wtf-io) | 장치별 IO 속도, 압력, 멈춘 프로세스 |
-| [`wtf who`](docs/RESOURCES.md#wtf-who) | 로그인한 사용자, 최근 로그인, 실패한 인증 |
-| [`wtf temp`](docs/RESOURCES.md#wtf-temp) | /sys/class/hwmon에서 가져온 하드웨어 온도 |
-| [`wtf info`](docs/RESOURCES.md#wtf-info) | 한 페이지 스냅샷: 위의 모든 것을 한 번에 |
-| [`wtf top`](docs/RESOURCES.md#wtf-top) | 집중 프로세스 top: cpu/rss로 정렬, user/name으로 필터링 |
-| [`wtf ports` / `wtf port N`](docs/RESOURCES.md#wtf-ports) | 수신 대기 소켓; 포트 하나를 PID, exe, cwd까지 파고들기 |
-| [`wtf docker [NAME]`](docs/RESOURCES.md#wtf-docker) | 컨테이너 compose 디렉터리 + 이미지/컨테이너/로그 크기 |
+| [`wtf disk [PATH]`](RESOURCES.md#wtf-disk) | 마운트 개요; PATH가 있으면 가장 큰 폴더; `--tree`로 파고들기 |
+| [`wtf cpu`](RESOURCES.md#wtf-cpu) | 부하, iowait, 압력, CPU를 가장 많이 쓰는 프로세스 |
+| [`wtf mem`](RESOURCES.md#wtf-mem) | RAM/스왑, OOM 종료, 메모리를 가장 많이 쓰는 프로세스 |
+| [`wtf net`](RESOURCES.md#wtf-net) | 인터페이스, 게이트웨이, DNS, 오류, 수신 대기 포트 |
+| [`wtf io`](RESOURCES.md#wtf-io) | 장치별 IO 속도, 압력, 멈춘 프로세스 |
+| [`wtf who`](RESOURCES.md#wtf-who) | 로그인한 사용자, 최근 로그인, 실패한 인증 |
+| [`wtf temp`](RESOURCES.md#wtf-temp) | /sys/class/hwmon에서 가져온 하드웨어 온도 |
+| [`wtf info`](RESOURCES.md#wtf-info) | 한 페이지 스냅샷: 위의 모든 것을 한 번에 |
+| [`wtf top`](RESOURCES.md#wtf-top) | 집중 프로세스 top: cpu/rss로 정렬, user/name으로 필터링 |
+| [`wtf ports` / `wtf port N`](RESOURCES.md#wtf-ports) | 수신 대기 소켓; 포트 하나를 PID, exe, cwd까지 파고들기 |
+| [`wtf docker [NAME]`](RESOURCES.md#wtf-docker) | 컨테이너 compose 디렉터리 + 이미지/컨테이너/로그 크기 |
 
 ### Output & configuration
 
 | command | what it does |
 |---------|--------------|
-| [`wtf config`](docs/CONFIG.md#wtf-config) | 적용된 설정 표시 / 주석이 달린 예시 출력 |
+| [`wtf config`](CONFIG.md#wtf-config) | 적용된 설정 표시 / 주석이 달린 예시 출력 |
 | [`wtf completion`](#install) | bash/zsh `<Tab>` 자동완성 스크립트 출력 |
-| [machine output](docs/OUTPUT.md) | `plain`/`json` 형식과 grep·awk·jq 쿡북 |
+| [machine output](OUTPUT.md) | `plain`/`json` 형식과 grep·awk·jq 쿡북 |
 
 `wtftools`는
 [`checkcrontab`](https://github.com/wachawo/checkcrontab)을 흡수하고 대체합니다 —
@@ -116,11 +116,11 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 
 ## Documentation
 
-- [QUICKSTART.md](docs/QUICKSTART.md) — 5분 온보딩과 치트 시트
-- [AUDIT.md](docs/AUDIT.md) — 상태 점검, 모니터링, 종료 코드, 전체 점검 목록
-- [RESOURCES.md](docs/RESOURCES.md) — 예시가 포함된 리소스별 보기
-- [OUTPUT.md](docs/OUTPUT.md) — `plain`/`json` 형식과 스크립팅 쿡북
-- [CONFIG.md](docs/CONFIG.md) — 설정 파일, 임계값, 점검 무시
+- [QUICKSTART.md](QUICKSTART.md) — 5분 온보딩과 치트 시트
+- [AUDIT.md](AUDIT.md) — 상태 점검, 모니터링, 종료 코드, 전체 점검 목록
+- [RESOURCES.md](RESOURCES.md) — 예시가 포함된 리소스별 보기
+- [OUTPUT.md](OUTPUT.md) — `plain`/`json` 형식과 스크립팅 쿡북
+- [CONFIG.md](CONFIG.md) — 설정 파일, 임계값, 점검 무시
 
 ## Compatibility
 
