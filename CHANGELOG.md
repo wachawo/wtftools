@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expansion count. The `du` scan timeout was raised (30→120s) so large
   filesystems no longer return an empty result.
 
+### Fixed
+- `wtf ports` and `wtf top` JSON is now an object carrying `schema_version`
+  (was a bare array), consistent with `disk`/`net`; `wtf audit` JSON carries
+  `schema_version` too.
+- README documentation links are absolute so they resolve on the PyPI project
+  page; the translated READMEs no longer link to a non-existent `docs/docs/`
+  path.
+- `.deb` install instructions use the actual package name
+  (`python3-wtftools_*.deb`).
+
 ## [0.0.1] - 2026-06-14
 
 ### Added — port, docker and temperature views

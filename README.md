@@ -41,8 +41,9 @@ and a machine-readable one when you pipe it.
   `wtf services <unit>`, `wtf explain` (optionally through a local or hosted LLM).
 - **Trends & alerting** — `wtf daily`, snapshots + `wtf diff`, cron alerts —
   no monitoring stack required.
-- **Scriptable** — every command has `plain` (tab-separated) and `json` output
-  carrying a `schema_version`, for grep / awk / jq.
+- **Scriptable** — `-f json` on every command and `-f plain` (tab-separated) on
+  the resource and audit views; the JSON carries a `schema_version` so scripts
+  survive upgrades — for grep / awk / jq.
 - **Beginner-friendly** — `--show-commands` prints the classic commands each
   view replaces, so you can learn them by hand.
 

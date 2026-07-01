@@ -203,7 +203,7 @@ def cmd_top(args: argparse.Namespace) -> int:
             print(f"{p['pid']}\t{p.get('user') or ''}\t{p.get('cpu_percent', 0.0)}\t{p.get('rss', 0)}\t{p.get('name', '')}")
         return 0
     if args.format == "json":
-        print(json.dumps(procs, indent=2, default=str))
+        print(json.dumps({"schema_version": 1, "processes": procs}, indent=2, default=str))
         return 0
 
     if not procs:
@@ -292,7 +292,7 @@ def cmd_ports(args: argparse.Namespace) -> int:
             print(f"{r['port']}\t{r['proto']}\t{r['addr']}\t{r['pid'] or '-'}\t{r['user'] or '-'}\t{r['command'] or '-'}")
         return 0
     if args.format == "json":
-        print(json.dumps(rows, indent=2, default=str))
+        print(json.dumps({"schema_version": 1, "ports": rows}, indent=2, default=str))
         return 0
 
     print(colors.section("LISTENING PORTS"))
@@ -328,7 +328,7 @@ def _cmd_ports_fallback(args: argparse.Namespace) -> int:
             print(f"{r['port']}\t{r['proto']}\t{r['addr']}\t-\t-\t-")
         return 0
     if args.format == "json":
-        print(json.dumps(rows, indent=2, default=str))
+        print(json.dumps({"schema_version": 1, "ports": rows}, indent=2, default=str))
         return 0
     print(colors.section("LISTENING PORTS"))
     if not rows:
@@ -673,16 +673,6 @@ def cmd_info(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_audit_results(results: List[audit_mod.CheckResult], verbose: bool) -> None:
-    name_width = max((len(r.name) for r in results), default=20)
-    for result in results:
-        marker = colors.status_marker(result.status)
-        print(f"{marker} {result.name.ljust(name_width)}  {result.message}")
-        if verbose and result.detail:
-            for line in result.detail:
-                print(f"        {colors.dim('└')} {line}")
-
-
 def _run_audit_once(args: argparse.Namespace) -> Tuple[List[audit_mod.CheckResult], int]:
     """Run audit once based on parsed args. Returns (results, exit_code)."""
     if getattr(args, "since", None):
@@ -763,6 +753,7 @@ def _emit_audit_to(args, results, sink) -> int:
         return _audit_exit_code(args, results)
     if args.format == "json":
         payload = {
+            "schema_version": 1,
             "results": [asdict(r) for r in results],
             "summary": audit_mod.summarize(results),
         }
@@ -812,7 +803,7 @@ class _OutputSink:
 
 
 def _audit_text_lines(results, verbose: bool):
-    """Yield rendered audit lines (the same content `_print_audit_results` prints)."""
+    """Yield rendered audit lines for the text output."""
     name_width = max((len(r.name) for r in results), default=20)
     for result in results:
         marker = colors.status_marker(result.status)
