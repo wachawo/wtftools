@@ -1432,6 +1432,9 @@ def _collect_crontab_targets(args: argparse.Namespace) -> Tuple[List[Tuple[str, 
             targets.append((path, False))
     if args.username:
         for name in args.username:
+            if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]{0,31}$", name):
+                logger.warning(f"invalid username '{name}', skipping")
+                continue
             path = cron.find_user_crontab(name)
             if path:
                 temp_files.append(path)
