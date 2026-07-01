@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 8: HTTP/TCP probes, SMART, wtf diff, --format plain."""
+"""HTTP/TCP probes, SMART, wtf diff, and --format plain."""
 
 import io
 import json
