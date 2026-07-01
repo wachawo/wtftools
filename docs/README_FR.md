@@ -41,8 +41,8 @@ et en une réponse lisible par la machine lorsque vous la redirigez.
   `wtf services <unit>`, `wtf explain` (éventuellement via un LLM local ou hébergé).
 - **Tendances et alertes** — `wtf daily`, instantanés + `wtf diff`, alertes cron —
   aucune stack de surveillance requise.
-- **Scriptable** — chaque commande dispose d'une sortie `plain` (séparée par des tabulations) et `json`
-  portant un `schema_version`, pour grep / awk / jq.
+- **Scriptable** — `-f json` sur chaque commande et `-f plain` (séparé par des tabulations) sur les
+  vues de ressources et d'audit ; le JSON porte un `schema_version` pour que les scripts survivent aux mises à jour — pour grep / awk / jq.
 - **Accessible aux débutants** — `--show-commands` affiche les commandes classiques que chaque
   vue remplace, afin que vous puissiez les apprendre à la main.
 
