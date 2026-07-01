@@ -47,6 +47,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path.
 - `.deb` install instructions use the actual package name
   (`python3-wtftools_*.deb`).
+- Unexpected errors now print a one-line message instead of dumping a raw
+  Python traceback; set `WTFTOOLS_DEBUG=1` or pass `--verbose` for the trace.
+
+### Security
+- `wtf explain --llm claude|openai` discloses (to stderr) that the host name
+  and audit findings are sent to the vendor, and asks for confirmation on an
+  interactive terminal (`--yes` / `WTFTOOLS_LLM_YES=1` to skip). `--llm auto`
+  no longer silently escalates to a remote model — it uses local `ollama` only.
+- `wtf audit --format csv` escapes cells beginning with `= + - @` to prevent
+  spreadsheet formula injection.
 
 ## [0.0.1] - 2026-06-14
 

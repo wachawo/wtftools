@@ -10,7 +10,8 @@ Supported backends:
     ollama   subprocess: ollama run <model>
     claude   anthropic Python SDK + ANTHROPIC_API_KEY env
     openai   openai Python SDK + OPENAI_API_KEY env
-    auto     try ollama → claude → openai
+    auto     local ollama only — remote backends must be named explicitly so
+             data never leaves the host implicitly
 
 All backends accept the same `prompt` string. We pass `wtf explain --prompt`
 output verbatim; the model is expected to produce per-finding diagnoses.
@@ -107,19 +108,23 @@ _BACKENDS = {
     "openai": call_openai,
 }
 
+# Backends that send data off the host. The CLI discloses egress and asks for
+# confirmation before invoking one of these.
+REMOTE_BACKENDS = frozenset({"claude", "openai"})
+
 
 def call_llm(backend: str, prompt: str, model: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Optional[str], Optional[str]]:
     """Dispatch to the named backend, or try them all when backend == 'auto'."""
     if backend == "auto":
-        # Try cheapest/most-local first.
-        for candidate in ("ollama", "claude", "openai"):
-            kwargs = {"model": model}
-            if timeout is not None:
-                kwargs["timeout"] = timeout
-            text, err = _BACKENDS[candidate](prompt, **kwargs)
-            if text is not None:
-                return text, f"via {candidate}"
-        return None, "no LLM backend available (tried ollama, claude, openai)"
+        # Local only: never send data off-box implicitly. Remote backends
+        # (claude/openai) must be requested by name so egress is explicit.
+        kwargs = {"model": model}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        text, err = _BACKENDS["ollama"](prompt, **kwargs)
+        if text is not None:
+            return text, "via ollama"
+        return None, f"no local LLM available ({err}); run --llm claude or --llm openai to use a remote model"
     fn = _BACKENDS.get(backend)
     if fn is None:
         return None, f"unknown backend: {backend!r} (use ollama/claude/openai/auto)"
