@@ -52,7 +52,7 @@ y en una legible por máquina cuando la canalizas con un pipe.
 pipx install wtftools          # recommended — works on any modern distro
 pip install wtftools           # or classic pip (core, no dependencies)
 pip install wtftools[full]     # + psutil for richer process/socket info
-sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
+sudo dpkg -i python3-wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
 Tras la instalación tienes el comando `wtf`. Habilita el autocompletado con `<Tab>` añadiendo
@@ -63,52 +63,52 @@ echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
 echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 ```
 
-¿Nuevo por aquí? Empieza con la [guía rápida de 5 minutos](docs/QUICKSTART.md).
+¿Nuevo por aquí? Empieza con la [guía rápida de 5 minutos](QUICKSTART.md).
 
 ## Comandos
 
 Ejecuta `wtf <command> --help` para ver las opciones. Cada comando enlaza a su página de referencia
 con ejemplos.
 
-### Salud y monitoreo — [docs/AUDIT.md](docs/AUDIT.md)
+### Salud y monitoreo — [docs/AUDIT.md](AUDIT.md)
 
 | command | qué hace |
 |---------|--------------|
-| [`wtf` / `wtf audit`](docs/AUDIT.md#wtf-audit) | lista de verificación verde/amarillo/rojo de qué está bien y qué no |
-| [`wtf problems`](docs/AUDIT.md#wtf-problems) | solo las filas WARN+FAIL |
-| [`wtf daily`](docs/AUDIT.md#wtf-daily) | revisión matutina: auditoría + diff vs última ejecución + eventos |
-| [`wtf explain`](docs/AUDIT.md#wtf-explain) | consejos accionables por hallazgo; `--llm` para canalizar a un LLM |
-| [`wtf events`](docs/AUDIT.md#wtf-events) | línea de tiempo: reinicios, OOM kills, unidades fallidas, … |
-| [`wtf logs`](docs/AUDIT.md#wtf-logs) | entradas recientes ERROR+ del journal agrupadas por servicio |
-| [`wtf services`](docs/AUDIT.md#wtf-services) | profundiza en una unidad: estado, reinicios, puertos, journal |
-| [`wtf diff`](docs/AUDIT.md#wtf-diff) | compara el estado actual con una instantánea guardada |
-| [`wtf history`](docs/AUDIT.md#wtf-history) | lista las instantáneas de auditoría guardadas |
-| [`wtf crontab`](docs/AUDIT.md#wtf-crontab) | valida los crontabs del sistema + por usuario |
-| [`wtf doctor`](docs/AUDIT.md#wtf-doctor) | autodiagnóstico: qué herramientas/archivos puede usar wtf |
+| [`wtf` / `wtf audit`](AUDIT.md#wtf-audit) | lista de verificación verde/amarillo/rojo de qué está bien y qué no |
+| [`wtf problems`](AUDIT.md#wtf-problems) | solo las filas WARN+FAIL |
+| [`wtf daily`](AUDIT.md#wtf-daily) | revisión matutina: auditoría + diff vs última ejecución + eventos |
+| [`wtf explain`](AUDIT.md#wtf-explain) | consejos accionables por hallazgo; `--llm` para canalizar a un LLM |
+| [`wtf events`](AUDIT.md#wtf-events) | línea de tiempo: reinicios, OOM kills, unidades fallidas, … |
+| [`wtf logs`](AUDIT.md#wtf-logs) | entradas recientes ERROR+ del journal agrupadas por servicio |
+| [`wtf services`](AUDIT.md#wtf-services) | profundiza en una unidad: estado, reinicios, puertos, journal |
+| [`wtf diff`](AUDIT.md#wtf-diff) | compara el estado actual con una instantánea guardada |
+| [`wtf history`](AUDIT.md#wtf-history) | lista las instantáneas de auditoría guardadas |
+| [`wtf crontab`](AUDIT.md#wtf-crontab) | valida los crontabs del sistema + por usuario |
+| [`wtf doctor`](AUDIT.md#wtf-doctor) | autodiagnóstico: qué herramientas/archivos puede usar wtf |
 
-### Vistas de recursos — [docs/RESOURCES.md](docs/RESOURCES.md)
+### Vistas de recursos — [docs/RESOURCES.md](RESOURCES.md)
 
 | command | qué hace |
 |---------|--------------|
-| [`wtf disk [PATH]`](docs/RESOURCES.md#wtf-disk) | resumen de montajes; con un PATH, las carpetas más grandes; `--tree` profundiza |
-| [`wtf cpu`](docs/RESOURCES.md#wtf-cpu) | carga, iowait, presión, mayores consumidores de CPU |
-| [`wtf mem`](docs/RESOURCES.md#wtf-mem) | RAM/swap, OOM kills, mayores consumidores de memoria |
-| [`wtf net`](docs/RESOURCES.md#wtf-net) | interfaces, gateway, DNS, errores, puertos en escucha |
-| [`wtf io`](docs/RESOURCES.md#wtf-io) | tasas de IO por dispositivo, presión, procesos bloqueados |
-| [`wtf who`](docs/RESOURCES.md#wtf-who) | usuarios conectados, inicios de sesión recientes, autenticaciones fallidas |
-| [`wtf temp`](docs/RESOURCES.md#wtf-temp) | temperaturas de hardware desde /sys/class/hwmon |
-| [`wtf info`](docs/RESOURCES.md#wtf-info) | instantánea de una página: todo lo anterior a la vez |
-| [`wtf top`](docs/RESOURCES.md#wtf-top) | top de procesos enfocado: ordena por cpu/rss, filtra por usuario/nombre |
-| [`wtf ports` / `wtf port N`](docs/RESOURCES.md#wtf-ports) | sockets en escucha; profundiza en un puerto hasta PID, exe, cwd |
-| [`wtf docker [NAME]`](docs/RESOURCES.md#wtf-docker) | directorio compose del contenedor + tamaños de imagen/contenedor/log |
+| [`wtf disk [PATH]`](RESOURCES.md#wtf-disk) | resumen de montajes; con un PATH, las carpetas más grandes; `--tree` profundiza |
+| [`wtf cpu`](RESOURCES.md#wtf-cpu) | carga, iowait, presión, mayores consumidores de CPU |
+| [`wtf mem`](RESOURCES.md#wtf-mem) | RAM/swap, OOM kills, mayores consumidores de memoria |
+| [`wtf net`](RESOURCES.md#wtf-net) | interfaces, gateway, DNS, errores, puertos en escucha |
+| [`wtf io`](RESOURCES.md#wtf-io) | tasas de IO por dispositivo, presión, procesos bloqueados |
+| [`wtf who`](RESOURCES.md#wtf-who) | usuarios conectados, inicios de sesión recientes, autenticaciones fallidas |
+| [`wtf temp`](RESOURCES.md#wtf-temp) | temperaturas de hardware desde /sys/class/hwmon |
+| [`wtf info`](RESOURCES.md#wtf-info) | instantánea de una página: todo lo anterior a la vez |
+| [`wtf top`](RESOURCES.md#wtf-top) | top de procesos enfocado: ordena por cpu/rss, filtra por usuario/nombre |
+| [`wtf ports` / `wtf port N`](RESOURCES.md#wtf-ports) | sockets en escucha; profundiza en un puerto hasta PID, exe, cwd |
+| [`wtf docker [NAME]`](RESOURCES.md#wtf-docker) | directorio compose del contenedor + tamaños de imagen/contenedor/log |
 
 ### Salida y configuración
 
 | command | qué hace |
 |---------|--------------|
-| [`wtf config`](docs/CONFIG.md#wtf-config) | muestra la configuración efectiva / imprime un ejemplo comentado |
+| [`wtf config`](CONFIG.md#wtf-config) | muestra la configuración efectiva / imprime un ejemplo comentado |
 | [`wtf completion`](#install) | imprime un script de autocompletado `<Tab>` para bash/zsh |
-| [machine output](docs/OUTPUT.md) | formatos `plain`/`json` y un recetario grep·awk·jq |
+| [machine output](OUTPUT.md) | formatos `plain`/`json` y un recetario grep·awk·jq |
 
 `wtftools` absorbe y reemplaza a
 [`checkcrontab`](https://github.com/wachawo/checkcrontab): el mismo validador
@@ -116,11 +116,11 @@ de cron ahora vive en `wtf crontab`.
 
 ## Documentación
 
-- [QUICKSTART.md](docs/QUICKSTART.md) — incorporación en 5 minutos y una hoja de referencia
-- [AUDIT.md](docs/AUDIT.md) — verificaciones de salud, monitoreo, códigos de salida, la lista completa de verificaciones
-- [RESOURCES.md](docs/RESOURCES.md) — vistas por recurso con ejemplos
-- [OUTPUT.md](docs/OUTPUT.md) — formatos `plain`/`json` y el recetario de scripting
-- [CONFIG.md](docs/CONFIG.md) — archivo de configuración, umbrales, ignorar verificaciones
+- [QUICKSTART.md](QUICKSTART.md) — incorporación en 5 minutos y una hoja de referencia
+- [AUDIT.md](AUDIT.md) — verificaciones de salud, monitoreo, códigos de salida, la lista completa de verificaciones
+- [RESOURCES.md](RESOURCES.md) — vistas por recurso con ejemplos
+- [OUTPUT.md](OUTPUT.md) — formatos `plain`/`json` y el recetario de scripting
+- [CONFIG.md](CONFIG.md) — archivo de configuración, umbrales, ignorar verificaciones
 
 ## Compatibilidad
 

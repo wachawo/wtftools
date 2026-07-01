@@ -53,7 +53,7 @@ $ wtf
 pipx install wtftools          # recommended — works on any modern distro
 pip install wtftools           # or classic pip (core, no dependencies)
 pip install wtftools[full]     # + psutil for richer process/socket info
-sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
+sudo dpkg -i python3-wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
 インストール後は `wtf` コマンドが使えます。シェルの rc ファイルに1行追加すると
@@ -64,52 +64,52 @@ echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
 echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 ```
 
-はじめての方は [5分のクイックスタート](docs/QUICKSTART.md) からどうぞ。
+はじめての方は [5分のクイックスタート](QUICKSTART.md) からどうぞ。
 
 ## コマンド
 
 フラグは `wtf <command> --help` で確認できます。各コマンドは、例付きの
 リファレンスページにリンクしています。
 
-### ヘルスと監視 — [docs/AUDIT.md](docs/AUDIT.md)
+### ヘルスと監視 — [docs/AUDIT.md](AUDIT.md)
 
 | command | what it does |
 |---------|--------------|
-| [`wtf` / `wtf audit`](docs/AUDIT.md#wtf-audit) | 何が正常で何が異常かを示す緑／黄／赤のチェックリスト |
-| [`wtf problems`](docs/AUDIT.md#wtf-problems) | WARN+FAIL の行のみ |
-| [`wtf daily`](docs/AUDIT.md#wtf-daily) | 朝のチェック: 監査 + 前回実行との差分 + イベント |
-| [`wtf explain`](docs/AUDIT.md#wtf-explain) | 検出項目ごとの実行可能なアドバイス。`--llm` で LLM にパイプ |
-| [`wtf events`](docs/AUDIT.md#wtf-events) | 時系列: 再起動、OOM kill、失敗ユニット、… |
-| [`wtf logs`](docs/AUDIT.md#wtf-logs) | サービスごとにグループ化した最近の ERROR+ ジャーナルエントリ |
-| [`wtf services`](docs/AUDIT.md#wtf-services) | 1つのユニットを詳細に: 状態、再起動、ポート、ジャーナル |
-| [`wtf diff`](docs/AUDIT.md#wtf-diff) | 現在の状態を保存済みスナップショットと比較 |
-| [`wtf history`](docs/AUDIT.md#wtf-history) | 保存済みの監査スナップショットを一覧 |
-| [`wtf crontab`](docs/AUDIT.md#wtf-crontab) | システム + ユーザーごとの crontab を検証 |
-| [`wtf doctor`](docs/AUDIT.md#wtf-doctor) | 自己診断: wtf が使えるツール／ファイルはどれか |
+| [`wtf` / `wtf audit`](AUDIT.md#wtf-audit) | 何が正常で何が異常かを示す緑／黄／赤のチェックリスト |
+| [`wtf problems`](AUDIT.md#wtf-problems) | WARN+FAIL の行のみ |
+| [`wtf daily`](AUDIT.md#wtf-daily) | 朝のチェック: 監査 + 前回実行との差分 + イベント |
+| [`wtf explain`](AUDIT.md#wtf-explain) | 検出項目ごとの実行可能なアドバイス。`--llm` で LLM にパイプ |
+| [`wtf events`](AUDIT.md#wtf-events) | 時系列: 再起動、OOM kill、失敗ユニット、… |
+| [`wtf logs`](AUDIT.md#wtf-logs) | サービスごとにグループ化した最近の ERROR+ ジャーナルエントリ |
+| [`wtf services`](AUDIT.md#wtf-services) | 1つのユニットを詳細に: 状態、再起動、ポート、ジャーナル |
+| [`wtf diff`](AUDIT.md#wtf-diff) | 現在の状態を保存済みスナップショットと比較 |
+| [`wtf history`](AUDIT.md#wtf-history) | 保存済みの監査スナップショットを一覧 |
+| [`wtf crontab`](AUDIT.md#wtf-crontab) | システム + ユーザーごとの crontab を検証 |
+| [`wtf doctor`](AUDIT.md#wtf-doctor) | 自己診断: wtf が使えるツール／ファイルはどれか |
 
-### リソースビュー — [docs/RESOURCES.md](docs/RESOURCES.md)
+### リソースビュー — [docs/RESOURCES.md](RESOURCES.md)
 
 | command | what it does |
 |---------|--------------|
-| [`wtf disk [PATH]`](docs/RESOURCES.md#wtf-disk) | マウント概要。PATH を付けると最大のフォルダ。`--tree` で掘り下げ |
-| [`wtf cpu`](docs/RESOURCES.md#wtf-cpu) | 負荷、iowait、プレッシャー、CPU 消費上位 |
-| [`wtf mem`](docs/RESOURCES.md#wtf-mem) | RAM/swap、OOM kill、メモリ消費上位 |
-| [`wtf net`](docs/RESOURCES.md#wtf-net) | インターフェース、ゲートウェイ、DNS、エラー、待ち受けポート |
-| [`wtf io`](docs/RESOURCES.md#wtf-io) | デバイスごとの IO レート、プレッシャー、停止したプロセス |
-| [`wtf who`](docs/RESOURCES.md#wtf-who) | ログイン中のユーザー、最近のログイン、認証失敗 |
-| [`wtf temp`](docs/RESOURCES.md#wtf-temp) | /sys/class/hwmon からのハードウェア温度 |
-| [`wtf info`](docs/RESOURCES.md#wtf-info) | 1ページのスナップショット: 上記すべてを一度に |
-| [`wtf top`](docs/RESOURCES.md#wtf-top) | プロセスの絞り込み top: cpu/rss でソート、user/name でフィルタ |
-| [`wtf ports` / `wtf port N`](docs/RESOURCES.md#wtf-ports) | 待ち受けソケット。1つのポートを掘り下げて PID、exe、cwd を表示 |
-| [`wtf docker [NAME]`](docs/RESOURCES.md#wtf-docker) | コンテナの compose 作業ディレクトリ + イメージ/コンテナ/ログサイズ |
+| [`wtf disk [PATH]`](RESOURCES.md#wtf-disk) | マウント概要。PATH を付けると最大のフォルダ。`--tree` で掘り下げ |
+| [`wtf cpu`](RESOURCES.md#wtf-cpu) | 負荷、iowait、プレッシャー、CPU 消費上位 |
+| [`wtf mem`](RESOURCES.md#wtf-mem) | RAM/swap、OOM kill、メモリ消費上位 |
+| [`wtf net`](RESOURCES.md#wtf-net) | インターフェース、ゲートウェイ、DNS、エラー、待ち受けポート |
+| [`wtf io`](RESOURCES.md#wtf-io) | デバイスごとの IO レート、プレッシャー、停止したプロセス |
+| [`wtf who`](RESOURCES.md#wtf-who) | ログイン中のユーザー、最近のログイン、認証失敗 |
+| [`wtf temp`](RESOURCES.md#wtf-temp) | /sys/class/hwmon からのハードウェア温度 |
+| [`wtf info`](RESOURCES.md#wtf-info) | 1ページのスナップショット: 上記すべてを一度に |
+| [`wtf top`](RESOURCES.md#wtf-top) | プロセスの絞り込み top: cpu/rss でソート、user/name でフィルタ |
+| [`wtf ports` / `wtf port N`](RESOURCES.md#wtf-ports) | 待ち受けソケット。1つのポートを掘り下げて PID、exe、cwd を表示 |
+| [`wtf docker [NAME]`](RESOURCES.md#wtf-docker) | コンテナの compose 作業ディレクトリ + イメージ/コンテナ/ログサイズ |
 
 ### 出力と設定
 
 | command | what it does |
 |---------|--------------|
-| [`wtf config`](docs/CONFIG.md#wtf-config) | 有効な設定を表示／コメント付きの例を出力 |
+| [`wtf config`](CONFIG.md#wtf-config) | 有効な設定を表示／コメント付きの例を出力 |
 | [`wtf completion`](#install) | bash/zsh の `<Tab>` 補完スクリプトを出力 |
-| [machine output](docs/OUTPUT.md) | `plain`/`json` 形式と grep·awk·jq クックブック |
+| [machine output](OUTPUT.md) | `plain`/`json` 形式と grep·awk·jq クックブック |
 
 `wtftools` は
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) を取り込み、置き換えます —
@@ -117,11 +117,11 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 
 ## ドキュメント
 
-- [QUICKSTART.md](docs/QUICKSTART.md) — 5分のオンボーディングとチートシート
-- [AUDIT.md](docs/AUDIT.md) — ヘルスチェック、監視、終了コード、チェック項目の全リスト
-- [RESOURCES.md](docs/RESOURCES.md) — 例付きのリソースごとのビュー
-- [OUTPUT.md](docs/OUTPUT.md) — `plain`/`json` 形式とスクリプト向けクックブック
-- [CONFIG.md](docs/CONFIG.md) — 設定ファイル、しきい値、チェックの無視
+- [QUICKSTART.md](QUICKSTART.md) — 5分のオンボーディングとチートシート
+- [AUDIT.md](AUDIT.md) — ヘルスチェック、監視、終了コード、チェック項目の全リスト
+- [RESOURCES.md](RESOURCES.md) — 例付きのリソースごとのビュー
+- [OUTPUT.md](OUTPUT.md) — `plain`/`json` 形式とスクリプト向けクックブック
+- [CONFIG.md](CONFIG.md) — 設定ファイル、しきい値、チェックの無視
 
 ## 互換性
 
