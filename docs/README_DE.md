@@ -41,8 +41,8 @@ und in eine maschinenlesbare, wenn du die Ausgabe per Pipe weiterleitest.
   `wtf services <unit>`, `wtf explain` (optional über ein lokales oder gehostetes LLM).
 - **Trends & Alarmierung** — `wtf daily`, Snapshots + `wtf diff`, cron-Alerts —
   kein Monitoring-Stack erforderlich.
-- **Skriptfähig** — jeder Befehl bietet `plain` (tabulatorgetrennt) und `json` als Ausgabe
-  mit einer `schema_version`, für grep / awk / jq.
+- **Skriptfähig** — `-f json` bei jedem Befehl und `-f plain` (tabulatorgetrennt) bei den
+  Ressourcen- und Audit-Ansichten; das JSON trägt eine `schema_version`, damit Skripte Upgrades überstehen — für grep / awk / jq.
 - **Einsteigerfreundlich** — `--show-commands` gibt die klassischen Befehle aus, die jede
   Ansicht ersetzt, sodass du sie von Hand lernen kannst.
 

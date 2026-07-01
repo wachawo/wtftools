@@ -41,8 +41,8 @@ e em uma resposta legível por máquina quando você a envia por pipe.
   `wtf services <unit>`, `wtf explain` (opcionalmente através de uma LLM local ou hospedada).
 - **Tendências e alertas** — `wtf daily`, snapshots + `wtf diff`, alertas via cron —
   sem necessidade de uma stack de monitoramento.
-- **Scriptável** — cada comando tem saída `plain` (separada por tabulações) e `json`
-  carregando um `schema_version`, para grep / awk / jq.
+- **Scriptável** — `-f json` em cada comando e `-f plain` (separado por tabulações) nas
+  visões de recursos e auditoria; o JSON carrega um `schema_version` para que os scripts sobrevivam às atualizações — para grep / awk / jq.
 - **Amigável para iniciantes** — `--show-commands` imprime os comandos clássicos que cada
   visão substitui, para que você possa aprendê-los à mão.
 

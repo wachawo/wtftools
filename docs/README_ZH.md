@@ -41,8 +41,8 @@ $ wtf
   `wtf services <unit>`、`wtf explain`（可选择经由本地或托管的 LLM）。
 - **趋势与告警** —— `wtf daily`、快照 + `wtf diff`、cron 告警 ——
   无需任何监控栈。
-- **可脚本化** —— 每条命令都有 `plain`（制表符分隔）和 `json` 输出，
-  其中带有 `schema_version`，可用于 grep / awk / jq。
+- **可脚本化** —— 每条命令都支持 `-f json`，而 `-f plain`（制表符分隔）仅用于资源和审计视图；
+  JSON 带有 `schema_version`，使脚本在升级后仍可用 —— 可用于 grep / awk / jq。
 - **新手友好** —— `--show-commands` 会打印每个视图所替代的经典命令，
   方便你自己动手学习。
 

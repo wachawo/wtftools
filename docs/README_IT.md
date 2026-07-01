@@ -42,8 +42,8 @@ quando la usi in pipe.
   `wtf services <unit>`, `wtf explain` (opzionalmente tramite un LLM locale o ospitato).
 - **Tendenze e avvisi** — `wtf daily`, snapshot + `wtf diff`, avvisi via cron —
   senza alcuno stack di monitoraggio.
-- **Adatto agli script** — ogni comando ha output `plain` (separato da tabulazioni)
-  e `json` che porta uno `schema_version`, per grep / awk / jq.
+- **Adatto agli script** — `-f json` su ogni comando e `-f plain` (separato da tabulazioni) sulle
+  viste di risorse e audit; il JSON porta uno `schema_version` così gli script sopravvivono agli aggiornamenti — per grep / awk / jq.
 - **Adatto ai principianti** — `--show-commands` stampa i comandi classici che
   ogni vista sostituisce, così puoi impararli a mano.
 

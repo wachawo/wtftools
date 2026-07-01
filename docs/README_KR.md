@@ -41,8 +41,8 @@ $ wtf
   `wtf services <unit>`, `wtf explain`(선택적으로 로컬 또는 호스팅 LLM을 통해).
 - **추세 및 알림** — `wtf daily`, 스냅샷 + `wtf diff`, cron 알림 —
   별도의 모니터링 스택이 필요 없습니다.
-- **스크립트 친화적** — 모든 명령에 `plain`(탭으로 구분)과 `json` 출력이 있고,
-  `schema_version`을 포함하므로 grep / awk / jq에 활용할 수 있습니다.
+- **스크립트 친화적** — `-f json`은 모든 명령에서 쓸 수 있고, `-f plain`(탭으로 구분)은 리소스와 감사 보기에서만 쓸 수 있습니다;
+  JSON은 `schema_version`을 포함하므로 스크립트가 업그레이드 후에도 동작합니다 — grep / awk / jq에 활용할 수 있습니다.
 - **초보자 친화적** — `--show-commands`는 각 보기가 대체하는 고전적인 명령들을
   출력해 주므로, 직접 손으로 익힐 수 있습니다.
 
