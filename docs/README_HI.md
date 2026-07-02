@@ -32,7 +32,7 @@ $ wtf
 
 ## यह क्या कर सकता है
 
-- **हेल्थ ऑडिट** — 40+ जाँचें (disk, memory, swap, load, PSI, OOM kills,
+- **हेल्थ ऑडिट** — 35+ जाँचें (disk, memory, swap, load, PSI, OOM kills,
   failed units, cert expiry, SMART, temperatures, DNS, …) एक
   हरी / पीली / लाल चेकलिस्ट के रूप में।
 - **प्रति-संसाधन व्यू** — एक समय में एक चीज़ के बारे में पूछें, किसी स्विच पर `show` कमांड

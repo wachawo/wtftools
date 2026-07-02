@@ -32,7 +32,7 @@ and a machine-readable one when you pipe it.
 
 ## What it can do
 
-- **Health audit** — 40+ checks (disk, memory, swap, load, PSI, OOM kills,
+- **Health audit** — 35+ checks (disk, memory, swap, load, PSI, OOM kills,
   failed units, cert expiry, SMART, temperatures, DNS, …) as a
   green / yellow / red checklist.
 - **Per-resource views** — ask about one thing at a time, like `show` commands

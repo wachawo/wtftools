@@ -31,12 +31,14 @@ def test_version_flag(capsys):
     assert exc.value.code == 0
 
 
+@pytest.mark.integration
 def test_cmd_info_text():
     rc, out = _capture(["info"])
     assert rc == 0
     assert "SYSTEM" in out
 
 
+@pytest.mark.integration
 def test_cmd_info_json():
     rc, out = _capture(["info", "--format", "json"])
     assert rc == 0
@@ -45,6 +47,7 @@ def test_cmd_info_json():
     assert "memory" in data
 
 
+@pytest.mark.integration
 def test_cmd_audit_text():
     rc, out = _capture(["audit"])
     assert rc in (0, 2)
@@ -52,6 +55,7 @@ def test_cmd_audit_text():
     assert "Summary" in out
 
 
+@pytest.mark.integration
 def test_cmd_audit_json():
     rc, out = _capture(["audit", "--format", "json"])
     data = json.loads(out)

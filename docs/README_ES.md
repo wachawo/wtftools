@@ -32,7 +32,7 @@ y en una legible por máquina cuando la canalizas con un pipe.
 
 ## Qué puede hacer
 
-- **Auditoría de salud** — más de 40 verificaciones (disco, memoria, swap, carga, PSI, OOM kills,
+- **Auditoría de salud** — más de 35 verificaciones (disco, memoria, swap, carga, PSI, OOM kills,
   unidades fallidas, expiración de certificados, SMART, temperaturas, DNS, …) como una
   lista de verificación verde / amarillo / rojo.
 - **Vistas por recurso** — pregunta por una cosa a la vez, como los comandos `show`

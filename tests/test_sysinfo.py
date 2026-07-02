@@ -42,6 +42,7 @@ def test_run_not_found():
     assert "not found" in err
 
 
+@pytest.mark.integration
 def test_run_timeout():
     rc, out, err = sysinfo.run(["sleep", "10"], timeout=1)
     assert rc == 124
