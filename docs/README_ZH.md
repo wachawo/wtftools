@@ -6,12 +6,16 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> 一条命令即可查看你的 Linux 服务器此刻的运行状况。
+> `wtf` —— 一条只读命令，告诉你此刻 Linux 机器出了什么问题。
+
+无代理。无守护进程。无需配置。无网络调用。无依赖（仅需 Python 标准库；`psutil`
+为可选）。通过 SSH 在生产环境中运行也很安全——它只*读取*。两秒即可试用，无需安装任何东西：
+`pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | **中文** | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-你登录到一台服务器，感觉有些不对劲。你不必再运行十几条命令
-（`htop`、`df -h`、`journalctl`、`systemctl --failed` ……），只需运行一条：
+你不必再运行十几条命令（`htop`、`df -h`、`journalctl`、`systemctl --failed`、
+`ss`、`dmesg` ……），只需运行一条：
 
 ```
 $ wtf
@@ -25,10 +29,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-绿色表示正常，黄色需要留意，红色需要修复。`wtftools` 是一个
-**只读、无依赖的 CLI**（仅依赖 Python 标准库；`psutil` 为可选），
-它把一大堆诊断命令变成一个可读的答案——当你用管道时，还会给出
-一个机器可读的答案。
+绿色表示正常，黄色需要留意，红色需要修复。管理员有两种使用方式：
+
+- **故障排查** —— 感觉哪里不对 → `wtf` → 一份绿/黄/红检查清单，
+  而不是十条零散的命令。
+- **日常** —— 用 `wtf daily` 作为晨间检查，把 `wtf` 放进你的 MOTD 登录横幅，
+  从 cron 运行 `wtf audit --alert …`。无需任何监控系统。
 
 ## 它能做什么
 
@@ -121,6 +127,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 - [RESOURCES.md](RESOURCES.md) —— 带示例的按资源视图
 - [OUTPUT.md](OUTPUT.md) —— `plain`/`json` 格式与脚本实用手册
 - [CONFIG.md](CONFIG.md) —— 配置文件、阈值、忽略检查
+- [ROADMAP.md](ROADMAP.md) —— 有哪些规划以及哪些不在范围内
 
 ## 兼容性
 

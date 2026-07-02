@@ -6,12 +6,16 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> One command to see what is going on with your Linux server right now.
+> `wtf` — one read-only command that tells you what's wrong with a Linux box right now.
+
+No agent. No daemon. No config. No network calls. No dependencies (Python
+standard library only; `psutil` optional). Safe to run on production over SSH —
+it only *reads*. Try it in two seconds, nothing to install: `pipx run wtftools`
 
 **English** | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-You log in to a server and something feels wrong. Instead of running ten
-commands (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) you run one:
+Instead of running ten commands (`htop`, `df -h`, `journalctl`,
+`systemctl --failed`, `ss`, `dmesg`, …) you run one:
 
 ```
 $ wtf
@@ -25,10 +29,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Green is fine, yellow needs a look, red needs fixing. `wtftools` is a
-**read-only, dependency-free CLI** (Python standard library only; `psutil`
-optional) that turns a pile of diagnostic commands into one readable answer —
-and a machine-readable one when you pipe it.
+Green is fine, yellow needs a look, red needs fixing. Two ways admins live in it:
+
+- **Incident** — something feels off → `wtf` → a green/yellow/red checklist
+  instead of ten scattered commands.
+- **Daily** — `wtf daily` as the morning check, `wtf` in your MOTD login banner,
+  `wtf audit --alert …` from cron. No monitoring stack required.
 
 ## What it can do
 
@@ -122,6 +128,7 @@ validator now lives at `wtf crontab`.
 - [RESOURCES.md](https://github.com/wachawo/wtftools/blob/main/docs/RESOURCES.md) — per-resource views with examples
 - [OUTPUT.md](https://github.com/wachawo/wtftools/blob/main/docs/OUTPUT.md) — `plain`/`json` formats and the scripting cookbook
 - [CONFIG.md](https://github.com/wachawo/wtftools/blob/main/docs/CONFIG.md) — config file, thresholds, ignoring checks
+- [ROADMAP.md](https://github.com/wachawo/wtftools/blob/main/docs/ROADMAP.md) — what's planned and what's out of scope
 
 ## Compatibility
 

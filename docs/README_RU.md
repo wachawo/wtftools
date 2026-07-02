@@ -6,12 +6,17 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> Одна команда, чтобы увидеть, что прямо сейчас происходит с вашим Linux-сервером.
+> `wtf` — одна команда только для чтения, которая говорит, что не так с Linux-машиной прямо сейчас.
+
+Без агента. Без демона. Без конфигурации. Без сетевых вызовов. Без зависимостей
+(только стандартная библиотека Python; `psutil` опционально). Безопасно запускать
+на проде по SSH — она только *читает*. Попробуйте за две секунды, ничего не нужно
+устанавливать: `pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | **Русский** | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-Вы подключаетесь к серверу, и что-то кажется не так. Вместо того чтобы запускать
-десяток команд (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …), вы запускаете одну:
+Вместо того чтобы запускать десяток команд (`htop`, `df -h`, `journalctl`,
+`systemctl --failed`, `ss`, `dmesg`, …), вы запускаете одну:
 
 ```
 $ wtf
@@ -25,10 +30,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Зелёный — всё в порядке, жёлтый — стоит взглянуть, красный — нужно чинить. `wtftools` —
-это **CLI только для чтения, без зависимостей** (только стандартная библиотека Python;
-`psutil` опционально), который превращает кучу диагностических команд в один читаемый
-ответ — и в машиночитаемый, когда вы перенаправляете вывод.
+Зелёный — всё в порядке, жёлтый — стоит взглянуть, красный — нужно чинить. Два способа, как админы этим живут:
+
+- **Инцидент** — что-то не так → `wtf` → зелёно-жёлто-красный чек-лист вместо
+  десятка разрозненных команд.
+- **Каждый день** — `wtf daily` как утренняя проверка, `wtf` в баннере входа MOTD,
+  `wtf audit --alert …` из cron. Стек мониторинга не нужен.
 
 ## Что он умеет
 
@@ -121,6 +128,7 @@ cron теперь живёт в `wtf crontab`.
 - [RESOURCES.md](RESOURCES.md) — просмотр по ресурсам с примерами
 - [OUTPUT.md](OUTPUT.md) — форматы `plain`/`json` и сборник рецептов для скриптов
 - [CONFIG.md](CONFIG.md) — файл конфигурации, пороги, игнорирование проверок
+- [ROADMAP.md](ROADMAP.md) — что запланировано и что вне области проекта
 
 ## Совместимость
 

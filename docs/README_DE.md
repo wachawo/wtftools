@@ -6,12 +6,17 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> Ein einziger Befehl, um zu sehen, was gerade auf deinem Linux-Server vor sich geht.
+> `wtf` — ein einziger schreibgeschützter Befehl, der dir sagt, was auf einer Linux-Maschine gerade nicht stimmt.
+
+Kein Agent. Kein Daemon. Keine Konfiguration. Keine Netzwerkaufrufe. Keine Abhängigkeiten
+(nur die Python-Standardbibliothek; `psutil` optional). Sicher in der Produktion über SSH
+auszuführen — er *liest* nur. Probiere es in zwei Sekunden aus, nichts zu installieren:
+`pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | **Deutsch** | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-Du loggst dich auf einem Server ein und irgendetwas fühlt sich falsch an. Statt zehn
-Befehle auszuführen (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …), führst du nur einen aus:
+Statt zehn Befehle auszuführen (`htop`, `df -h`, `journalctl`,
+`systemctl --failed`, `ss`, `dmesg`, …), führst du nur einen aus:
 
 ```
 $ wtf
@@ -25,10 +30,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Grün ist in Ordnung, Gelb braucht einen Blick, Rot muss behoben werden. `wtftools` ist eine
-**schreibgeschützte, abhängigkeitsfreie CLI** (nur die Python-Standardbibliothek; `psutil`
-optional), die einen Haufen Diagnosebefehle in eine lesbare Antwort verwandelt —
-und in eine maschinenlesbare, wenn du die Ausgabe per Pipe weiterleitest.
+Grün ist in Ordnung, Gelb braucht einen Blick, Rot muss behoben werden. Zwei Arten, wie Admins damit leben:
+
+- **Vorfall** — irgendetwas stimmt nicht → `wtf` → eine grün/gelb/rot-Checkliste
+  statt zehn verstreuter Befehle.
+- **Täglich** — `wtf daily` als Morgen-Check, `wtf` in deinem MOTD-Login-Banner,
+  `wtf audit --alert …` aus cron. Kein Monitoring-Stack erforderlich.
 
 ## Was es kann
 
@@ -121,6 +128,7 @@ lebt jetzt unter `wtf crontab`.
 - [RESOURCES.md](RESOURCES.md) — Ansichten pro Ressource mit Beispielen
 - [OUTPUT.md](OUTPUT.md) — `plain`/`json`-Formate und das Skripting-Kochbuch
 - [CONFIG.md](CONFIG.md) — Konfigurationsdatei, Schwellenwerte, Prüfungen ignorieren
+- [ROADMAP.md](ROADMAP.md) — was geplant ist und was außerhalb des Rahmens liegt
 
 ## Kompatibilität
 

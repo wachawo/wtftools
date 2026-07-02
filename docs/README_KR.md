@@ -6,12 +6,16 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> 지금 이 순간 리눅스 서버에서 무슨 일이 벌어지고 있는지 한 번의 명령으로 확인하세요.
+> `wtf` — 지금 리눅스 머신에서 무엇이 잘못되었는지 알려 주는 단 하나의 읽기 전용 명령.
+
+에이전트 없음. 데몬 없음. 설정 없음. 네트워크 호출 없음. 의존성 없음(Python 표준
+라이브러리만 사용; `psutil`은 선택 사항). SSH로 프로덕션에서 실행해도 안전합니다 —
+*읽기*만 합니다. 설치할 것 없이 2초 만에 사용해 보세요: `pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | **한국어**
 
-서버에 로그인했는데 뭔가 잘못된 것 같은 느낌이 듭니다. 열 개의 명령
-(`htop`, `df -h`, `journalctl`, `systemctl --failed`, …)을 실행하는 대신 하나만 실행하세요:
+열 개의 명령(`htop`, `df -h`, `journalctl`, `systemctl --failed`, `ss`,
+`dmesg`, …)을 실행하는 대신 하나만 실행하세요:
 
 ```
 $ wtf
@@ -25,10 +29,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-초록색은 괜찮음, 노란색은 살펴봐야 함, 빨간색은 고쳐야 함을 뜻합니다. `wtftools`는
-**읽기 전용이고 의존성이 없는 CLI**(Python 표준 라이브러리만 사용; `psutil`은
-선택 사항)로, 여러 진단 명령의 묶음을 읽기 쉬운 하나의 답으로 — 그리고 파이프로
-연결하면 기계가 읽을 수 있는 답으로 — 바꿔 줍니다.
+초록색은 괜찮음, 노란색은 살펴봐야 함, 빨간색은 고쳐야 함을 뜻합니다. 관리자가 활용하는 두 가지 방식:
+
+- **장애 대응** — 뭔가 이상하다 → `wtf` → 열 개의 흩어진 명령 대신
+  초록/노랑/빨강 체크리스트.
+- **일상** — 아침 점검으로 `wtf daily`, MOTD 로그인 배너에 `wtf`, cron에서
+  `wtf audit --alert …`. 모니터링 스택이 필요 없습니다.
 
 ## 할 수 있는 일
 
@@ -121,6 +127,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 - [RESOURCES.md](RESOURCES.md) — 예시가 포함된 리소스별 보기
 - [OUTPUT.md](OUTPUT.md) — `plain`/`json` 형식과 스크립팅 쿡북
 - [CONFIG.md](CONFIG.md) — 설정 파일, 임계값, 점검 무시
+- [ROADMAP.md](ROADMAP.md) — 계획된 것과 범위 밖인 것
 
 ## Compatibility
 

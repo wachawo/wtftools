@@ -6,12 +6,17 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> एक ही कमांड से देखें कि अभी आपके Linux सर्वर पर क्या हो रहा है।
+> `wtf` — एक ही केवल-पठन कमांड जो बताती है कि अभी किसी Linux मशीन में क्या गड़बड़ है।
+
+कोई एजेंट नहीं। कोई डेमन नहीं। कोई कॉन्फ़िग नहीं। कोई नेटवर्क कॉल नहीं। कोई निर्भरता नहीं
+(केवल Python standard library; `psutil` वैकल्पिक)। SSH के ज़रिए प्रोडक्शन पर चलाना सुरक्षित है —
+यह केवल *पढ़ती* है। दो सेकंड में आज़माएँ, कुछ भी इंस्टॉल करने की ज़रूरत नहीं:
+`pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | **हिन्दी** | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-आप किसी सर्वर में लॉग इन करते हैं और कुछ गड़बड़ महसूस होती है। दस अलग-अलग
-कमांड (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) चलाने के बजाय आप एक ही चलाते हैं:
+दस अलग-अलग कमांड (`htop`, `df -h`, `journalctl`, `systemctl --failed`, `ss`,
+`dmesg`, …) चलाने के बजाय आप एक ही चलाते हैं:
 
 ```
 $ wtf
@@ -25,10 +30,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-हरा ठीक है, पीले पर ध्यान देने की ज़रूरत है, लाल को ठीक करने की ज़रूरत है। `wtftools` एक
-**केवल-पठन, बिना-निर्भरता वाला CLI** है (केवल Python standard library; `psutil`
-वैकल्पिक) जो ढेर सारी डायग्नोस्टिक कमांड को एक पठनीय उत्तर में बदल देता है —
-और जब आप इसे पाइप करते हैं तो एक मशीन-पठनीय उत्तर में।
+हरा ठीक है, पीले पर ध्यान देने की ज़रूरत है, लाल को ठीक करने की ज़रूरत है। एडमिन इसे दो तरह से इस्तेमाल करते हैं:
+
+- **इंसिडेंट** — कुछ गड़बड़ लगता है → `wtf` → दस बिखरी हुई कमांड के बजाय एक
+  हरी/पीली/लाल चेकलिस्ट।
+- **रोज़मर्रा** — सुबह की जाँच के रूप में `wtf daily`, अपने MOTD लॉगिन बैनर में `wtf`,
+  cron से `wtf audit --alert …`। किसी मॉनिटरिंग स्टैक की ज़रूरत नहीं।
 
 ## यह क्या कर सकता है
 
@@ -121,6 +128,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 - [RESOURCES.md](RESOURCES.md) — उदाहरणों के साथ प्रति-संसाधन व्यू
 - [OUTPUT.md](OUTPUT.md) — `plain`/`json` फ़ॉर्मेट और स्क्रिप्टिंग कुकबुक
 - [CONFIG.md](CONFIG.md) — कॉन्फ़िग फ़ाइल, थ्रेशोल्ड, जाँचों को अनदेखा करना
+- [ROADMAP.md](ROADMAP.md) — क्या योजना में है और क्या दायरे से बाहर है
 
 ## संगतता
 
