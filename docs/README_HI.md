@@ -124,7 +124,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 
 ## संगतता
 
-- Python 3.8+
+- Python 3.9+
 - Linux (systemd डिस्ट्रिब्यूशन सबसे सुगम रास्ता हैं; जब `systemctl` /
   `journalctl` / `psutil` मौजूद न हों तो उपकरण शालीनता से सीमित होकर चलता है)
 - कोर CLI के लिए किसी नेटवर्क एक्सेस की ज़रूरत नहीं; वैकल्पिक नेटवर्क केवल

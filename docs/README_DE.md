@@ -124,7 +124,7 @@ lebt jetzt unter `wtf crontab`.
 
 ## Kompatibilität
 
-- Python 3.8+
+- Python 3.9+
 - Linux (systemd-Distributionen sind der bevorzugte Weg; das Werkzeug funktioniert
   weiterhin sinnvoll, wenn `systemctl` / `journalctl` / `psutil` fehlen)
 - Kein Netzwerkzugriff für die Kern-CLI erforderlich; optionales Netzwerk nur für

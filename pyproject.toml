@@ -9,7 +9,7 @@ description = "One command to see what is going on with your Linux server right 
 readme = { file = "README.md", content-type = "text/markdown" }
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [{ name = "Aleksandr Pimenov", email = "wachawo@gmail.com" }]
 maintainers = [{ name = "Aleksandr Pimenov", email = "wachawo@gmail.com" }]
 keywords = ["devops", "sre", "linux", "diagnostics", "monitoring", "cron", "system", "audit", "cli"]
@@ -18,7 +18,6 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -65,6 +64,8 @@ include-package-data = true
 line-length = 180
 target-version = ["py38"]
 
+# Lint/format target stays py38 so the source keeps 3.8-compatible style; the
+# packaged build floor is 3.9 (requires-python) due to build-time setuptools.
 [tool.ruff]
 line-length = 180
 target-version = "py38"

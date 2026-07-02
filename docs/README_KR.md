@@ -124,7 +124,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 
 ## Compatibility
 
-- Python 3.8+
+- Python 3.9+
 - 리눅스 (systemd 배포판이 가장 잘 동작하는 환경이며, `systemctl` /
   `journalctl` / `psutil`이 없을 때는 우아하게 기능이 축소됩니다)
 - 핵심 CLI에는 네트워크 접근이 필요 없습니다. 선택적 네트워크는

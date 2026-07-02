@@ -125,7 +125,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 
 ## 互換性
 
-- Python 3.8+
+- Python 3.9+
 - Linux（systemd ディストリビューションが最も快適に動作します。`systemctl` /
   `journalctl` / `psutil` が無い場合でも、ツールは緩やかに機能を縮退させます）
 - コア CLI にネットワークアクセスは不要。任意のネットワーク利用は

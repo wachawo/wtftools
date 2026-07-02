@@ -124,7 +124,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 
 ## 兼容性
 
-- Python 3.8+
+- Python 3.9+
 - Linux（systemd 发行版是最理想的运行环境；当缺少
   `systemctl` / `journalctl` / `psutil` 时，工具会优雅降级）
 - 核心 CLI 无需网络访问；仅 `wtf explain --llm …` 和

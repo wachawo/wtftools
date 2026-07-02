@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   auto-loaded system-wide (the previous file name prevented auto-loading; the
   `eval "$(wtf completion bash)"` path was unaffected).
 - The Docker base image is pinned by digest for reproducible builds.
+- Minimum Python raised to 3.9 (`requires-python`): the build needs
+  setuptools>=77, which dropped the EOL Python 3.8. The source stays
+  3.8-compatible in style; only the packaged build floor moved.
 
 ### Security
 - `wtf explain --llm claude|openai` discloses (to stderr) that the host name

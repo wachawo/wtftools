@@ -124,7 +124,7 @@ de cron ahora vive en `wtf crontab`.
 
 ## Compatibilidad
 
-- Python 3.8+
+- Python 3.9+
 - Linux (las distribuciones con systemd son el camino ideal; la herramienta se degrada
   con elegancia cuando faltan `systemctl` / `journalctl` / `psutil`)
 - No se requiere acceso a la red para la CLI principal; red opcional solo para

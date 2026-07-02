@@ -125,7 +125,7 @@ di cron ora si trova in `wtf crontab`.
 
 ## Compatibilità
 
-- Python 3.8+
+- Python 3.9+
 - Linux (le distribuzioni con systemd sono il percorso ideale; lo strumento si
   degrada con grazia quando `systemctl` / `journalctl` / `psutil` mancano)
 - Nessun accesso di rete richiesto per la CLI principale; rete opzionale solo per

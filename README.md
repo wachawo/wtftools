@@ -125,7 +125,7 @@ validator now lives at `wtf crontab`.
 
 ## Compatibility
 
-- Python 3.8+
+- Python 3.9+
 - Linux (systemd distributions are the happy path; the tool degrades
   gracefully when `systemctl` / `journalctl` / `psutil` are missing)
 - No network access required for the core CLI; optional network only for
