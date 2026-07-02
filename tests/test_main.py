@@ -31,12 +31,14 @@ def test_version_flag(capsys):
     assert exc.value.code == 0
 
 
+@pytest.mark.integration
 def test_cmd_info_text():
     rc, out = _capture(["info"])
     assert rc == 0
     assert "SYSTEM" in out
 
 
+@pytest.mark.integration
 def test_cmd_info_json():
     rc, out = _capture(["info", "--format", "json"])
     assert rc == 0
@@ -45,6 +47,7 @@ def test_cmd_info_json():
     assert "memory" in data
 
 
+@pytest.mark.integration
 def test_cmd_audit_text():
     rc, out = _capture(["audit"])
     assert rc in (0, 2)
@@ -52,6 +55,7 @@ def test_cmd_audit_text():
     assert "Summary" in out
 
 
+@pytest.mark.integration
 def test_cmd_audit_json():
     rc, out = _capture(["audit", "--format", "json"])
     data = json.loads(out)
@@ -196,6 +200,16 @@ def test_cmd_crontab_no_targets_json(monkeypatch):
     assert data["files"] == []
 
 
+def test_cmd_crontab_invalid_username_skipped(monkeypatch):
+    calls = []
+    monkeypatch.setattr(main.cron, "find_user_crontab", lambda n: calls.append(n) or None)
+    monkeypatch.setattr(main.cron, "discover_default_targets", lambda: [])
+    _capture(["crontab", "-u", "bad;name"])
+    assert "bad;name" not in calls  # rejected before reaching `crontab -l -u <name>`
+    _capture(["crontab", "-u", "alice"])
+    assert "alice" in calls  # a valid name still goes through
+
+
 def test_default_command_runs_audit(monkeypatch):
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
     rc, out = _capture([])
@@ -204,13 +218,29 @@ def test_default_command_runs_audit(monkeypatch):
 
 
 def test_verbose_sets_logging(monkeypatch):
+    import logging
+
+    root = logging.getLogger()
+    prev = root.level
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
-    _capture(["--verbose", "audit"])
+    try:
+        _capture(["--verbose", "audit"])
+        assert root.level == logging.INFO
+    finally:
+        root.setLevel(prev)
 
 
 def test_quiet_sets_logging(monkeypatch):
+    import logging
+
+    root = logging.getLogger()
+    prev = root.level
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
-    _capture(["--quiet", "audit"])
+    try:
+        _capture(["--quiet", "audit"])
+        assert root.level == logging.ERROR
+    finally:
+        root.setLevel(prev)
 
 
 def test_keyboard_interrupt(monkeypatch):
@@ -243,3 +273,51 @@ def test_cmd_audit_runs_default_when_no_subcommand(monkeypatch):
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "fail", "boom")])
     rc, _ = _capture([])
     assert rc == 2
+
+
+def test_default_command_preserves_global_format(monkeypatch):
+    # `wtf -f json` (no subcommand) must default to audit AND keep -f json.
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
+    rc, out = _capture(["-f", "json"])
+    assert rc == 0
+    assert '"schema_version"' in out
+
+
+def test_csv_safe_quotes_formula_cells():
+    assert main._csv_safe("=cmd()") == "'=cmd()"
+    assert main._csv_safe("+1") == "'+1"
+    assert main._csv_safe("-2") == "'-2"
+    assert main._csv_safe("@x") == "'@x"
+    assert main._csv_safe("normal") == "normal"
+    assert main._csv_safe("") == ""
+
+
+def test_toplevel_exception_returns_error_code(monkeypatch):
+    def boom(names=None, ignore=None):
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setattr(audit, "run_audit", boom)
+    rc, _ = _capture(["audit"])
+    assert rc == 1  # one-line error to stderr, no traceback dumped at the user
+
+
+def test_toplevel_exception_reraises_with_verbose(monkeypatch):
+    def boom(names=None, ignore=None):
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setattr(audit, "run_audit", boom)
+    with pytest.raises(RuntimeError):
+        main.main(["--verbose", "audit"])
+
+
+def test_global_audit_only_format_rejected_on_non_audit():
+    # `-f csv` (global) on a resource command is rejected, not silently ignored.
+    rc, _ = _capture(["-f", "csv", "cpu"])
+    assert rc == 2
+
+
+def test_global_audit_only_format_allowed_on_audit(monkeypatch):
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("x", "ok", "fine")])
+    rc, out = _capture(["-f", "csv", "audit"])
+    assert rc == 0
+    assert "name,status,message,detail" in out

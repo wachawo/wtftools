@@ -32,7 +32,7 @@ und in eine maschinenlesbare, wenn du die Ausgabe per Pipe weiterleitest.
 
 ## Was es kann
 
-- **Health-Audit** — über 40 Prüfungen (disk, memory, swap, load, PSI, OOM-Kills,
+- **Health-Audit** — über 35 Prüfungen (disk, memory, swap, load, PSI, OOM-Kills,
   fehlgeschlagene Units, Zertifikatsablauf, SMART, Temperaturen, DNS, …) als
   grün/gelb/rot-Checkliste.
 - **Ansichten pro Ressource** — frage nach jeweils einer Sache, ähnlich wie die `show`-Befehle
@@ -41,8 +41,8 @@ und in eine maschinenlesbare, wenn du die Ausgabe per Pipe weiterleitest.
   `wtf services <unit>`, `wtf explain` (optional über ein lokales oder gehostetes LLM).
 - **Trends & Alarmierung** — `wtf daily`, Snapshots + `wtf diff`, cron-Alerts —
   kein Monitoring-Stack erforderlich.
-- **Skriptfähig** — jeder Befehl bietet `plain` (tabulatorgetrennt) und `json` als Ausgabe
-  mit einer `schema_version`, für grep / awk / jq.
+- **Skriptfähig** — `-f json` bei jedem Befehl und `-f plain` (tabulatorgetrennt) bei den
+  Ressourcen- und Audit-Ansichten; das JSON trägt eine `schema_version`, damit Skripte Upgrades überstehen — für grep / awk / jq.
 - **Einsteigerfreundlich** — `--show-commands` gibt die klassischen Befehle aus, die jede
   Ansicht ersetzt, sodass du sie von Hand lernen kannst.
 
@@ -52,7 +52,7 @@ und in eine maschinenlesbare, wenn du die Ausgabe per Pipe weiterleitest.
 pipx install wtftools          # recommended — works on any modern distro
 pip install wtftools           # or classic pip (core, no dependencies)
 pip install wtftools[full]     # + psutil for richer process/socket info
-sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
+sudo dpkg -i python3-wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
 Nach der Installation hast du den Befehl `wtf`. Aktiviere die `<Tab>`-Vervollständigung, indem du
@@ -63,52 +63,52 @@ echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
 echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 ```
 
-Neu hier? Beginne mit dem [5-Minuten-Quickstart](docs/QUICKSTART.md).
+Neu hier? Beginne mit dem [5-Minuten-Quickstart](QUICKSTART.md).
 
 ## Befehle
 
 Führe `wtf <command> --help` aus, um die Flags zu sehen. Jeder Befehl verlinkt auf seine Referenzseite
 mit Beispielen.
 
-### Health & Monitoring — [docs/AUDIT.md](docs/AUDIT.md)
+### Health & Monitoring — [docs/AUDIT.md](AUDIT.md)
 
 | command | was er macht |
 |---------|--------------|
-| [`wtf` / `wtf audit`](docs/AUDIT.md#wtf-audit) | grün/gelb/rot-Checkliste: was in Ordnung ist und was nicht |
-| [`wtf problems`](docs/AUDIT.md#wtf-problems) | nur die WARN+FAIL-Zeilen |
-| [`wtf daily`](docs/AUDIT.md#wtf-daily) | morgendliche Prüfung: Audit + Diff zum letzten Lauf + Ereignisse |
-| [`wtf explain`](docs/AUDIT.md#wtf-explain) | umsetzbarer Rat pro Befund; `--llm` zum Weiterleiten an ein LLM |
-| [`wtf events`](docs/AUDIT.md#wtf-events) | Zeitleiste: Reboots, OOM-Kills, fehlgeschlagene Units, … |
-| [`wtf logs`](docs/AUDIT.md#wtf-logs) | letzte ERROR+ Journal-Einträge, gruppiert nach Dienst |
-| [`wtf services`](docs/AUDIT.md#wtf-services) | Detailansicht einer Unit: Zustand, Neustarts, Ports, Journal |
-| [`wtf diff`](docs/AUDIT.md#wtf-diff) | aktuellen Zustand mit einem gespeicherten Snapshot vergleichen |
-| [`wtf history`](docs/AUDIT.md#wtf-history) | gespeicherte Audit-Snapshots auflisten |
-| [`wtf crontab`](docs/AUDIT.md#wtf-crontab) | System- und benutzerspezifische crontabs validieren |
-| [`wtf doctor`](docs/AUDIT.md#wtf-doctor) | Selbstdiagnose: welche Werkzeuge/Dateien wtf nutzen kann |
+| [`wtf` / `wtf audit`](AUDIT.md#wtf-audit) | grün/gelb/rot-Checkliste: was in Ordnung ist und was nicht |
+| [`wtf problems`](AUDIT.md#wtf-problems) | nur die WARN+FAIL-Zeilen |
+| [`wtf daily`](AUDIT.md#wtf-daily) | morgendliche Prüfung: Audit + Diff zum letzten Lauf + Ereignisse |
+| [`wtf explain`](AUDIT.md#wtf-explain) | umsetzbarer Rat pro Befund; `--llm` zum Weiterleiten an ein LLM |
+| [`wtf events`](AUDIT.md#wtf-events) | Zeitleiste: Reboots, OOM-Kills, fehlgeschlagene Units, … |
+| [`wtf logs`](AUDIT.md#wtf-logs) | letzte ERROR+ Journal-Einträge, gruppiert nach Dienst |
+| [`wtf services`](AUDIT.md#wtf-services) | Detailansicht einer Unit: Zustand, Neustarts, Ports, Journal |
+| [`wtf diff`](AUDIT.md#wtf-diff) | aktuellen Zustand mit einem gespeicherten Snapshot vergleichen |
+| [`wtf history`](AUDIT.md#wtf-history) | gespeicherte Audit-Snapshots auflisten |
+| [`wtf crontab`](AUDIT.md#wtf-crontab) | System- und benutzerspezifische crontabs validieren |
+| [`wtf doctor`](AUDIT.md#wtf-doctor) | Selbstdiagnose: welche Werkzeuge/Dateien wtf nutzen kann |
 
-### Ansichten pro Ressource — [docs/RESOURCES.md](docs/RESOURCES.md)
+### Ansichten pro Ressource — [docs/RESOURCES.md](RESOURCES.md)
 
 | command | was er macht |
 |---------|--------------|
-| [`wtf disk [PATH]`](docs/RESOURCES.md#wtf-disk) | Mount-Übersicht; mit einem PATH die größten Ordner; `--tree` arbeitet sich ein |
-| [`wtf cpu`](docs/RESOURCES.md#wtf-cpu) | Last, iowait, Pressure, Top-CPU-Verbraucher |
-| [`wtf mem`](docs/RESOURCES.md#wtf-mem) | RAM/Swap, OOM-Kills, Top-Speicher-Verbraucher |
-| [`wtf net`](docs/RESOURCES.md#wtf-net) | Schnittstellen, Gateway, DNS, Fehler, lauschende Ports |
-| [`wtf io`](docs/RESOURCES.md#wtf-io) | IO-Raten pro Gerät, Pressure, hängende Prozesse |
-| [`wtf who`](docs/RESOURCES.md#wtf-who) | angemeldete Benutzer, letzte Anmeldungen, fehlgeschlagene Authentifizierung |
-| [`wtf temp`](docs/RESOURCES.md#wtf-temp) | Hardware-Temperaturen aus /sys/class/hwmon |
-| [`wtf info`](docs/RESOURCES.md#wtf-info) | einseitiger Snapshot: alles oben Genannte auf einmal |
-| [`wtf top`](docs/RESOURCES.md#wtf-top) | fokussiertes Prozess-Top: sortiert nach cpu/rss, Filter nach Benutzer/Name |
-| [`wtf ports` / `wtf port N`](docs/RESOURCES.md#wtf-ports) | lauschende Sockets; ein Port im Detail bis zu PID, exe, cwd |
-| [`wtf docker [NAME]`](docs/RESOURCES.md#wtf-docker) | Compose-Verzeichnis des Containers + Image-/Container-/Log-Größen |
+| [`wtf disk [PATH]`](RESOURCES.md#wtf-disk) | Mount-Übersicht; mit einem PATH die größten Ordner; `--tree` arbeitet sich ein |
+| [`wtf cpu`](RESOURCES.md#wtf-cpu) | Last, iowait, Pressure, Top-CPU-Verbraucher |
+| [`wtf mem`](RESOURCES.md#wtf-mem) | RAM/Swap, OOM-Kills, Top-Speicher-Verbraucher |
+| [`wtf net`](RESOURCES.md#wtf-net) | Schnittstellen, Gateway, DNS, Fehler, lauschende Ports |
+| [`wtf io`](RESOURCES.md#wtf-io) | IO-Raten pro Gerät, Pressure, hängende Prozesse |
+| [`wtf who`](RESOURCES.md#wtf-who) | angemeldete Benutzer, letzte Anmeldungen, fehlgeschlagene Authentifizierung |
+| [`wtf temp`](RESOURCES.md#wtf-temp) | Hardware-Temperaturen aus /sys/class/hwmon |
+| [`wtf info`](RESOURCES.md#wtf-info) | einseitiger Snapshot: alles oben Genannte auf einmal |
+| [`wtf top`](RESOURCES.md#wtf-top) | fokussiertes Prozess-Top: sortiert nach cpu/rss, Filter nach Benutzer/Name |
+| [`wtf ports` / `wtf port N`](RESOURCES.md#wtf-ports) | lauschende Sockets; ein Port im Detail bis zu PID, exe, cwd |
+| [`wtf docker [NAME]`](RESOURCES.md#wtf-docker) | Compose-Verzeichnis des Containers + Image-/Container-/Log-Größen |
 
 ### Ausgabe & Konfiguration
 
 | command | was er macht |
 |---------|--------------|
-| [`wtf config`](docs/CONFIG.md#wtf-config) | effektive Konfiguration anzeigen / kommentiertes Beispiel ausgeben |
+| [`wtf config`](CONFIG.md#wtf-config) | effektive Konfiguration anzeigen / kommentiertes Beispiel ausgeben |
 | [`wtf completion`](#install) | ein bash/zsh `<Tab>`-Completion-Skript ausgeben |
-| [machine output](docs/OUTPUT.md) | `plain`/`json`-Formate und ein grep·awk·jq-Kochbuch |
+| [machine output](OUTPUT.md) | `plain`/`json`-Formate und ein grep·awk·jq-Kochbuch |
 
 `wtftools` absorbiert und ersetzt
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) — derselbe cron-Validator
@@ -116,15 +116,15 @@ lebt jetzt unter `wtf crontab`.
 
 ## Dokumentation
 
-- [QUICKSTART.md](docs/QUICKSTART.md) — 5-minütiges Onboarding und ein Spickzettel
-- [AUDIT.md](docs/AUDIT.md) — Health-Prüfungen, Monitoring, Exit-Codes, die vollständige Prüfliste
-- [RESOURCES.md](docs/RESOURCES.md) — Ansichten pro Ressource mit Beispielen
-- [OUTPUT.md](docs/OUTPUT.md) — `plain`/`json`-Formate und das Skripting-Kochbuch
-- [CONFIG.md](docs/CONFIG.md) — Konfigurationsdatei, Schwellenwerte, Prüfungen ignorieren
+- [QUICKSTART.md](QUICKSTART.md) — 5-minütiges Onboarding und ein Spickzettel
+- [AUDIT.md](AUDIT.md) — Health-Prüfungen, Monitoring, Exit-Codes, die vollständige Prüfliste
+- [RESOURCES.md](RESOURCES.md) — Ansichten pro Ressource mit Beispielen
+- [OUTPUT.md](OUTPUT.md) — `plain`/`json`-Formate und das Skripting-Kochbuch
+- [CONFIG.md](CONFIG.md) — Konfigurationsdatei, Schwellenwerte, Prüfungen ignorieren
 
 ## Kompatibilität
 
-- Python 3.8+
+- Python 3.9+
 - Linux (systemd-Distributionen sind der bevorzugte Weg; das Werkzeug funktioniert
   weiterhin sinnvoll, wenn `systemctl` / `journalctl` / `psutil` fehlen)
 - Kein Netzwerkzugriff für die Kern-CLI erforderlich; optionales Netzwerk nur für

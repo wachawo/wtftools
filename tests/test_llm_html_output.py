@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 10: LLM bridge, HTML output, --output, fail2ban check."""
+"""LLM bridge, HTML output, --output, and the fail2ban check."""
 
 import io
 import json
@@ -217,13 +217,16 @@ def test_call_llm_auto_first_succeeds(monkeypatch):
     assert "ollama" in info
 
 
-def test_call_llm_auto_falls_through(monkeypatch):
+def test_call_llm_auto_is_local_only(monkeypatch):
+    """auto uses local ollama only; it must never fall through to a remote backend."""
+    called = {"remote": False}
     monkeypatch.setitem(llm._BACKENDS, "ollama", lambda p, model=None, timeout=60: (None, "no ollama"))
-    monkeypatch.setitem(llm._BACKENDS, "claude", lambda p, model=None, timeout=60: (None, "no claude"))
-    monkeypatch.setitem(llm._BACKENDS, "openai", lambda p, model=None, timeout=60: (None, "no openai"))
+    monkeypatch.setitem(llm._BACKENDS, "claude", lambda p, model=None, timeout=60: called.__setitem__("remote", True) or ("x", None))
+    monkeypatch.setitem(llm._BACKENDS, "openai", lambda p, model=None, timeout=60: called.__setitem__("remote", True) or ("x", None))
     text, err = llm.call_llm("auto", "hi")
     assert text is None
-    assert "no LLM backend available" in err
+    assert called["remote"] is False
+    assert "claude" in err and "openai" in err
 
 
 # ---- CLI integration of --llm ----
@@ -255,6 +258,27 @@ def test_cli_explain_llm_failure(monkeypatch):
     rc, out = _capture(["explain", "--llm", "claude"])
     assert rc == 2
     assert "api error" in out
+
+
+def test_cli_explain_remote_declined(monkeypatch):
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("swap", "fail", "99%")])
+    called = {"llm": False}
+    monkeypatch.setattr(main.llm_mod, "call_llm", lambda *a, **k: called.__setitem__("llm", True) or ("x", "via claude"))
+    monkeypatch.setattr(main.sys.stdin, "isatty", lambda: True)  # simulate an interactive terminal
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "n")
+    rc, out = _capture(["explain", "--llm", "claude"])
+    assert rc == 1
+    assert "aborted" in out
+    assert called["llm"] is False  # data never left the host
+
+
+def test_cli_explain_remote_yes_flag_skips_prompt(monkeypatch):
+    monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult("swap", "fail", "99%")])
+    monkeypatch.setattr(main.llm_mod, "call_llm", lambda backend, prompt, model=None, timeout=None: ("diag", "via claude"))
+    monkeypatch.setattr(main.sys.stdin, "isatty", lambda: True)  # would prompt, but --yes overrides
+    rc, out = _capture(["explain", "--llm", "claude", "--yes"])
+    assert rc == 0
+    assert "diag" in out
 
 
 def test_cli_explain_llm_json(monkeypatch):

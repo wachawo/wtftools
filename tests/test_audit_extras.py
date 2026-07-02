@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """Tests for new audit-module surface: registry, filter, since-hours, run_audit(names)."""
 
+import pytest
 
 from wtftools import audit
 
@@ -35,6 +36,7 @@ def test_run_audit_with_unknown_name(monkeypatch):
     assert "unknown" in results[0].message
 
 
+@pytest.mark.integration
 def test_run_audit_full_still_works():
     results = audit.run_audit()
     assert len(results) >= 15
@@ -102,6 +104,7 @@ def test_since_hours_used_by_auth(monkeypatch):
     audit.set_since_hours(24)
 
 
+@pytest.mark.integration
 def test_check_registry_callables():
     """All registered checks must be callable and not crash on smoke invocation."""
     for name, fn in audit.CHECK_REGISTRY.items():

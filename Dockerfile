@@ -9,7 +9,9 @@
 # bind of `/` for disk/cron/journal-file inspection. Check coverage on an
 # isolated container is otherwise limited.
 
-FROM python:3.12-slim
+# Pinned by digest for reproducible builds. To bump:
+#   docker buildx imagetools inspect python:3.12-slim   # copy the top-level Digest
+FROM python:3.12-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
 
 LABEL org.opencontainers.image.title="wtftools"
 LABEL org.opencontainers.image.description="One command to see what is going on with your Linux server right now."

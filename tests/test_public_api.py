@@ -85,15 +85,18 @@ def test_lazy_imports_dont_load_submodules_eagerly():
     import importlib
     import sys
 
-    # Re-import fresh
-    for mod in list(sys.modules):
-        if mod.startswith("wtftools.") and mod not in ("wtftools",):  # we keep the top-level
-            del sys.modules[mod]
-    sys.modules.pop("wtftools", None)
-    importlib.import_module("wtftools")
-    # daemon and llm should not have been loaded eagerly
-    # (sysinfo will not load until audit is touched)
-    assert "wtftools.daemon" not in sys.modules
-    assert "wtftools.llm" not in sys.modules
-    assert "wtftools.fleet" not in sys.modules
-    assert "wtftools.events" not in sys.modules
+    # Snapshot first: deleting wtftools.* from sys.modules without restoring
+    # would poison module identity for every test that runs afterwards.
+    saved = {name: mod for name, mod in sys.modules.items() if name == "wtftools" or name.startswith("wtftools.")}
+    try:
+        for name in saved:
+            del sys.modules[name]
+        importlib.import_module("wtftools")
+        # Heavy submodules must not be pulled in just by `import wtftools`.
+        for heavy in ("wtftools.sysinfo", "wtftools.explain", "wtftools.llm", "wtftools.events", "wtftools.snapshot"):
+            assert heavy not in sys.modules
+    finally:
+        for name in [n for n in sys.modules if n == "wtftools" or n.startswith("wtftools.")]:
+            if name not in saved:
+                del sys.modules[name]
+        sys.modules.update(saved)

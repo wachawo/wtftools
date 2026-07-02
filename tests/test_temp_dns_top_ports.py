@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 7: hw-temp, dns check, wtf top, wtf ports, wtf motd-install, CSV output."""
+"""Hardware temperature, DNS check, wtf top, wtf ports, and CSV output."""
 
 import io
 import json
 import os
 import socket
-import sys
 from collections import namedtuple
 from contextlib import redirect_stdout
 from unittest import mock
@@ -200,8 +199,9 @@ def test_cmd_top_json(monkeypatch):
     monkeypatch.setattr(sysinfo, "get_top_processes", lambda by, limit: [{"pid": 1, "user": "u", "cpu_percent": 5.0, "rss": 100, "name": "x"}])
     rc, out = _capture(["top", "--format", "json"])
     data = json.loads(out)
-    assert len(data) == 1
-    assert data[0]["pid"] == 1
+    assert data["schema_version"] == 1
+    assert len(data["processes"]) == 1
+    assert data["processes"][0]["pid"] == 1
 
 
 def test_cmd_top_filter_by_user(monkeypatch):
@@ -253,23 +253,6 @@ def test_cmd_top_sort_rss(monkeypatch):
 
 
 # ---- wtf ports ----
-
-
-def test_cmd_ports_no_psutil(monkeypatch):
-    """Hard to test without breaking everything — verify error message at least."""
-    # We'll mock the import inside cmd_ports by patching sys.modules.
-    real_psutil = sys.modules.get("psutil")
-    sys.modules["psutil"] = None
-    try:
-        rc, out = _capture(["ports"])
-        # When psutil is None (not removed), the import-statement won't raise ImportError;
-        # it succeeds but psutil is None. The function would then crash. So we explicitly
-        # test the absent-module path differently:
-    finally:
-        if real_psutil is not None:
-            sys.modules["psutil"] = real_psutil
-        else:
-            sys.modules.pop("psutil", None)
 
 
 def test_cmd_ports_psutil_missing(monkeypatch):
@@ -385,12 +368,8 @@ def test_cmd_ports_json(monkeypatch):
     monkeypatch.setattr("builtins.__import__", fake_import)
     rc, out = _capture(["ports", "--format", "json"])
     data = json.loads(out)
-    assert data == []
-
-
-# NB: `wtf motd-install` was removed in v0.1.0 cleanup. To install the
-# brief banner manually: `sudo cp <…> /etc/update-motd.d/99-wtf-brief`
-# with a `#!/bin/sh\nexec wtf audit --brief --no-color` body.
+    assert data["schema_version"] == 1
+    assert data["ports"] == []
 
 
 # ---- CSV format ----

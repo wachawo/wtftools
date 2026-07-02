@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-07-01
+
 ### Docs
 - README is now a concise landing page (what it is, capabilities, install, a
   linked command reference). The detailed per-command examples moved into
@@ -17,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `wtf completion [bash|zsh]` — print a shell-completion script to enable
   `<Tab>` completion (`eval "$(wtf completion bash)"`); bare `wtf completion`
   prints setup instructions. The bash script lives in `wtftools/completion.py`
-  as the single source of truth; `scripts/wtf.bash-completion` is a generated
-  mirror (a test guards against drift).
+  as the single source of truth; `completions/wtf` is a generated mirror
+  (a test guards against drift), installed to bash-completion's system dir.
 
 ### Changed — `wtf disk` folder usage
 - `wtf disk <path>` now breaks a directory down by folder size, biggest first
@@ -35,6 +37,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is now the positional argument (`wtf disk /var --tree`) and `--tree` is the
   expansion count. The `du` scan timeout was raised (30→120s) so large
   filesystems no longer return an empty result.
+
+### Fixed
+- `wtf ports` and `wtf top` JSON is now an object carrying `schema_version`
+  (was a bare array), consistent with `disk`/`net`; `wtf audit` JSON carries
+  `schema_version` too.
+- README documentation links are absolute so they resolve on the PyPI project
+  page; the translated READMEs no longer link to a non-existent `docs/docs/`
+  path.
+- `.deb` install instructions use the actual package name
+  (`python3-wtftools_*.deb`).
+- Unexpected errors now print a one-line message instead of dumping a raw
+  Python traceback; set `WTFTOOLS_DEBUG=1` or pass `--verbose` for the trace.
+- `requirements.txt` no longer pulls `psutil` — the core install stays
+  dependency-free; use `pip install "wtftools[full]"` for psutil.
+- The packaged bash-completion installs as `completions/wtf`, so it is
+  auto-loaded system-wide (the previous file name prevented auto-loading; the
+  `eval "$(wtf completion bash)"` path was unaffected).
+- The Docker base image is pinned by digest for reproducible builds.
+- Minimum Python raised to 3.9 (`requires-python`): the build needs
+  setuptools>=77, which dropped the EOL Python 3.8. The source stays
+  3.8-compatible in style; only the packaged build floor moved.
+
+### Security
+- `wtf explain --llm claude|openai` discloses (to stderr) that the host name
+  and audit findings are sent to the vendor, and asks for confirmation on an
+  interactive terminal (`--yes` / `WTFTOOLS_LLM_YES=1` to skip). `--llm auto`
+  no longer silently escalates to a remote model — it uses local `ollama` only.
+- `wtf audit --format csv` escapes cells beginning with `= + - @` to prevent
+  spreadsheet formula injection.
+- Snapshot files and their directory are created `0600`/`0700`, so root's audit
+  history is not world-readable on a multi-user host.
+- `wtf crontab -u <user>` validates the username (same rule as positional
+  targets) before shelling out to `crontab -l -u`, avoiding argument injection.
 
 ## [0.0.1] - 2026-06-14
 
@@ -113,7 +148,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `wtftools/checks/plugins.py` — discovery / executor / parser for
   `/etc/wtf/checks.d/` scripts (bash + Python).
 - `_plugin_to_check` + `_all_check_callables` glue in `wtftools/audit.py`.
-- `tests/test_plugins.py`, `tests/test_iteration16.py`.
 - README's «Plugins» section and QUICKSTART's «Custom checks (plugins)»
   section.
 
@@ -186,7 +220,7 @@ Initial public release. Highlights:
   release workflow.
 - **724 tests, 92.6 % coverage.**
 
-### Added — Plugin SDK & docs (final iteration)
+### Added — Plugin SDK & docs
 - **`wtftools.plugin_sdk`** — tiny helper module so Python plugins don't have
   to remember exit codes or hand-roll JSON:
 

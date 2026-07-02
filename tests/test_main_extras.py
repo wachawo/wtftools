@@ -121,9 +121,6 @@ def test_audit_since_passed_to_module(monkeypatch):
     assert set_hours == [6]
 
 
-# NB: --watch removed from audit in v0.1.0 cleanup (one-shot CLI).
-
-
 def test_status_filters_dict_has_expected_keys():
     assert set(main.STATUS_FILTERS.keys()) == {"fail", "warn", "problems", "problem", "skip", "ok", "all"}
 

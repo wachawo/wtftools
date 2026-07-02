@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 4: PSI, kernel taint, cert expiry, wtf logs, parallel exec."""
+"""PSI pressure, kernel taint, cert expiry, wtf logs, and parallel check execution."""
 
 import io
 import json

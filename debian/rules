@@ -1,6 +1,0 @@
-#!/usr/bin/make -f
-# Debian packaging rules for wtftools.
-export PYBUILD_NAME=wtftools
-
-%:
-	dh $@ --with python3 --buildsystem=pybuild

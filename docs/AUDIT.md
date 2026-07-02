@@ -102,9 +102,10 @@ $ wtf explain --llm ollama
 - `--all` — also explain OK results (default: only WARN/FAIL).
 - `--deep` — run dynamic investigation per finding (`du -d1` on the filling mount, `docker system df`, container/log sizes). Slower; opt-in.
 - `--prompt` — print an LLM-ready prompt instead of built-in advice. Pipe it: `wtf explain --prompt | claude` or `| ollama run llama3`.
-- `--llm {ollama,claude,openai,auto}` — call an LLM directly with the structured prompt and print its response. `ollama` needs the binary; `claude`/`openai` need the matching Python SDK plus API-key env.
+- `--llm {ollama,claude,openai,auto}` — call an LLM directly with the structured prompt and print its response. `ollama` needs the binary; `claude`/`openai` need the matching Python SDK plus API-key env. `auto` uses your **local** `ollama` only — it never falls back to a remote model, so pick `claude`/`openai` explicitly to use one.
 - `--llm-model MODEL` — override the default model name for `--llm`.
 - `--llm-timeout SECONDS` — LLM call timeout (default: 60s).
+- `--yes` / `-y` — skip the confirmation prompt shown before a **remote** backend (`claude`/`openai`) receives this host's name and audit findings. `WTFTOOLS_LLM_YES=1` does the same. The disclosure note is always printed; on a non-interactive stdin the call proceeds without prompting.
 - `--serial` — run audit sequentially (passes through to the underlying audit).
 - `--check-timeout SECONDS` — per-check timeout in seconds (passes through to audit).
 - `--format {text,json}` — output format.

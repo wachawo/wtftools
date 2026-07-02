@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for iteration 5: conntrack, journal-disk, --alert, wtf explain, man-page surface."""
+"""conntrack and journal-disk checks, audit --alert, and wtf explain."""
 
 import io
 import json
@@ -309,7 +309,3 @@ def test_new_checks_in_registry():
     names = audit.list_check_names()
     assert "conntrack" in names
     assert "journal-disk" in names
-
-
-# NB: a hand-written wtf.1 used to exist but kept drifting from the CLI.
-# Removed in favor of `wtf --help` as the single source of truth.

@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wtftools"
-version = "0.0.1"
+version = "0.0.2"
 description = "One command to see what is going on with your Linux server right now."
 readme = { file = "README.md", content-type = "text/markdown" }
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [{ name = "Aleksandr Pimenov", email = "wachawo@gmail.com" }]
 maintainers = [{ name = "Aleksandr Pimenov", email = "wachawo@gmail.com" }]
 keywords = ["devops", "sre", "linux", "diagnostics", "monitoring", "cron", "system", "audit", "cli"]
@@ -18,7 +18,6 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -59,12 +58,14 @@ include = ["wtftools*"]
 include-package-data = true
 
 [tool.setuptools.data-files]
-"share/bash-completion/completions" = ["scripts/wtf.bash-completion"]
+"share/bash-completion/completions" = ["completions/wtf"]
 
 [tool.black]
 line-length = 180
 target-version = ["py38"]
 
+# Lint/format target stays py38 so the source keeps 3.8-compatible style; the
+# packaged build floor is 3.9 (requires-python) due to build-time setuptools.
 [tool.ruff]
 line-length = 180
 target-version = "py38"
@@ -91,6 +92,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 required_plugins = ["pytest-cov"]
 addopts = "-v --tb=short --cov=wtftools --cov-report=term-missing --cov-fail-under=80"
+markers = [
+    "integration: exercises real host tools (docker/systemctl/smartctl/journalctl, /proc). Runs by default; skip fast local runs with -m 'not integration'.",
+]
 
 [tool.coverage.run]
 branch = true

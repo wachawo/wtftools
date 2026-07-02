@@ -23,9 +23,15 @@ fires.
 
 ```bash
 pytest                              # full suite with coverage gate (≥80%)
-pytest tests/test_iteration5.py     # one file
+pytest tests/test_audit.py          # one file
 pytest -k "test_check_swap"         # one pattern
+pytest -m "not integration"         # skip host-dependent tests (faster, deterministic)
 ```
+
+Tests marked `@pytest.mark.integration` shell out to real host tools
+(`docker`/`systemctl`/`smartctl`/`journalctl`) or read real `/proc`. They run
+by default (and in CI); use `-m "not integration"` for a fast, host-independent
+local run.
 
 The suite includes ~620 tests and runs in ~20 seconds. Coverage report shows
 in the pytest summary; HTML report via `pytest --cov-report=html htmlcov/`.
@@ -53,7 +59,7 @@ Short summary applicable here:
 
 ## Adding a new built-in check
 
-1. Add the data-gathering function to `wtftools/checks/sysinfo.py` (return
+1. Add the data-gathering function to `wtftools/sysinfo.py` (return
    `None` when the underlying tool isn't available — never raise out).
 2. Add a `_check_<name>()` wrapper in `wtftools/audit.py` returning a
    `CheckResult` (or `List[CheckResult]` for fan-out checks like `_check_disks`).
@@ -63,27 +69,28 @@ Short summary applicable here:
    - audit wrapper: each status (ok/warn/fail/skip)
 5. Update `wtf audit --list-checks` (automatic via the registry).
 6. Add advice for the new check to `wtftools/explain.py` `_RULES`.
-7. Append to `scripts/wtf.bash-completion` `--check` autocompletion list.
+7. Append to `completions/wtf` `--check` autocompletion list.
 
 ## Adding a new subcommand
 
 1. Define `cmd_<name>(args)` in `wtftools/main.py` returning an exit code.
 2. Register the subparser inside `build_parser()`.
-3. Add tests in `tests/test_iterationN.py`.
+3. Add tests in the matching `tests/test_<module>.py`.
 4. Update README's subcommand table.
-5. Append to `scripts/wtf.bash-completion`'s `subcommands` list + a handler.
+5. Append to `completions/wtf`'s `subcommands` list + a handler.
 
 ## Releasing (maintainer-only)
 
-A tagged push triggers `.github/workflows/release.yml`:
+A tagged push triggers the publish and release workflows:
 
 ```bash
-git tag -a v0.2.0 -m 'v0.2.0'
-git push origin v0.2.0
+git tag -a v0.0.2 -m 'v0.0.2'
+git push origin v0.0.2
 ```
 
-CI then runs the test suite, builds the sdist + wheel, and publishes to PyPI
-(needs `PYPI_API_TOKEN` repo secret) plus pushes a Docker image to GHCR.
+`publish.yml` builds the sdist + wheel and publishes to PyPI via OIDC trusted
+publishing (no API token stored in the repo); `release.yml` runs the test
+suite, builds the `.deb`, and attaches it to the GitHub Release.
 
 ## Pull requests
 

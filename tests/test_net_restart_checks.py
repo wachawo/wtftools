@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for additions in iteration 2: restart-loops, network-errors, brief mode."""
+"""Restart-loop and network-error checks, plus audit --brief mode."""
 
 import io
 from contextlib import redirect_stdout
@@ -199,8 +199,3 @@ def test_brief_more_than_three_problems(monkeypatch):
     monkeypatch.setattr(audit, "run_audit", lambda names=None, ignore=None: [audit.CheckResult(f"a{i}", "warn", "x") for i in range(5)])
     _, out = _capture(["audit", "--brief"])
     assert "+2 more" in out
-
-
-# NB: plugin infrastructure (wtftools/plugin_sdk.py, wtftools/checks/plugins.py
-# and the `plugin:*` registry merge in audit.run_audit) was removed entirely
-# in v0.1.0 — wtftools is a one-shot CLI with built-in checks only.
