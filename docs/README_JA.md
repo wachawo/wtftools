@@ -33,7 +33,7 @@ $ wtf
 
 ## できること
 
-- **ヘルス監査** — 40 種類以上のチェック（disk、memory、swap、load、PSI、OOM kill、
+- **ヘルス監査** — 35 種類以上のチェック（disk、memory、swap、load、PSI、OOM kill、
   失敗ユニット、証明書の有効期限、SMART、温度、DNS、…）を
   緑／黄／赤のチェックリストとして表示。
 - **リソースごとのビュー** — スイッチの `show` コマンドのように、一度に1つずつ

@@ -25,7 +25,13 @@ fires.
 pytest                              # full suite with coverage gate (≥80%)
 pytest tests/test_audit.py          # one file
 pytest -k "test_check_swap"         # one pattern
+pytest -m "not integration"         # skip host-dependent tests (faster, deterministic)
 ```
+
+Tests marked `@pytest.mark.integration` shell out to real host tools
+(`docker`/`systemctl`/`smartctl`/`journalctl`) or read real `/proc`. They run
+by default (and in CI); use `-m "not integration"` for a fast, host-independent
+local run.
 
 The suite includes ~620 tests and runs in ~20 seconds. Coverage report shows
 in the pytest summary; HTML report via `pytest --cov-report=html htmlcov/`.
@@ -63,7 +69,7 @@ Short summary applicable here:
    - audit wrapper: each status (ok/warn/fail/skip)
 5. Update `wtf audit --list-checks` (automatic via the registry).
 6. Add advice for the new check to `wtftools/explain.py` `_RULES`.
-7. Append to `scripts/wtf.bash-completion` `--check` autocompletion list.
+7. Append to `completions/wtf` `--check` autocompletion list.
 
 ## Adding a new subcommand
 
@@ -71,7 +77,7 @@ Short summary applicable here:
 2. Register the subparser inside `build_parser()`.
 3. Add tests in the matching `tests/test_<module>.py`.
 4. Update README's subcommand table.
-5. Append to `scripts/wtf.bash-completion`'s `subcommands` list + a handler.
+5. Append to `completions/wtf`'s `subcommands` list + a handler.
 
 ## Releasing (maintainer-only)
 

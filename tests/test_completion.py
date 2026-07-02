@@ -30,9 +30,9 @@ def test_zsh_wraps_bash_with_bashcompinit():
 
 
 def test_repo_completion_file_matches_module():
-    # scripts/wtf.bash-completion is a generated mirror — guard against drift.
+    # completions/wtf is a generated mirror — guard against drift.
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(repo_root, "scripts", "wtf.bash-completion")
+    path = os.path.join(repo_root, "completions", "wtf")
     with open(path, encoding="utf-8") as f:
         assert f.read() == completion.bash()
 

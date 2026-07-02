@@ -32,7 +32,7 @@ e em uma resposta legível por máquina quando você a envia por pipe.
 
 ## O que ele faz
 
-- **Auditoria de saúde** — mais de 40 verificações (disco, memória, swap, carga, PSI, mortes por OOM,
+- **Auditoria de saúde** — mais de 35 verificações (disco, memória, swap, carga, PSI, mortes por OOM,
   unidades falhas, expiração de certificados, SMART, temperaturas, DNS, …) como um
   checklist verde / amarelo / vermelho.
 - **Visões por recurso** — pergunte sobre uma coisa de cada vez, como comandos `show`

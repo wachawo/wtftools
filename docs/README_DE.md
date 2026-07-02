@@ -32,7 +32,7 @@ und in eine maschinenlesbare, wenn du die Ausgabe per Pipe weiterleitest.
 
 ## Was es kann
 
-- **Health-Audit** — über 40 Prüfungen (disk, memory, swap, load, PSI, OOM-Kills,
+- **Health-Audit** — über 35 Prüfungen (disk, memory, swap, load, PSI, OOM-Kills,
   fehlgeschlagene Units, Zertifikatsablauf, SMART, Temperaturen, DNS, …) als
   grün/gelb/rot-Checkliste.
 - **Ansichten pro Ressource** — frage nach jeweils einer Sache, ähnlich wie die `show`-Befehle

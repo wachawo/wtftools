@@ -32,7 +32,7 @@ et en une réponse lisible par la machine lorsque vous la redirigez.
 
 ## Ce qu'il sait faire
 
-- **Audit de santé** — plus de 40 vérifications (disque, mémoire, swap, charge, PSI, kills OOM,
+- **Audit de santé** — plus de 35 vérifications (disque, mémoire, swap, charge, PSI, kills OOM,
   unités en échec, expiration de certificats, SMART, températures, DNS, …) sous forme de
   liste de contrôle vert / jaune / rouge.
 - **Vues par ressource** — interrogez une chose à la fois, comme les commandes `show`

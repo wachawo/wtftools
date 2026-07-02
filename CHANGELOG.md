@@ -19,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `wtf completion [bash|zsh]` — print a shell-completion script to enable
   `<Tab>` completion (`eval "$(wtf completion bash)"`); bare `wtf completion`
   prints setup instructions. The bash script lives in `wtftools/completion.py`
-  as the single source of truth; `scripts/wtf.bash-completion` is a generated
-  mirror (a test guards against drift).
+  as the single source of truth; `completions/wtf` is a generated mirror
+  (a test guards against drift), installed to bash-completion's system dir.
 
 ### Changed — `wtf disk` folder usage
 - `wtf disk <path>` now breaks a directory down by folder size, biggest first
@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Python traceback; set `WTFTOOLS_DEBUG=1` or pass `--verbose` for the trace.
 - `requirements.txt` no longer pulls `psutil` — the core install stays
   dependency-free; use `pip install "wtftools[full]"` for psutil.
+- The packaged bash-completion installs as `completions/wtf`, so it is
+  auto-loaded system-wide (the previous file name prevented auto-loading; the
+  `eval "$(wtf completion bash)"` path was unaffected).
+- The Docker base image is pinned by digest for reproducible builds.
 
 ### Security
 - `wtf explain --llm claude|openai` discloses (to stderr) that the host name

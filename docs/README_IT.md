@@ -33,7 +33,7 @@ quando la usi in pipe.
 
 ## Cosa può fare
 
-- **Audit dello stato di salute** — oltre 40 controlli (disco, memoria, swap,
+- **Audit dello stato di salute** — oltre 35 controlli (disco, memoria, swap,
   carico, PSI, OOM kill, unità fallite, scadenza dei certificati, SMART,
   temperature, DNS, …) come una checklist verde / giallo / rosso.
 - **Viste per risorsa** — chiedi una cosa alla volta, come i comandi `show` su

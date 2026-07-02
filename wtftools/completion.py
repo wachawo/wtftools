@@ -3,7 +3,7 @@
 """Shell-completion scripts for wtf, and `wtf completion` rendering.
 
 This module is the single source of truth for the bash completion script.
-`scripts/wtf.bash-completion` is a generated mirror (`wtf completion bash`),
+`completions/wtf` is a generated mirror (`wtf completion bash`),
 and a test asserts the two never drift.
 """
 

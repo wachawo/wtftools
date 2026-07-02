@@ -6,6 +6,8 @@ import logging
 import types
 from unittest import mock
 
+import pytest
+
 from wtftools import audit
 
 
@@ -324,6 +326,7 @@ def test_run_audit_list_outcome(monkeypatch):
     assert len(results) == 2
 
 
+@pytest.mark.integration
 def test_run_audit_full_runs():
     # Smoke: real run_audit must not crash on the host running tests
     results = audit.run_audit()
