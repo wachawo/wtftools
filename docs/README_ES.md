@@ -6,12 +6,17 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> Un solo comando para ver qué está pasando con tu servidor Linux ahora mismo.
+> `wtf` — un único comando de solo lectura que te dice qué anda mal en una máquina Linux ahora mismo.
+
+Sin agente. Sin demonio. Sin configuración. Sin llamadas de red. Sin dependencias
+(solo la biblioteca estándar de Python; `psutil` opcional). Seguro de ejecutar en
+producción por SSH — solo *lee*. Pruébalo en dos segundos, sin nada que instalar:
+`pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | **Español** | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-Inicias sesión en un servidor y algo no va bien. En lugar de ejecutar diez
-comandos (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) ejecutas uno solo:
+En lugar de ejecutar diez comandos (`htop`, `df -h`, `journalctl`,
+`systemctl --failed`, `ss`, `dmesg`, …) ejecutas uno solo:
 
 ```
 $ wtf
@@ -25,10 +30,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-El verde está bien, el amarillo necesita una revisión, el rojo necesita arreglo. `wtftools` es una
-**CLI de solo lectura y sin dependencias** (solo la biblioteca estándar de Python; `psutil`
-opcional) que convierte un montón de comandos de diagnóstico en una sola respuesta legible —
-y en una legible por máquina cuando la canalizas con un pipe.
+El verde está bien, el amarillo necesita una revisión, el rojo necesita arreglo. Dos formas en que los administradores lo usan a diario:
+
+- **Incidente** — algo va mal → `wtf` → una lista de verificación verde/amarillo/rojo
+  en lugar de diez comandos dispersos.
+- **Día a día** — `wtf daily` como revisión matutina, `wtf` en tu banner de inicio de
+  sesión MOTD, `wtf audit --alert …` desde cron. Sin necesidad de una pila de monitoreo.
 
 ## Qué puede hacer
 
@@ -121,6 +128,7 @@ de cron ahora vive en `wtf crontab`.
 - [RESOURCES.md](RESOURCES.md) — vistas por recurso con ejemplos
 - [OUTPUT.md](OUTPUT.md) — formatos `plain`/`json` y el recetario de scripting
 - [CONFIG.md](CONFIG.md) — archivo de configuración, umbrales, ignorar verificaciones
+- [ROADMAP.md](ROADMAP.md) — qué está planeado y qué queda fuera del alcance
 
 ## Compatibilidad
 

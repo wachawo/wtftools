@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+- README now leads with the read-only / no-agent / no-dependencies guarantees
+  and a "try it in two seconds" line, and frames usage as incident vs daily.
+- Added `docs/ROADMAP.md` — planned checks/commands and what is out of scope.
+
 ## [0.0.2] - 2026-07-01
 
 ### Docs

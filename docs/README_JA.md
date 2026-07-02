@@ -6,13 +6,17 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> たった1つのコマンドで、いま Linux サーバーで何が起きているのかを把握できます。
+> `wtf` — いま Linux マシンで何がおかしいのかを教えてくれる、読み取り専用のたった1つのコマンド。
+
+エージェントなし。デーモンなし。設定なし。ネットワーク呼び出しなし。依存関係なし
+（Python 標準ライブラリのみ。`psutil` は任意）。SSH 経由で本番環境で実行しても安全 —
+*読み取る*だけです。2秒で試せて、インストールするものは何もありません：
+`pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | [Italiano](https://github.com/wachawo/wtftools/blob/main/docs/README_IT.md) | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | **日本語** | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-サーバーにログインして、何かおかしいと感じることがあります。10個もの
-コマンド（`htop`、`df -h`、`journalctl`、`systemctl --failed`、…）を実行する代わりに、
-たった1つを実行します。
+10個ものコマンド（`htop`、`df -h`、`journalctl`、`systemctl --failed`、`ss`、
+`dmesg`、…）を実行する代わりに、たった1つを実行します。
 
 ```
 $ wtf
@@ -26,10 +30,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-緑は問題なし、黄色は確認が必要、赤は修正が必要です。`wtftools` は
-**読み取り専用・依存関係なしの CLI**（Python 標準ライブラリのみ。`psutil` は
-任意）で、山のような診断コマンドを1つの読みやすい答えに変えてくれます —
-そしてパイプに渡せば機械可読な答えにもなります。
+緑は問題なし、黄色は確認が必要、赤は修正が必要です。管理者による2つの使い方があります：
+
+- **インシデント対応** — 何かおかしい → `wtf` → 10個の散らばったコマンドの代わりに、
+  緑／黄／赤のチェックリスト。
+- **日常** — 朝の点検として `wtf daily`、MOTD ログインバナーに `wtf`、cron から
+  `wtf audit --alert …`。監視スタックは不要です。
 
 ## できること
 
@@ -122,6 +128,7 @@ echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 - [RESOURCES.md](RESOURCES.md) — 例付きのリソースごとのビュー
 - [OUTPUT.md](OUTPUT.md) — `plain`/`json` 形式とスクリプト向けクックブック
 - [CONFIG.md](CONFIG.md) — 設定ファイル、しきい値、チェックの無視
+- [ROADMAP.md](ROADMAP.md) — 何が計画されていて、何が対象外か
 
 ## 互換性
 

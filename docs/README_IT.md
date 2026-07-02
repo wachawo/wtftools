@@ -6,12 +6,17 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/wachawo/wtftools/blob/main/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/wtftools.svg)](https://pypi.org/project/wtftools/)
 
-> Un solo comando per vedere cosa sta succedendo sul tuo server Linux in questo momento.
+> `wtf` — un solo comando di sola lettura che ti dice cosa non va su una macchina Linux in questo momento.
+
+Nessun agente. Nessun demone. Nessuna configurazione. Nessuna chiamata di rete. Nessuna
+dipendenza (solo la libreria standard di Python; `psutil` opzionale). Sicuro da eseguire
+in produzione via SSH — si limita a *leggere*. Provalo in due secondi, senza nulla da
+installare: `pipx run wtftools`
 
 [English](https://github.com/wachawo/wtftools/blob/main/README.md) | [Español](https://github.com/wachawo/wtftools/blob/main/docs/README_ES.md) | [Português](https://github.com/wachawo/wtftools/blob/main/docs/README_PT.md) | [Français](https://github.com/wachawo/wtftools/blob/main/docs/README_FR.md) | [Deutsch](https://github.com/wachawo/wtftools/blob/main/docs/README_DE.md) | **Italiano** | [Русский](https://github.com/wachawo/wtftools/blob/main/docs/README_RU.md) | [中文](https://github.com/wachawo/wtftools/blob/main/docs/README_ZH.md) | [日本語](https://github.com/wachawo/wtftools/blob/main/docs/README_JA.md) | [हिन्दी](https://github.com/wachawo/wtftools/blob/main/docs/README_HI.md) | [한국어](https://github.com/wachawo/wtftools/blob/main/docs/README_KR.md)
 
-Accedi a un server e qualcosa sembra non andare. Invece di eseguire dieci
-comandi (`htop`, `df -h`, `journalctl`, `systemctl --failed`, …) ne esegui uno:
+Invece di eseguire dieci comandi (`htop`, `df -h`, `journalctl`,
+`systemctl --failed`, `ss`, `dmesg`, …) ne esegui uno:
 
 ```
 $ wtf
@@ -25,11 +30,12 @@ $ wtf
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Il verde va bene, il giallo richiede un'occhiata, il rosso va sistemato.
-`wtftools` è una **CLI di sola lettura e senza dipendenze** (solo libreria
-standard di Python; `psutil` opzionale) che trasforma un mucchio di comandi
-diagnostici in un'unica risposta leggibile — e in una leggibile da una macchina
-quando la usi in pipe.
+Il verde va bene, il giallo richiede un'occhiata, il rosso va sistemato. Due modi in cui gli amministratori lo usano:
+
+- **Incidente** — qualcosa non torna → `wtf` → una checklist verde/giallo/rosso
+  invece di dieci comandi sparsi.
+- **Ogni giorno** — `wtf daily` come controllo mattutino, `wtf` nel tuo banner di
+  login MOTD, `wtf audit --alert …` da cron. Senza bisogno di uno stack di monitoraggio.
 
 ## Cosa può fare
 
@@ -122,6 +128,7 @@ di cron ora si trova in `wtf crontab`.
 - [RESOURCES.md](RESOURCES.md) — viste per risorsa con esempi
 - [OUTPUT.md](OUTPUT.md) — formati `plain`/`json` e il ricettario per gli script
 - [CONFIG.md](CONFIG.md) — file di configurazione, soglie, esclusione dei controlli
+- [ROADMAP.md](ROADMAP.md) — cosa è in programma e cosa è fuori ambito
 
 ## Compatibilità
 
