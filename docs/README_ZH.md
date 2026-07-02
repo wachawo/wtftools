@@ -20,302 +20,115 @@ $ wtf
 [ OK ] load average            0.42 0.51 0.55 / 8 CPU
 [ OK ] memory                  4.1GB / 16.0GB used (25%)
 [WARN] disk /var               17.0GB / 20.0GB used (85%)
-[ OK ] zombie processes        0 zombies
 [FAIL] failed systemd units    1 failed unit(s)
-[ OK ] crontab syntax          14 cron line(s), no errors
 
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-绿色表示正常，黄色需要留意，红色需要修复。就这么简单。
+绿色表示正常，黄色需要留意，红色需要修复。`wtftools` 是一个
+**只读、无依赖的 CLI**（仅依赖 Python 标准库；`psutil` 为可选），
+它把一大堆诊断命令变成一个可读的答案——当你用管道时，还会给出
+一个机器可读的答案。
+
+## 它能做什么
+
+- **健康审计** —— 40 多项检查（磁盘、内存、swap、负载、PSI、OOM kill、
+  失败的单元、证书过期、SMART、温度、DNS ……），以
+  绿 / 黄 / 红 检查清单的形式呈现。
+- **按资源查看** —— 一次只问一件事，就像交换机上的 `show` 命令：
+  `wtf disk`、`wtf cpu`、`wtf mem`、`wtf net`、`wtf docker` ……
+- **故障分诊** —— `wtf problems`、`wtf events`、`wtf logs`、
+  `wtf services <unit>`、`wtf explain`（可选择经由本地或托管的 LLM）。
+- **趋势与告警** —— `wtf daily`、快照 + `wtf diff`、cron 告警 ——
+  无需任何监控栈。
+- **可脚本化** —— 每条命令都有 `plain`（制表符分隔）和 `json` 输出，
+  其中带有 `schema_version`，可用于 grep / awk / jq。
+- **新手友好** —— `--show-commands` 会打印每个视图所替代的经典命令，
+  方便你自己动手学习。
 
 ## 安装
 
 ```bash
 pipx install wtftools          # recommended — works on any modern distro
-```
-
-没有 `pipx`？以下任意方式都可以：
-
-```bash
-pip install wtftools           # classic pip (core, no dependencies)
+pip install wtftools           # or classic pip (core, no dependencies)
 pip install wtftools[full]     # + psutil for richer process/socket info
 sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
-安装后你就拥有了 `wtf` 命令。试一下：`wtf`。
-
-## 你真正会用到的命令
-
-```bash
-wtf              # full health check — start here
-wtf problems     # show ONLY what is wrong (warnings + failures)
-wtf explain      # what to do about each problem, step by step
-```
-
-然后逐个查询资源，就像交换机上的 `show` 命令一样：
+安装后你就拥有了 `wtf` 命令。在你的 shell rc 中加上一行即可启用
+`<Tab>` 自动补全：
 
 ```bash
-wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
-wtf cpu          # load, iowait, top CPU consumers
-wtf mem          # RAM/swap, OOM kills, top memory consumers
-wtf net          # interfaces, IPs, gateway, DNS, listening ports
-wtf io           # disk read/write rates, IO-stuck processes
-wtf who          # who is logged in, recent logins, failed auth
-wtf temp         # hardware temperatures (CPU/disk/board sensors)
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 ```
 
-示例——磁盘快满了，找出罪魁祸首：
+第一次使用？从 [5 分钟快速入门](docs/QUICKSTART.md) 开始。
 
-```
-$ wtf disk --tree /var
-# DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
+## 命令
 
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
-```
+运行 `wtf <command> --help` 查看各项标志。每条命令都链接到带示例的
+参考页面。
 
-`wtf disk --tree` 不带路径时会自动选择最满的挂载点。
+### 健康与监控 —— [docs/AUDIT.md](docs/AUDIT.md)
 
-正在学习 Linux？给任意资源命令加上 `--show-commands`，它还会
-打印出所替代的经典命令，方便你自己运行：
+| command | 作用 |
+|---------|--------------|
+| [`wtf` / `wtf audit`](docs/AUDIT.md#wtf-audit) | 绿/黄/红检查清单：什么正常、什么不正常 |
+| [`wtf problems`](docs/AUDIT.md#wtf-problems) | 仅显示 WARN+FAIL 行 |
+| [`wtf daily`](docs/AUDIT.md#wtf-daily) | 早晨检查：审计 + 与上次运行的差异 + 事件 |
+| [`wtf explain`](docs/AUDIT.md#wtf-explain) | 针对每项检查给出可操作建议；用 `--llm` 传给 LLM |
+| [`wtf events`](docs/AUDIT.md#wtf-events) | 时间线：重启、OOM kill、失败的单元…… |
+| [`wtf logs`](docs/AUDIT.md#wtf-logs) | 按服务分组的近期 ERROR+ 日志条目 |
+| [`wtf services`](docs/AUDIT.md#wtf-services) | 深入查看某个单元：状态、重启、端口、日志 |
+| [`wtf diff`](docs/AUDIT.md#wtf-diff) | 将当前状态与已保存的快照进行比较 |
+| [`wtf history`](docs/AUDIT.md#wtf-history) | 列出已保存的审计快照 |
+| [`wtf crontab`](docs/AUDIT.md#wtf-crontab) | 校验系统级 + 每个用户的 crontab |
+| [`wtf doctor`](docs/AUDIT.md#wtf-doctor) | 自我诊断：wtf 实际能使用哪些工具/文件 |
 
-```
-$ wtf cpu --show-commands
-  ...
-  equivalent commands:
-    $ uptime
-    $ top -bn1 | head
-    $ ps aux --sort=-%cpu | head
-```
+### 资源视图 —— [docs/RESOURCES.md](docs/RESOURCES.md)
 
-## 当出现故障时
+| command | 作用 |
+|---------|--------------|
+| [`wtf disk [PATH]`](docs/RESOURCES.md#wtf-disk) | 挂载点概览；带 PATH 时显示最大的文件夹；`--tree` 逐层深入 |
+| [`wtf cpu`](docs/RESOURCES.md#wtf-cpu) | 负载、iowait、压力、CPU 占用最高的进程 |
+| [`wtf mem`](docs/RESOURCES.md#wtf-mem) | RAM/swap、OOM kill、内存占用最高的进程 |
+| [`wtf net`](docs/RESOURCES.md#wtf-net) | 网络接口、网关、DNS、错误、监听端口 |
+| [`wtf io`](docs/RESOURCES.md#wtf-io) | 各设备的 IO 速率、压力、卡住的进程 |
+| [`wtf who`](docs/RESOURCES.md#wtf-who) | 已登录用户、近期登录、失败的认证 |
+| [`wtf temp`](docs/RESOURCES.md#wtf-temp) | 来自 /sys/class/hwmon 的硬件温度 |
+| [`wtf info`](docs/RESOURCES.md#wtf-info) | 一页式快照：以上全部一次性呈现 |
+| [`wtf top`](docs/RESOURCES.md#wtf-top) | 聚焦的进程 top：按 cpu/rss 排序，按用户/名称过滤 |
+| [`wtf ports` / `wtf port N`](docs/RESOURCES.md#wtf-ports) | 监听套接字；深入查看某个端口，得到 PID、exe、cwd |
+| [`wtf docker [NAME]`](docs/RESOURCES.md#wtf-docker) | 容器 compose 目录 + 镜像/容器/日志大小 |
 
-```bash
-wtf problems -v                 # every problem, with detail
-wtf events --since 6            # timeline: reboots, OOM kills, failed units
-wtf service nginx               # one service: state, restarts, ports, journal
-wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
-wtf explain                     # actionable advice per finding
-wtf explain --llm ollama        # or let a local LLM summarize it
-```
+### 输出与配置
 
-### 谁占用了某个端口？
-
-`wtf port <N>`（或 `wtf ports <N>`）会显示哪个进程占用了某个端口——
-PID、其背后确切的可执行文件（通过 `lsof` + `/proc`），以及它的
-运行目录：
-
-```
-$ wtf port 5060
-# PORT 5060
-  tcp *:5060 (LISTEN)
-    pid     : 1234
-    user    : asterisk
-    command : asterisk
-    exe     : /usr/sbin/asterisk
-    cwd     : /var/lib/asterisk
-```
-
-用 `sudo` 运行它即可看到属于其他用户的进程。
-
-### 这个容器是在哪里启动的？
-
-`wtf docker <name>` 直接从容器的标签回答“`docker compose up` 是在哪个
-文件夹里运行的？”——以及它占用了多少磁盘（镜像层、可写容器层，
-以及 json 日志）：
-
-```
-$ wtf docker myapp_web
-# myapp_web
-  image        : myapp:latest
-  status       : running
-  compose      : myapp / web
-  working dir  : /home/deploy/myapp
-  config files : /home/deploy/myapp/docker-compose.yml
-  image size   : 156.4MB
-  container    : 254.3MB (writable layer)
-  logs         : 53.8MB
-```
-
-`wtf docker` 不带名称时会列出每个正在运行的容器及其大小列和
-工作目录，外加一行 TOTAL：
-
-```
-$ sudo wtf docker
-# DOCKER
-  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
-  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
-  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
-  TOTAL                     440MB    267MB   57.8MB
-  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
-```
-
-大小使用十进制单位（1GB = 1000MB），因此它们与
-`docker container ls --size` 对齐。每行的 IMAGE 是镜像的完整逻辑大小
-（即 `docker` 所称的 *virtual* 大小）。IMAGE 总计按镜像 id 去重，
-因此被多个容器共享的同一镜像只计一次——而非每个容器计一次。
-**但是**不同镜像在磁盘上仍会共享基础层，所以即便这个去重后的总和
-也会高估真实使用量；note 那一行直接从 `docker system df` 显示真实的
-按层去重的磁盘占用。CONTNR（可写层）和 LOGS 是按容器统计的，
-因此这些总计是精确的。日志大小需要 `/var/lib/docker` 下的读取权限——
-用 `sudo` 运行，否则它们会显示为 `?`。
-
-## 面向脚本的输出：grep、awk、jq
-
-当你使用管道时颜色会自动消失，因此普通的 `grep` 始终有效。
-每条命令还提供机器可读的格式——`plain`（制表符分隔，无表头）
-和 `json`。该标志也可以放在子命令之前：
-
-```bash
-wtf -f json disk                         # same as: wtf disk --format json
-wtf disk --format plain                  # tab-separated, no headers
-wtf disk --format json | jq .            # full JSON
-
-# mounts above 80%:
-wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
-
-# failed checks only, names column:
-wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
-
-# top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
-```
-
-资源命令的 JSON 负载带有 `schema_version`，因此你的脚本在
-升级后仍能正常运行。
-
-## 日常例行检查与监控
-
-一条命令完成早晨检查——审计、自上次运行以来的变化，
-以及事件时间线，并在顶部给出一行结论：
-
-```bash
-wtf daily                       # audit + diff vs yesterday + events
-```
-
-它在每次运行时都会保存一份快照，因此明天的 `wtf daily` 会显示差异。
-用于无人值守的 crontab 行（仅在出现问题时发送邮件）：
-
-```cron
-0 8 * * * wtf daily --format json > /var/log/wtf-daily.json 2>&1 || mail -s "wtf $(hostname)" you@example.com < /var/log/wtf-daily.json
-```
-
-这些构建模块也可单独使用：
-
-```bash
-wtf audit --brief               # one line — perfect for MOTD / SSH banner
-wtf audit --save                # save a snapshot
-wtf diff                        # what changed since the last snapshot
-wtf history                     # list saved snapshots
-
-# cron alerting without any monitoring stack:
-wtf audit --alert 'mail -s "wtf $WTF_HOST" you@example.com'
-wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
-```
-
-退出码对 CI/cron 友好：
-
-| 退出码 | 含义                                              |
-|------|--------------------------------------------------|
-| 0    | 一切正常                                           |
-| 1    | 使用 `--strict` 时出现警告，或 crontab 错误         |
-| 2    | 审计发现了 `[FAIL]`                                |
-| 130  | 被中断（Ctrl-C）                                   |
-
-## 所有子命令
-
-| 命令                 | 作用                                                        |
-|---------------------|-------------------------------------------------------------|
-| `wtf` / `wtf audit` | 绿/黄/红检查清单：什么正常、什么不正常                          |
-| `wtf problems`      | 仅显示 WARN+FAIL 行                                          |
-| `wtf daily`         | 早晨检查：审计 + 与上次运行的差异 + 事件                       |
-| `wtf explain`       | 针对每项检查给出可操作建议；用 `--llm` 传给 LLM                |
-| `wtf disk`          | 各挂载点用量；`--tree` 显示最大的目录                         |
-| `wtf cpu`           | 负载、iowait、压力、CPU 占用最高的进程                        |
-| `wtf mem`           | RAM/swap、OOM kill、内存占用最高的进程                        |
-| `wtf net`           | 网络接口、网关、DNS、错误、监听端口                            |
-| `wtf io`            | 各设备的 IO 速率、压力、卡住的进程                            |
-| `wtf who`           | 已登录用户、近期登录、失败的认证                              |
-| `wtf temp`          | 来自 /sys/class/hwmon 传感器的硬件温度                        |
-| `wtf info`          | 一页式快照：以上全部一次性呈现                                |
-| `wtf top`           | 聚焦的进程 top：按 cpu/rss 排序，按用户/名称过滤              |
-| `wtf ports`         | 监听套接字及其所属 PID/用户/命令                              |
-| `wtf port NUM`      | 深入查看某个端口：PID、可执行文件、工作目录                    |
-| `wtf docker [NAME]` | 容器 compose 工作目录 + 镜像/容器/日志大小                    |
-| `wtf service NAME`  | 深入查看某个服务：状态、重启、内存、端口、日志                 |
-| `wtf logs`          | 按服务分组的近期 ERROR+ 日志条目                              |
-| `wtf events`        | 按时间顺序的时间线：重启、OOM、失败的单元……                   |
-| `wtf history`       | 列出已保存的审计快照（用 `wtf audit --save` 创建）            |
-| `wtf diff`          | 将当前状态与已保存的快照进行比较                              |
-| `wtf crontab`       | 校验所有标准 crontab 位置 + 每个用户的 crontab                |
-| `wtf doctor`        | 自我诊断：wtftools 实际能使用哪些工具                         |
-| `wtf config`        | 显示生效的配置 / 打印示例                                     |
+| command | 作用 |
+|---------|--------------|
+| [`wtf config`](docs/CONFIG.md#wtf-config) | 显示生效的配置 / 打印带注释的示例 |
+| [`wtf completion`](#install) | 打印 bash/zsh `<Tab>` 自动补全脚本 |
+| [machine output](docs/OUTPUT.md) | `plain`/`json` 格式以及 grep·awk·jq 实用手册 |
 
 `wtftools` 吸收并取代了
-[`checkcrontab`](https://github.com/wachawo/checkcrontab)——同一个 cron
+[`checkcrontab`](https://github.com/wachawo/checkcrontab) —— 同一个 cron
 校验器现在位于 `wtf crontab`。
 
-## 高级审计选项
+## 文档
 
-```bash
-wtf audit -v             # show extra detail (failed units, OOM events)
-wtf audit --strict       # exit 1 on warnings (CI-friendly)
-wtf audit --check memory --check disks    # run named checks only
-wtf audit --list-checks  # show all available check short-names
-wtf audit --since 1      # look-back window for OOM/auth/kernel (default 24h)
-wtf audit --ignore swap --ignore "disk /mnt/Backup"   # silence checks
-wtf audit --format csv > audit.csv        # spreadsheet-friendly
-wtf audit --format html -o report.html    # self-contained HTML for tickets
-wtf audit --format prometheus             # metrics for node_exporter textfile
-```
-
-### 内置检查项
-
-uptime · system state · load average · CPU iowait · PSI cpu/memory/io ·
-TCP retransmits · memory · swap · disk (per mount) · inodes ·
-read-only mounts · failed systemd units · enabled-but-down services ·
-restart loops · network errors · conntrack · journal disk usage · zombies ·
-D-state processes · OOM kills · kernel errors · kernel taint · cert expiry ·
-open file descriptors · process count · failed auth · time sync ·
-pending updates · reboot required · cron daemon · crontab syntax · docker ·
-hw temperatures · disk SMART · DNS · HTTP/TCP probes · fail2ban.
-
-## 配置
-
-阈值和忽略项保存在 INI 文件中，可位于以下任意位置：
-
-- `/etc/wtftools/config.ini`
-- `/etc/wtf/config.ini`
-- `~/.config/wtftools/config.ini`
-
-运行 `wtf config --example` 可获得带完整注释的模板。要点如下：
-
-```ini
-[thresholds]
-disk_warn = 85
-disk_fail = 95
-swap_warn = 50
-swap_fail = 90
-
-[ignore]
-checks = swap, updates
-result_names =
-    disk /mnt/Backup
-```
+- [QUICKSTART.md](docs/QUICKSTART.md) —— 5 分钟上手与速查表
+- [AUDIT.md](docs/AUDIT.md) —— 健康检查、监控、退出码、完整检查列表
+- [RESOURCES.md](docs/RESOURCES.md) —— 带示例的按资源视图
+- [OUTPUT.md](docs/OUTPUT.md) —— `plain`/`json` 格式与脚本实用手册
+- [CONFIG.md](docs/CONFIG.md) —— 配置文件、阈值、忽略检查
 
 ## 兼容性
 
 - Python 3.8+
 - Linux（systemd 发行版是最理想的运行环境；当缺少
   `systemctl` / `journalctl` / `psutil` 时，工具会优雅降级）
-- 核心 CLI 无需网络访问
-- 可选网络功能：`wtf explain --llm claude/openai`、`wtf doctor --check-updates`
+- 核心 CLI 无需网络访问；仅 `wtf explain --llm …` 和
+  `wtf doctor --check-updates` 需要可选的网络
 
 ## 从源码安装
 
@@ -323,8 +136,7 @@ result_names =
 git clone https://github.com/wachawo/wtftools
 cd wtftools
 pip install -e .
-# or test without installing:
-python3 wtf.py audit
+python3 wtf.py audit       # or run it without installing
 ```
 
 ## 许可证

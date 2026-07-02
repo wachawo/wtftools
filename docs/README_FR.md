@@ -20,304 +20,115 @@ $ wtf
 [ OK ] load average            0.42 0.51 0.55 / 8 CPU
 [ OK ] memory                  4.1GB / 16.0GB used (25%)
 [WARN] disk /var               17.0GB / 20.0GB used (85%)
-[ OK ] zombie processes        0 zombies
 [FAIL] failed systemd units    1 failed unit(s)
-[ OK ] crontab syntax          14 cron line(s), no errors
 
   Summary: 12 ok · 1 warn · 1 fail · 2 skip
 ```
 
-Le vert est bon, le jaune mérite un coup d'œil, le rouge doit être corrigé. C'est tout.
+Le vert est bon, le jaune mérite un coup d'œil, le rouge doit être corrigé. `wtftools` est une
+**CLI en lecture seule et sans dépendance** (bibliothèque standard Python uniquement ; `psutil`
+optionnel) qui transforme un amas de commandes de diagnostic en une seule réponse lisible —
+et en une réponse lisible par la machine lorsque vous la redirigez.
 
-## Installation
+## Ce qu'il sait faire
+
+- **Audit de santé** — plus de 40 vérifications (disque, mémoire, swap, charge, PSI, kills OOM,
+  unités en échec, expiration de certificats, SMART, températures, DNS, …) sous forme de
+  liste de contrôle vert / jaune / rouge.
+- **Vues par ressource** — interrogez une chose à la fois, comme les commandes `show`
+  sur un commutateur : `wtf disk`, `wtf cpu`, `wtf mem`, `wtf net`, `wtf docker`, …
+- **Triage d'incidents** — `wtf problems`, `wtf events`, `wtf logs`,
+  `wtf services <unit>`, `wtf explain` (éventuellement via un LLM local ou hébergé).
+- **Tendances et alertes** — `wtf daily`, instantanés + `wtf diff`, alertes cron —
+  aucune stack de surveillance requise.
+- **Scriptable** — chaque commande dispose d'une sortie `plain` (séparée par des tabulations) et `json`
+  portant un `schema_version`, pour grep / awk / jq.
+- **Accessible aux débutants** — `--show-commands` affiche les commandes classiques que chaque
+  vue remplace, afin que vous puissiez les apprendre à la main.
+
+## Install
 
 ```bash
 pipx install wtftools          # recommended — works on any modern distro
-```
-
-Pas de `pipx` ? L'une de ces commandes fonctionne tout aussi bien :
-
-```bash
-pip install wtftools           # classic pip (core, no dependencies)
+pip install wtftools           # or classic pip (core, no dependencies)
 pip install wtftools[full]     # + psutil for richer process/socket info
 sudo dpkg -i wtftools_*.deb    # Debian/Ubuntu package (see Releases)
 ```
 
-Après l'installation, vous disposez de la commande `wtf`. Essayez-la : `wtf`.
-
-## Les commandes que vous utiliserez réellement
-
-```bash
-wtf              # full health check — start here
-wtf problems     # show ONLY what is wrong (warnings + failures)
-wtf explain      # what to do about each problem, step by step
-```
-
-Ensuite, interrogez une ressource à la fois, comme les commandes `show` sur un commutateur :
+Après l'installation, vous disposez de la commande `wtf`. Activez la complétion par `<Tab>`
+en ajoutant une ligne au fichier rc de votre shell :
 
 ```bash
-wtf disk         # is there space? per-mount usage, inodes, read-only
-wtf disk --tree  # WHAT is eating the space (largest directories)
-wtf cpu          # load, iowait, top CPU consumers
-wtf mem          # RAM/swap, OOM kills, top memory consumers
-wtf net          # interfaces, IPs, gateway, DNS, listening ports
-wtf io           # disk read/write rates, IO-stuck processes
-wtf who          # who is logged in, recent logins, failed auth
-wtf temp         # hardware temperatures (CPU/disk/board sensors)
+echo 'eval "$(wtf completion bash)"' >> ~/.bashrc   # bash
+echo 'eval "$(wtf completion zsh)"'  >> ~/.zshrc    # zsh
 ```
 
-Exemple — le disque se remplit, trouvez le coupable :
+Nouveau ici ? Commencez par le [démarrage rapide en 5 minutes](docs/QUICKSTART.md).
 
-```
-$ wtf disk --tree /var
-# DISK
-  /                [████████████████····]  79%  1.4TB / 1.8TB  ext4
-  /var             [█████████████████···]  85%  17.0GB / 20.0GB  ext4
+## Commandes
 
-# LARGEST UNDER /var
-      15.0GB  /var/lib
-       3.1GB  /var/log
-       1.8GB  /var/log/app
-```
+Lancez `wtf <command> --help` pour les drapeaux. Chaque commande renvoie vers sa page de
+référence avec des exemples.
 
-`wtf disk --tree` sans chemin choisit automatiquement le point de montage le plus plein.
+### Santé et surveillance — [docs/AUDIT.md](docs/AUDIT.md)
 
-Vous apprenez Linux ? Ajoutez `--show-commands` à n'importe quelle commande de ressource et elle
-affiche aussi les commandes classiques qu'elle remplace, afin que vous puissiez les lancer vous-même :
+| command | ce qu'elle fait |
+|---------|--------------|
+| [`wtf` / `wtf audit`](docs/AUDIT.md#wtf-audit) | liste de contrôle vert/jaune/rouge de ce qui va et de ce qui ne va pas |
+| [`wtf problems`](docs/AUDIT.md#wtf-problems) | uniquement les lignes WARN+FAIL |
+| [`wtf daily`](docs/AUDIT.md#wtf-daily) | contrôle du matin : audit + diff vs dernière exécution + événements |
+| [`wtf explain`](docs/AUDIT.md#wtf-explain) | conseils actionnables par constat ; `--llm` pour transmettre à un LLM |
+| [`wtf events`](docs/AUDIT.md#wtf-events) | chronologie : redémarrages, kills OOM, unités en échec, … |
+| [`wtf logs`](docs/AUDIT.md#wtf-logs) | entrées de journal ERROR+ récentes groupées par service |
+| [`wtf services`](docs/AUDIT.md#wtf-services) | analyse détaillée d'une unité : état, redémarrages, ports, journal |
+| [`wtf diff`](docs/AUDIT.md#wtf-diff) | compare l'état actuel à un instantané enregistré |
+| [`wtf history`](docs/AUDIT.md#wtf-history) | liste des instantanés d'audit enregistrés |
+| [`wtf crontab`](docs/AUDIT.md#wtf-crontab) | valide les crontabs système + par utilisateur |
+| [`wtf doctor`](docs/AUDIT.md#wtf-doctor) | autodiagnostic : quels outils/fichiers wtf peut utiliser |
 
-```
-$ wtf cpu --show-commands
-  ...
-  equivalent commands:
-    $ uptime
-    $ top -bn1 | head
-    $ ps aux --sort=-%cpu | head
-```
+### Vues par ressource — [docs/RESOURCES.md](docs/RESOURCES.md)
 
-## Quand quelque chose est cassé
+| command | ce qu'elle fait |
+|---------|--------------|
+| [`wtf disk [PATH]`](docs/RESOURCES.md#wtf-disk) | vue d'ensemble des montages ; avec un PATH, les plus grands dossiers ; `--tree` explore |
+| [`wtf cpu`](docs/RESOURCES.md#wtf-cpu) | charge, iowait, pression, plus gros consommateurs de CPU |
+| [`wtf mem`](docs/RESOURCES.md#wtf-mem) | RAM/swap, kills OOM, plus gros consommateurs de mémoire |
+| [`wtf net`](docs/RESOURCES.md#wtf-net) | interfaces, passerelle, DNS, erreurs, ports en écoute |
+| [`wtf io`](docs/RESOURCES.md#wtf-io) | débits d'E/S par périphérique, pression, processus bloqués |
+| [`wtf who`](docs/RESOURCES.md#wtf-who) | utilisateurs connectés, connexions récentes, authentifications échouées |
+| [`wtf temp`](docs/RESOURCES.md#wtf-temp) | températures matérielles depuis /sys/class/hwmon |
+| [`wtf info`](docs/RESOURCES.md#wtf-info) | instantané d'une page : tout ce qui précède en une fois |
+| [`wtf top`](docs/RESOURCES.md#wtf-top) | top de processus ciblé : tri par cpu/rss, filtre par utilisateur/nom |
+| [`wtf ports` / `wtf port N`](docs/RESOURCES.md#wtf-ports) | sockets en écoute ; analyse un port jusqu'au PID, exe, cwd |
+| [`wtf docker [NAME]`](docs/RESOURCES.md#wtf-docker) | répertoire compose du conteneur + tailles image/conteneur/journal |
 
-```bash
-wtf problems -v                 # every problem, with detail
-wtf events --since 6            # timeline: reboots, OOM kills, failed units
-wtf service nginx               # one service: state, restarts, ports, journal
-wtf logs --since '2 hours ago'  # recent ERROR+ journal entries by service
-wtf explain                     # actionable advice per finding
-wtf explain --llm ollama        # or let a local LLM summarize it
-```
+### Sortie et configuration
 
-### Qui occupe un port ?
-
-`wtf port <N>` (ou `wtf ports <N>`) montre quel processus détient un port — le
-PID, le fichier exécutable exact derrière lui (via `lsof` + `/proc`) et le
-répertoire depuis lequel il s'exécute :
-
-```
-$ wtf port 5060
-# PORT 5060
-  tcp *:5060 (LISTEN)
-    pid     : 1234
-    user    : asterisk
-    command : asterisk
-    exe     : /usr/sbin/asterisk
-    cwd     : /var/lib/asterisk
-```
-
-Lancez-la avec `sudo` pour voir les processus appartenant à d'autres utilisateurs.
-
-### Où ce conteneur a-t-il été démarré ?
-
-`wtf docker <name>` répond à la question « dans quel dossier `docker compose up`
-a-t-il été lancé ? » directement à partir des labels du conteneur — et combien de
-disque il consomme (couches d'image, couche conteneur inscriptible et le journal json) :
-
-```
-$ wtf docker myapp_web
-# myapp_web
-  image        : myapp:latest
-  status       : running
-  compose      : myapp / web
-  working dir  : /home/deploy/myapp
-  config files : /home/deploy/myapp/docker-compose.yml
-  image size   : 156.4MB
-  container    : 254.3MB (writable layer)
-  logs         : 53.8MB
-```
-
-`wtf docker` sans nom liste chaque conteneur en cours d'exécution avec ses colonnes
-de taille et son répertoire de travail, plus une ligne TOTAL :
-
-```
-$ sudo wtf docker
-# DOCKER
-  NAME         STATUS       IMAGE   CONTNR     LOGS  WORKING DIR
-  myapp_web    running      164MB    267MB   53.8MB  /home/deploy/myapp
-  myapp_db     running      276MB     63B    4.02MB  /home/deploy/myapp
-  TOTAL                     440MB    267MB   57.8MB
-  note: IMAGE total is logical (images share layers); real disk 9.2GB, 1.1GB reclaimable — docker system df; logs cap with max-size; decimal units, like docker
-```
-
-Les tailles utilisent des unités décimales (1GB = 1000MB), elles s'alignent donc avec
-`docker container ls --size`. La colonne IMAGE par ligne correspond à la taille logique
-complète de l'image (ce que `docker` appelle la taille *virtuelle*). Le total IMAGE
-déduplique par identifiant d'image, de sorte qu'une image partagée par plusieurs conteneurs
-est comptée une seule fois — pas une fois par conteneur. **Mais** des images différentes
-partagent malgré tout des couches de base sur le disque, donc même cette somme dédupliquée
-surestime l'utilisation réelle ; la ligne de note indique le disque réellement
-dédupliqué par couches, directement issu de `docker system df`. CONTNR (couche
-inscriptible) et LOGS sont par conteneur, donc ces totaux sont exacts. Les tailles de
-journaux nécessitent un accès en lecture sous `/var/lib/docker` — lancez avec `sudo`,
-sinon elles affichent `?`.
-
-## Sortie pour les scripts : grep, awk, jq
-
-Les couleurs disparaissent automatiquement lorsque vous redirigez la sortie, donc un simple `grep` fonctionne toujours.
-Chaque commande propose aussi des formats lisibles par la machine — `plain` (séparé par des tabulations,
-sans en-têtes) et `json`. Le drapeau fonctionne également avant la sous-commande :
-
-```bash
-wtf -f json disk                         # same as: wtf disk --format json
-wtf disk --format plain                  # tab-separated, no headers
-wtf disk --format json | jq .            # full JSON
-
-# mounts above 80%:
-wtf disk --format json | jq -r '.mounts[] | select(.percent > 80) | .target'
-
-# failed checks only, names column:
-wtf audit --format plain | awk -F'\t' '$1 == "fail" {print $2}'
-
-# top directory eating /var, bytes and path:
-wtf disk --tree /var --format plain | awk -F'\t' '$1 == "tree" {print $2, $3; exit}'
-```
-
-Les charges utiles JSON des commandes de ressource transportent `schema_version` afin que vos
-scripts survivent aux mises à niveau.
-
-## Routine quotidienne et surveillance
-
-Une seule commande pour le contrôle du matin — audit, ce qui a changé depuis la dernière exécution
-et la chronologie des événements, avec un verdict d'une ligne en haut :
-
-```bash
-wtf daily                       # audit + diff vs yesterday + events
-```
-
-Elle enregistre un instantané à chaque exécution, de sorte que le `wtf daily` de demain affiche le différentiel.
-Une ligne crontab pour une utilisation sans surveillance (envoie un courriel uniquement en cas de problème) :
-
-```cron
-0 8 * * * wtf daily --format json > /var/log/wtf-daily.json 2>&1 || mail -s "wtf $(hostname)" you@example.com < /var/log/wtf-daily.json
-```
-
-Les briques de base sont également disponibles séparément :
-
-```bash
-wtf audit --brief               # one line — perfect for MOTD / SSH banner
-wtf audit --save                # save a snapshot
-wtf diff                        # what changed since the last snapshot
-wtf history                     # list saved snapshots
-
-# cron alerting without any monitoring stack:
-wtf audit --alert 'mail -s "wtf $WTF_HOST" you@example.com'
-wtf audit --alert-on warn --alert 'curl -X POST $SLACK_WEBHOOK -d @-'
-```
-
-Les codes de sortie sont adaptés à la CI et au cron :
-
-| code | signification                                    |
-|------|--------------------------------------------------|
-| 0    | tout va bien                                     |
-| 1    | avertissements avec `--strict`, ou erreurs crontab |
-| 2    | l'audit a trouvé un `[FAIL]`                     |
-| 130  | interrompu (Ctrl-C)                              |
-
-## Toutes les sous-commandes
-
-| commande            | ce qu'elle fait                                             |
-|---------------------|-------------------------------------------------------------|
-| `wtf` / `wtf audit` | liste de contrôle vert/jaune/rouge : ce qui va et ce qui ne va pas |
-| `wtf problems`      | uniquement les lignes WARN+FAIL                            |
-| `wtf daily`         | contrôle du matin : audit + diff vs dernière exécution + événements |
-| `wtf explain`       | conseils actionnables par vérification ; `--llm` pour transmettre à un LLM |
-| `wtf disk`          | usage par montage ; `--tree` affiche les plus grands répertoires |
-| `wtf cpu`           | charge, iowait, pression, plus gros consommateurs de CPU   |
-| `wtf mem`           | RAM/swap, kills OOM, plus gros consommateurs de mémoire    |
-| `wtf net`           | interfaces, passerelle, DNS, erreurs, ports en écoute      |
-| `wtf io`            | débits d'E/S par périphérique, pression, processus bloqués |
-| `wtf who`           | utilisateurs connectés, connexions récentes, authentifications échouées |
-| `wtf temp`          | températures matérielles des capteurs /sys/class/hwmon     |
-| `wtf info`          | instantané d'une page : tout ce qui précède en une fois    |
-| `wtf top`           | top de processus ciblé : tri par cpu/rss, filtre utilisateur/nom |
-| `wtf ports`         | sockets en écoute avec PID/utilisateur/commande propriétaire |
-| `wtf port NUM`      | analyse détaillée d'un port : PID, fichier exécutable, répertoire de travail |
-| `wtf docker [NAME]` | répertoire de travail compose du conteneur + tailles image/conteneur/journal |
-| `wtf service NAME`  | analyse détaillée d'un service : état, redémarrages, mémoire, ports, journal |
-| `wtf logs`          | entrées de journal ERROR+ récentes groupées par service    |
-| `wtf events`        | chronologie : redémarrages, OOM, unités en échec, …        |
-| `wtf history`       | liste des instantanés d'audit enregistrés (`wtf audit --save` pour en créer) |
-| `wtf diff`          | compare l'état actuel à un instantané enregistré           |
-| `wtf crontab`       | valide tous les emplacements crontab standard + les crontabs par utilisateur |
-| `wtf doctor`        | autodiagnostic : quels outils wtftools peut réellement utiliser |
-| `wtf config`        | affiche la configuration effective / imprime un exemple    |
+| command | ce qu'elle fait |
+|---------|--------------|
+| [`wtf config`](docs/CONFIG.md#wtf-config) | affiche la configuration effective / imprime un exemple commenté |
+| [`wtf completion`](#install) | imprime un script de complétion par `<Tab>` bash/zsh |
+| [machine output](docs/OUTPUT.md) | formats `plain`/`json` et un guide pratique grep·awk·jq |
 
 `wtftools` absorbe et remplace
 [`checkcrontab`](https://github.com/wachawo/checkcrontab) — le même validateur de cron
 réside désormais dans `wtf crontab`.
 
-## Options d'audit avancées
+## Documentation
 
-```bash
-wtf audit -v             # show extra detail (failed units, OOM events)
-wtf audit --strict       # exit 1 on warnings (CI-friendly)
-wtf audit --check memory --check disks    # run named checks only
-wtf audit --list-checks  # show all available check short-names
-wtf audit --since 1      # look-back window for OOM/auth/kernel (default 24h)
-wtf audit --ignore swap --ignore "disk /mnt/Backup"   # silence checks
-wtf audit --format csv > audit.csv        # spreadsheet-friendly
-wtf audit --format html -o report.html    # self-contained HTML for tickets
-wtf audit --format prometheus             # metrics for node_exporter textfile
-```
-
-### Vérifications intégrées
-
-uptime · system state · load average · CPU iowait · PSI cpu/memory/io ·
-TCP retransmits · memory · swap · disk (per mount) · inodes ·
-read-only mounts · failed systemd units · enabled-but-down services ·
-restart loops · network errors · conntrack · journal disk usage · zombies ·
-D-state processes · OOM kills · kernel errors · kernel taint · cert expiry ·
-open file descriptors · process count · failed auth · time sync ·
-pending updates · reboot required · cron daemon · crontab syntax · docker ·
-hw temperatures · disk SMART · DNS · HTTP/TCP probes · fail2ban.
-
-## Configuration
-
-Les seuils et les exclusions résident dans un fichier INI situé à l'un de ces emplacements :
-
-- `/etc/wtftools/config.ini`
-- `/etc/wtf/config.ini`
-- `~/.config/wtftools/config.ini`
-
-Lancez `wtf config --example` pour obtenir un modèle entièrement commenté. Les grandes lignes :
-
-```ini
-[thresholds]
-disk_warn = 85
-disk_fail = 95
-swap_warn = 50
-swap_fail = 90
-
-[ignore]
-checks = swap, updates
-result_names =
-    disk /mnt/Backup
-```
+- [QUICKSTART.md](docs/QUICKSTART.md) — prise en main en 5 minutes et aide-mémoire
+- [AUDIT.md](docs/AUDIT.md) — vérifications de santé, surveillance, codes de sortie, la liste complète des vérifications
+- [RESOURCES.md](docs/RESOURCES.md) — vues par ressource avec exemples
+- [OUTPUT.md](docs/OUTPUT.md) — formats `plain`/`json` et le guide pratique de scripting
+- [CONFIG.md](docs/CONFIG.md) — fichier de configuration, seuils, ignorer des vérifications
 
 ## Compatibilité
 
 - Python 3.8+
 - Linux (les distributions systemd sont la voie idéale ; l'outil se dégrade
   gracieusement lorsque `systemctl` / `journalctl` / `psutil` sont absents)
-- Aucun accès réseau requis pour la CLI de base
-- Réseau optionnel : `wtf explain --llm claude/openai`, `wtf doctor --check-updates`
+- Aucun accès réseau requis pour la CLI de base ; réseau optionnel uniquement pour
+  `wtf explain --llm …` et `wtf doctor --check-updates`
 
 ## Depuis les sources
 
@@ -325,8 +136,7 @@ result_names =
 git clone https://github.com/wachawo/wtftools
 cd wtftools
 pip install -e .
-# or test without installing:
-python3 wtf.py audit
+python3 wtf.py audit       # or run it without installing
 ```
 
 ## Licence
