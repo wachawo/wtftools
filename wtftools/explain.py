@@ -43,6 +43,24 @@ _RULES: List[Tuple[Callable[[CheckResult], bool], SuggestionAdvice]] = [
         "RAM/swap. Recurrent on cron-jobs → consider OOM-protecting critical services.",
     ),
     (
+        lambda r: r.name == "raid (md)" and r.status in ("warn", "fail"),
+        "A software-RAID array is degraded or rebuilding. Inspect `/proc/mdstat` and "
+        "`mdadm --detail /dev/mdN`, replace the failed disk and re-add it. Do not "
+        "reboot a degraded array without a current backup.",
+    ),
+    (
+        lambda r: r.name == "deleted open files" and r.status in ("warn", "fail"),
+        "Processes are holding deleted files open, so the space is not freed until "
+        "they close them — the classic 'df full but du clean'. Find the holder in the "
+        "detail lines and restart it (or truncate the fd) to reclaim the space.",
+    ),
+    (
+        lambda r: r.name == "stale libraries" and r.status in ("warn", "fail"),
+        "Processes still map shared libraries that a package upgrade deleted (e.g. "
+        "openssl); they keep running the old code until restarted. Restart the listed "
+        "services — `needrestart` can automate this.",
+    ),
+    (
         lambda r: r.name == "memory" and r.status in ("warn", "fail"),
         "Memory headroom is low. Find the consumer via `wtf info` (TOP BY RAM). "
         "Quick fixes: restart the bloated service, lower its memory limits, scale "

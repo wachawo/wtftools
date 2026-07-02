@@ -578,8 +578,51 @@ def _check_pid_count() -> CheckResult:
 
 CheckFn = Callable[[], Any]
 
+
 # Short, stable names for `wtf audit --check <name>` and `wtf audit --list`.
 # These are intentionally kebab-friendly and easier to type than CheckResult.name.
+def _check_raid() -> CheckResult:
+    arrays = sysinfo.get_md_arrays()
+    if arrays is None:
+        return CheckResult("raid (md)", "skip", "no software RAID (/proc/mdstat absent)")
+    if not arrays:
+        return CheckResult("raid (md)", "skip", "no md arrays configured")
+    detail = [f"{a['name']} {a['level']} [{a['status'] or '?'}]" + (f" {a['recovery']}" if a["recovery"] else "") + (" DEGRADED" if a["degraded"] else "") for a in arrays]
+    degraded = [a for a in arrays if a["degraded"]]
+    recovering = [a for a in arrays if a["recovery"]]
+    if degraded:
+        return CheckResult("raid (md)", "fail", f"{len(degraded)} array(s) degraded — a disk has dropped", detail=detail)
+    if recovering:
+        return CheckResult("raid (md)", "warn", f"{len(recovering)} array(s) rebuilding", detail=detail)
+    return CheckResult("raid (md)", "ok", f"all {len(arrays)} array(s) clean", detail=detail)
+
+
+def _check_deleted_files() -> CheckResult:
+    files = sysinfo.get_deleted_open_files()
+    if files is None:
+        return CheckResult("deleted open files", "skip", "cannot read /proc")
+    note = "" if (not hasattr(os, "geteuid") or os.geteuid() == 0) else " (non-root: only your processes)"
+    if not files:
+        return CheckResult("deleted open files", "ok", "none holding significant space" + note)
+    total = sum(f["bytes"] for f in files)
+    detail = [f"pid={f['pid']} {f['name']}: {sysinfo.format_bytes(f['bytes'])} {f['path']}" for f in files[:5]]
+    # >= 1 GiB reclaimable by restarting the holders is worth a warning.
+    if total >= 1024**3:
+        return CheckResult("deleted open files", "warn", f"{sysinfo.format_bytes(total)} held by {len(files)} deleted-but-open file(s){note}", detail=detail)
+    return CheckResult("deleted open files", "ok", f"{sysinfo.format_bytes(total)} in deleted-but-open files{note}", detail=detail)
+
+
+def _check_stale_libs() -> CheckResult:
+    procs = sysinfo.get_stale_lib_processes()
+    if procs is None:
+        return CheckResult("stale libraries", "skip", "cannot read /proc")
+    note = "" if (not hasattr(os, "geteuid") or os.geteuid() == 0) else " (non-root: only your processes)"
+    if not procs:
+        return CheckResult("stale libraries", "ok", "no processes running deleted libraries" + note)
+    detail = [f"pid={p['pid']} {p['name']}: {len(p['libs'])} deleted lib(s), e.g. {p['libs'][0]}" for p in procs[:5]]
+    return CheckResult("stale libraries", "warn", f"{len(procs)} process(es) using deleted libraries — restart them after the upgrade{note}", detail=detail)
+
+
 CHECK_REGISTRY: Dict[str, CheckFn] = {
     "uptime": _check_uptime,
     "system": _check_system_running,
@@ -592,6 +635,7 @@ CHECK_REGISTRY: Dict[str, CheckFn] = {
     "disks": _check_disks,
     "inodes": _check_inodes,
     "readonly-mounts": _check_readonly_mounts,
+    "deleted-files": _check_deleted_files,
     "failed-units": _check_failed_units,
     "enabled-inactive": _check_enabled_inactive,
     "restart-loops": _check_restart_loops,
@@ -607,6 +651,7 @@ CHECK_REGISTRY: Dict[str, CheckFn] = {
     "auth": _check_failed_auth,
     "time-sync": _check_time_sync,
     "updates": _check_pending_updates,
+    "stale-libs": _check_stale_libs,
     "reboot": _check_reboot_required,
     "kernel-taint": _check_kernel_taint,
     "cert-expiry": _check_cert_expiry,
@@ -615,6 +660,7 @@ CHECK_REGISTRY: Dict[str, CheckFn] = {
     "docker": _check_docker,
     "hw-temp": _check_temperatures,
     "smart": _check_smart,
+    "raid": _check_raid,
     "dns": _check_dns,
     "http-probes": _check_http_probes,
     "tcp-probes": _check_tcp_probes,

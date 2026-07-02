@@ -33,6 +33,7 @@ PROC_LOADAVG = "/proc/loadavg"
 PROC_STAT = "/proc/stat"
 PROC_CPUINFO = "/proc/cpuinfo"
 PROC_MOUNTS = "/proc/mounts"
+PROC_MDSTAT = "/proc/mdstat"
 ETC_OS_RELEASE = "/etc/os-release"
 
 
@@ -495,6 +496,108 @@ def get_readonly_mounts() -> List[str]:
         flags = opts.split(",")
         if "ro" in flags:
             result.append(f"{target} ({fs_type})")
+    return result
+
+
+def _proc_comm(pid: str) -> str:
+    """Process command name from /proc/<pid>/comm, '?' when unreadable."""
+    return read_file(f"/proc/{pid}/comm").strip() or "?"
+
+
+def get_md_arrays() -> Optional[List[Dict[str, Any]]]:
+    """Software-RAID arrays from /proc/mdstat. None when md is not present."""
+    content = read_file(PROC_MDSTAT)
+    if not content:
+        return None
+    arrays: List[Dict[str, Any]] = []
+    lines = content.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^(md\d+)\s*:\s*(\S+)\s+(\S+)\s+", line)
+        if not m:
+            continue
+        name, active, level = m.group(1), m.group(2), m.group(3)
+        status, recovery = "", ""
+        for nxt in lines[i + 1 : i + 4]:
+            sm = re.search(r"\[([U_]+)\]", nxt)
+            if sm:
+                status = sm.group(1)
+            rm = re.search(r"\b(recovery|resync|check|reshape)\s*=\s*([\d.]+%)", nxt)
+            if rm:
+                recovery = f"{rm.group(1)} {rm.group(2)}"
+        arrays.append({"name": name, "active": active, "level": level, "status": status, "degraded": "_" in status, "recovery": recovery})
+    return arrays
+
+
+def get_deleted_open_files(min_bytes: int = 1024 * 1024) -> Optional[List[Dict[str, Any]]]:
+    """Open fds pointing at deleted files that still hold >= min_bytes of disk.
+
+    Returns [{pid, name, path, bytes}] sorted biggest-first, or None if /proc is
+    unreadable. Non-root callers only see their own processes.
+    """
+    if not os.path.isdir("/proc"):
+        return None
+    found: List[Dict[str, Any]] = []
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        fd_dir = f"/proc/{pid}/fd"
+        try:
+            fds = os.listdir(fd_dir)
+        except OSError:
+            continue
+        for fd in fds:
+            fd_path = os.path.join(fd_dir, fd)
+            try:
+                target = os.readlink(fd_path)
+            except OSError:
+                continue
+            if not target.endswith(" (deleted)"):
+                continue
+            real = target[: -len(" (deleted)")]
+            if real.startswith(("/dev/", "/memfd:", "anon_inode:", "/[")):
+                continue
+            try:
+                size = os.stat(fd_path).st_size
+            except OSError:
+                continue
+            if size < min_bytes:
+                continue
+            found.append({"pid": int(pid), "name": _proc_comm(pid), "path": real, "bytes": size})
+    found.sort(key=lambda f: f["bytes"], reverse=True)
+    return found
+
+
+def get_stale_lib_processes() -> Optional[List[Dict[str, Any]]]:
+    """Processes with deleted shared libraries mapped in memory (they keep
+    running old code until restarted, e.g. after `apt upgrade openssl`).
+
+    Returns [{pid, name, libs}], or None if /proc is unreadable. Non-root
+    callers only see their own processes.
+    """
+    if not os.path.isdir("/proc"):
+        return None
+    result: List[Dict[str, Any]] = []
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        maps = read_file(f"/proc/{pid}/maps")
+        if not maps:
+            continue
+        stale = set()
+        for line in maps.splitlines():
+            if not line.endswith(" (deleted)"):
+                continue
+            parts = line.split(None, 5)
+            if len(parts) < 6:
+                continue
+            real = parts[5][: -len(" (deleted)")]
+            if ".so" not in real:
+                continue
+            if real.startswith(("/dev/", "/memfd:", "anon_inode:", "/[")):
+                continue
+            stale.add(real)
+        if stale:
+            result.append({"pid": int(pid), "name": _proc_comm(pid), "libs": sorted(stale)})
     return result
 
 

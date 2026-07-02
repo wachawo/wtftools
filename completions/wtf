@@ -62,7 +62,7 @@ _wtf_complete() {
                     local names="uptime system load iowait psi tcp-retrans memory swap disks \
 inodes readonly-mounts failed-units enabled-inactive restart-loops network-errors conntrack \
 journal-disk zombies d-state oom kernel-errors kernel-taint cert-expiry fds pids auth time-sync \
-updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban"
+updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban raid deleted-files stale-libs"
                     COMPREPLY=( $(compgen -W "$names" -- "$cur") )
                     return 0
                     ;;
@@ -78,7 +78,7 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
                     local names="uptime system load iowait psi tcp-retrans memory swap disks \
 inodes readonly-mounts failed-units enabled-inactive restart-loops network-errors conntrack \
 journal-disk zombies d-state oom kernel-errors kernel-taint cert-expiry fds pids auth time-sync \
-updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban"
+updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban raid deleted-files stale-libs"
                     COMPREPLY=( $(compgen -W "$names" -- "$cur") )
                     return 0
                     ;;
