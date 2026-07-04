@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Three new audit checks (also shown by `wtf problems`, each with `wtf explain`
+  advice and `<Tab>`-completion):
+  - `deleted-files` — reclaimable space held by deleted-but-open files
+    (the classic `df` full / `du` clean), scanned from `/proc/*/fd`.
+  - `raid` — degraded or rebuilding software-RAID (md) arrays, from `/proc/mdstat`.
+  - `stale-libs` — processes still mapping shared libraries deleted by a package
+    upgrade (e.g. openssl), from `/proc/*/maps`.
+
 ### Docs
 - README now leads with the read-only / no-agent / no-dependencies guarantees
   and a "try it in two seconds" line, and frames usage as incident vs daily.
