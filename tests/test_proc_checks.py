@@ -104,7 +104,8 @@ def test_get_deleted_open_files(monkeypatch):
         }[path]
 
     def fake_stat(path):
-        return types.SimpleNamespace(st_size={"/proc/123/fd/3": 200 * 1024 * 1024, "/proc/123/fd/5": 10}[path])
+        size = {"/proc/123/fd/3": 200 * 1024 * 1024, "/proc/123/fd/5": 10}[path]
+        return types.SimpleNamespace(st_size=size * 4, st_blocks=size // 512)
 
     monkeypatch.setattr(sysinfo.os, "listdir", fake_listdir)
     monkeypatch.setattr(sysinfo.os, "readlink", fake_readlink)
@@ -116,6 +117,8 @@ def test_get_deleted_open_files(monkeypatch):
     assert len(files) == 1
     assert files[0]["path"] == "/var/log/app.log"
     assert files[0]["name"] == "app"
+    assert files[0]["fd"] == 3
+    # st_blocks * 512, not the (inflated) st_size
     assert files[0]["bytes"] == 200 * 1024 * 1024
 
 
@@ -133,12 +136,12 @@ def test_check_deleted_files_skip(monkeypatch):
 
 
 def test_check_deleted_files_ok_when_small(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_deleted_open_files", lambda: [{"pid": 1, "name": "x", "path": "/tmp/a", "bytes": 5 * 1024 * 1024}])
+    monkeypatch.setattr(audit.sysinfo, "get_deleted_open_files", lambda: [{"pid": 1, "fd": 3, "name": "x", "path": "/tmp/a", "bytes": 5 * 1024 * 1024}])
     assert audit._check_deleted_files().status == "ok"
 
 
 def test_check_deleted_files_warn_over_gib(monkeypatch):
-    monkeypatch.setattr(audit.sysinfo, "get_deleted_open_files", lambda: [{"pid": 1, "name": "x", "path": "/var/log/big", "bytes": 2 * 1024**3}])
+    monkeypatch.setattr(audit.sysinfo, "get_deleted_open_files", lambda: [{"pid": 1, "fd": 7, "name": "x", "path": "/var/log/big", "bytes": 2 * 1024**3}])
     r = audit._check_deleted_files()
     assert r.status == "warn"
     assert r.detail

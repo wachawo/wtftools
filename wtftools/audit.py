@@ -605,7 +605,7 @@ def _check_deleted_files() -> CheckResult:
     if not files:
         return CheckResult("deleted open files", "ok", "none holding significant space" + note)
     total = sum(f["bytes"] for f in files)
-    detail = [f"pid={f['pid']} {f['name']}: {sysinfo.format_bytes(f['bytes'])} {f['path']}" for f in files[:5]]
+    detail = [f"pid={f['pid']} fd={f['fd']} {f['name']}: {sysinfo.format_bytes(f['bytes'])} {f['path']}" for f in files[:5]]
     # >= 1 GiB reclaimable by restarting the holders is worth a warning.
     if total >= 1024**3:
         return CheckResult("deleted open files", "warn", f"{sysinfo.format_bytes(total)} held by {len(files)} deleted-but-open file(s){note}", detail=detail)

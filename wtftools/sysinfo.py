@@ -531,8 +531,8 @@ def get_md_arrays() -> Optional[List[Dict[str, Any]]]:
 def get_deleted_open_files(min_bytes: int = 1024 * 1024) -> Optional[List[Dict[str, Any]]]:
     """Open fds pointing at deleted files that still hold >= min_bytes of disk.
 
-    Returns [{pid, name, path, bytes}] sorted biggest-first, or None if /proc is
-    unreadable. Non-root callers only see their own processes.
+    Returns [{pid, fd, name, path, bytes}] sorted biggest-first, or None if
+    /proc is unreadable. Non-root callers only see their own processes.
     """
     if not os.path.isdir("/proc"):
         return None
@@ -557,12 +557,15 @@ def get_deleted_open_files(min_bytes: int = 1024 * 1024) -> Optional[List[Dict[s
             if real.startswith(("/dev/", "/memfd:", "anon_inode:", "/[")):
                 continue
             try:
-                size = os.stat(fd_path).st_size
+                st = os.stat(fd_path)
             except OSError:
                 continue
+            # st_blocks matches what df reports; st_size lies for sparse files.
+            blocks = getattr(st, "st_blocks", None)
+            size = blocks * 512 if blocks is not None else st.st_size
             if size < min_bytes:
                 continue
-            found.append({"pid": int(pid), "name": _proc_comm(pid), "path": real, "bytes": size})
+            found.append({"pid": int(pid), "fd": int(fd), "name": _proc_comm(pid), "path": real, "bytes": size})
     found.sort(key=lambda f: f["bytes"], reverse=True)
     return found
 

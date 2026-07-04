@@ -52,7 +52,8 @@ _RULES: List[Tuple[Callable[[CheckResult], bool], SuggestionAdvice]] = [
         lambda r: r.name == "deleted open files" and r.status in ("warn", "fail"),
         "Processes are holding deleted files open, so the space is not freed until "
         "they close them — the classic 'df full but du clean'. Find the holder in the "
-        "detail lines and restart it (or truncate the fd) to reclaim the space.",
+        "detail lines and restart it, or truncate the file in place via "
+        "`: > /proc/<pid>/fd/<fd>` (pid and fd are in the detail) to reclaim the space.",
     ),
     (
         lambda r: r.name == "stale libraries" and r.status in ("warn", "fail"),
