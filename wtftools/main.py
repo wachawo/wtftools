@@ -1634,6 +1634,95 @@ def cmd_nginx(args: argparse.Namespace) -> int:
     return 1 if has_high else 0
 
 
+_HELP_GROUPS = [
+    (
+        "Health & monitoring",
+        [
+            ("audit", "green/yellow/red checklist of what is OK and what is not (this is the default `wtf`)"),
+            ("problems", "only the WARN+FAIL rows — add -v to see which unit/container/mount"),
+            ("daily", "morning check: audit + what changed since last run + events"),
+            ("explain", "actionable advice per finding; --llm pipes findings to an LLM"),
+            ("events", "timeline: reboots, OOM kills, failed units, kernel errors"),
+            ("logs", "recent ERROR+ journal entries grouped by service"),
+            ("services <name>", "drill into one systemd unit: state, restarts, journal"),
+            ("diff", "compare current state against a saved snapshot"),
+            ("history", "list saved audit snapshots"),
+            ("crontab", "validate system + per-user crontab syntax"),
+            ("nginx [PATH]", "scan an nginx config for security misconfigurations"),
+            ("doctor", "self-diagnostic: which tools/files wtf can use here"),
+        ],
+    ),
+    (
+        "Resource views",
+        [
+            ("info", "one-page snapshot: cpu, mem, disk, net at once"),
+            ("disk [PATH]", "mounts overview; with a PATH the biggest folders (--tree drills in)"),
+            ("cpu", "load, iowait, pressure, top CPU consumers"),
+            ("mem", "RAM/swap, OOM kills, top memory consumers"),
+            ("net", "interfaces, gateway, DNS, errors, listening ports"),
+            ("io", "per-device IO rates, pressure, stuck processes"),
+            ("who", "logged-in users, recent logins, failed auth"),
+            ("temp", "hardware temperatures from /sys/class/hwmon"),
+            ("top", "focused process top: sort by cpu/rss, filter by user/name"),
+            ("ports / port <N>", "listening sockets; drill one port to PID, exe, cwd"),
+            ("docker [NAME]", "which containers are unhealthy; compose dir + sizes by name"),
+        ],
+    ),
+    (
+        "Config & shell",
+        [
+            ("config", "show or generate the wtftools config"),
+            ("completion [bash|zsh]", "print a shell tab-completion script"),
+            ("help", "this overview"),
+        ],
+    ),
+]
+
+_HELP_FLAGS = [
+    ("-f, --format", "text · plain · json (audit also: csv · html · prometheus)"),
+    ("-v, --verbose", "show extra detail — the per-finding lines, e.g. which container"),
+    ("-q, --quiet", "reduce logging output"),
+    ("--no-color", "disable ANSI colors"),
+    ("--config PATH", "stack an extra config file on top of the defaults"),
+    ("-V, --version", "print the version and exit"),
+]
+
+_HELP_EXAMPLES = [
+    ("wtf", "the default: a full audit summary"),
+    ("wtf -v problems", "only problems, with detail — names the failing unit/container/mount"),
+    ("wtf disk /var", "what folders eat space under /var"),
+    ("wtf port 443", "which process owns port 443"),
+    ("wtf nginx", "audit the nginx config for security issues"),
+    ("wtf <command> -h", "the full options for one command"),
+]
+
+
+def cmd_help(args: argparse.Namespace) -> int:
+    """Print a grouped, friendly overview of every wtf command."""
+    print(colors.section('WTF — one-command answer to "what is wrong with this box?"'))
+    print(colors.dim(f"  {__description__}"))
+    print(colors.dim(f"  v{__version__} · {__url__}"))
+    print("")
+
+    width = max(len(cmd) for _, rows in _HELP_GROUPS for cmd, _ in rows)
+    for title, rows in _HELP_GROUPS:
+        print(colors.cyan(f"  {title}", bold=True))
+        for cmd, desc in rows:
+            print(f"    {colors.green(cmd.ljust(width), bold=True)}  {colors.dim(desc)}")
+        print("")
+
+    print(colors.cyan("  Global flags (before the command: `wtf -v audit`)", bold=True))
+    for flag, desc in _HELP_FLAGS:
+        print(f"    {colors.bold(flag.ljust(width))}  {colors.dim(desc)}")
+    print("")
+
+    print(colors.cyan("  Examples", bold=True))
+    ex_width = max(len(cmd) for cmd, _ in _HELP_EXAMPLES)
+    for cmd, desc in _HELP_EXAMPLES:
+        print(f"    {colors.bold(cmd.ljust(ex_width))}  {colors.dim(desc)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="wtf",
@@ -1641,6 +1730,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"Project: {__url__}\n"
         "Examples:\n"
+        "  wtf help                  # overview of every command\n"
         "  wtf                       # default: short audit summary\n"
         "  wtf disk /var             # what folders eat space under /var\n"
         "  wtf disk / --tree         # drill into the biggest folders of /\n"
@@ -1855,6 +1945,9 @@ def build_parser() -> argparse.ArgumentParser:
     comp = subparsers.add_parser("completion", help="Print a bash/zsh completion script to enable <Tab> completion")
     comp.add_argument("shell", nargs="?", choices=["bash", "zsh"], help="Shell to emit a script for; omit for setup instructions")
     comp.set_defaults(func=cmd_completion)
+
+    helpp = subparsers.add_parser("help", help="Overview of all commands — a friendly cheat-sheet")
+    helpp.set_defaults(func=cmd_help)
 
     crontab = subparsers.add_parser("crontab", help="Validate crontab files (system + user)")
     crontab.add_argument("targets", nargs="*", help="Files, directories, or usernames")

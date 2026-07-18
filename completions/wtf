@@ -8,7 +8,7 @@ _wtf_complete() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="info disk cpu mem net io who temp temps temperature daily audit problems crontab doctor services service config logs explain history diff top ports port docker events nginx completion"
+    local subcommands="info disk cpu mem net io who temp temps temperature daily audit problems crontab doctor services service config logs explain history diff top ports port docker events nginx completion help"
     local global_opts="-h --help -V --version -f --format --no-color -v --verbose -q --quiet --config"
 
     if [[ $COMP_CWORD -eq 1 ]]; then

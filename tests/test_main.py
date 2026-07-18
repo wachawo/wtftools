@@ -25,6 +25,14 @@ def test_build_parser_help():
     assert parser.prog == "wtf"
 
 
+def test_cmd_help_overview():
+    rc, out = _capture(["help"])
+    assert rc == 0
+    # A few representative commands from each group must appear.
+    for token in ("audit", "disk", "nginx", "docker", "Examples", "Global flags"):
+        assert token in out
+
+
 def test_version_flag(capsys):
     with pytest.raises(SystemExit) as exc:
         main.main(["--version"])
