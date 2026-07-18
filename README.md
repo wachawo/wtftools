@@ -91,6 +91,7 @@ with examples.
 | [`wtf diff`](https://github.com/wachawo/wtftools/blob/main/docs/AUDIT.md#wtf-diff) | compare current state to a saved snapshot |
 | [`wtf history`](https://github.com/wachawo/wtftools/blob/main/docs/AUDIT.md#wtf-history) | list saved audit snapshots |
 | [`wtf crontab`](https://github.com/wachawo/wtftools/blob/main/docs/AUDIT.md#wtf-crontab) | validate system + per-user crontabs |
+| [`wtf nginx [PATH]`](https://github.com/wachawo/wtftools/blob/main/docs/AUDIT.md#wtf-nginx) | scan an nginx config for security misconfigurations (SSRF, alias traversal, …) |
 | [`wtf doctor`](https://github.com/wachawo/wtftools/blob/main/docs/AUDIT.md#wtf-doctor) | self-diagnostic: which tools/files wtf can use |
 
 ### Resource views — [docs/RESOURCES.md](https://github.com/wachawo/wtftools/blob/main/docs/RESOURCES.md)

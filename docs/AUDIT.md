@@ -226,6 +226,29 @@ $ wtf doctor
 - `--check-updates` — query PyPI for a newer wtftools version (network call).
 - `--format {text,json}` — output format.
 
+## `wtf nginx`
+
+Analyzes an nginx configuration for well-known security misconfigurations. It ships its own tolerant, read-only, stdlib-only parser (it never runs nginx and needs no dependencies) that resolves `include` globs, quoted regexes, `map`/`geo` blocks and OpenResty Lua blocks, then walks the directive tree. With no argument it autodetects the standard config (`/etc/nginx/nginx.conf`).
+
+```
+$ wtf nginx
+# NGINX
+  config: /etc/nginx/nginx.conf  (7 file(s) parsed)
+  [FAIL] alias-traversal  location "/files" has no trailing "/" but uses alias …
+        └ http > server > location /files  /etc/nginx/conf.d/site.conf:8
+  [WARN] host-spoofing    proxy_set_header Host $http_host forwards the client Host …
+        └ server > location > proxy_set_header Host  /etc/nginx/conf.d/site.conf:13
+
+  Summary: 1 high · 1 medium · 0 low
+```
+
+Checks: `alias-traversal`, `host-spoofing`, `valid-referers`, `add-header-redefinition`, `add-header-multiline`, `ssrf`, `http-splitting`, `origins`. Each finding carries a severity (high/medium/low) and an exact `file:line`. Also available as the `nginx-config` audit check (a high-severity finding fails the audit, others warn).
+
+- `path` (positional) — path to `nginx.conf` (default: autodetect).
+- `--format {text,plain,json}` — output format.
+
+Exit code is `1` when any high-severity issue is found, `0` otherwise (`2` if no config is found).
+
 ## Exit codes
 
 Exit codes are CI/cron-friendly:

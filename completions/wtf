@@ -8,7 +8,7 @@ _wtf_complete() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    local subcommands="info disk cpu mem net io who temp temps temperature daily audit problems crontab doctor services service config logs explain history diff top ports port docker events completion"
+    local subcommands="info disk cpu mem net io who temp temps temperature daily audit problems crontab doctor services service config logs explain history diff top ports port docker events nginx completion"
     local global_opts="-h --help -V --version -f --format --no-color -v --verbose -q --quiet --config"
 
     if [[ $COMP_CWORD -eq 1 ]]; then
@@ -62,7 +62,7 @@ _wtf_complete() {
                     local names="uptime system load iowait psi tcp-retrans memory swap disks \
 inodes readonly-mounts failed-units enabled-inactive restart-loops network-errors conntrack \
 journal-disk zombies d-state oom kernel-errors kernel-taint cert-expiry fds pids auth time-sync \
-updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban raid deleted-files stale-libs"
+updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban raid deleted-files stale-libs nginx-config"
                     COMPREPLY=( $(compgen -W "$names" -- "$cur") )
                     return 0
                     ;;
@@ -78,7 +78,7 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
                     local names="uptime system load iowait psi tcp-retrans memory swap disks \
 inodes readonly-mounts failed-units enabled-inactive restart-loops network-errors conntrack \
 journal-disk zombies d-state oom kernel-errors kernel-taint cert-expiry fds pids auth time-sync \
-updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban raid deleted-files stale-libs"
+updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-probes fail2ban raid deleted-files stale-libs nginx-config"
                     COMPREPLY=( $(compgen -W "$names" -- "$cur") )
                     return 0
                     ;;
@@ -120,6 +120,16 @@ updates reboot cron-daemon crontab docker hw-temp smart dns http-probes tcp-prob
             esac
             local names=$(docker ps --format '{{.Names}}' 2>/dev/null)
             COMPREPLY=( $(compgen -W "--format $names" -- "$cur") )
+            ;;
+        nginx)
+            case "$prev" in
+                --format) COMPREPLY=( $(compgen -W "text plain json" -- "$cur") ); return 0 ;;
+            esac
+            if [[ "$cur" == -* ]]; then
+                COMPREPLY=( $(compgen -W "--format" -- "$cur") )
+            else
+                COMPREPLY=( $(compgen -f -- "$cur") )   # a PATH to an nginx.conf
+            fi
             ;;
         services|service)
             local opts="-n --lines --format"

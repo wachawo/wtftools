@@ -62,6 +62,13 @@ _RULES: List[Tuple[Callable[[CheckResult], bool], SuggestionAdvice]] = [
         "services — `needrestart` can automate this.",
     ),
     (
+        lambda r: r.name == "nginx config" and r.status in ("warn", "fail"),
+        "The nginx config has security issues (alias traversal, host spoofing, "
+        "SSRF, HTTP splitting, dropped security headers, weak origin regexes). "
+        "Run `wtf nginx` for the full list with file:line, fix the flagged "
+        "directives, then apply with `nginx -t && systemctl reload nginx`.",
+    ),
+    (
         lambda r: r.name == "memory" and r.status in ("warn", "fail"),
         "Memory headroom is low. Find the consumer via `wtf info` (TOP BY RAM). "
         "Quick fixes: restart the bloated service, lower its memory limits, scale "

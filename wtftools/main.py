@@ -1571,6 +1571,69 @@ def cmd_crontab(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_nginx(args: argparse.Namespace) -> int:
+    """Analyze an nginx config for well-known security misconfigurations."""
+    from wtftools import nginx_checks, nginx_conf
+
+    fmt = getattr(args, "format", "text")
+    path = args.path or nginx_conf.default_config_path()
+    if not path:
+        msg = "no nginx config found (pass a PATH, e.g. `wtf nginx /etc/nginx/nginx.conf`)"
+        print(json.dumps({"error": msg}) if fmt == "json" else colors.red(msg))
+        return 2
+    try:
+        cfg = nginx_conf.parse(path)
+    except (OSError, ValueError) as exc:
+        msg = f"cannot read {path}: {type(exc).__name__}: {exc}"
+        print(json.dumps({"error": msg}) if fmt == "json" else colors.red(msg))
+        return 2
+
+    findings = nginx_checks.analyze(cfg)
+    has_high = any(f.severity == "high" for f in findings)
+
+    if fmt == "json":
+        payload = {
+            "schema_version": 1,
+            "config": path,
+            "files": cfg.files,
+            "parse_errors": [{"file": e.file, "line": e.line, "message": e.message} for e in cfg.errors],
+            "findings": [{"check": f.check, "severity": f.severity, "message": f.message, "file": f.file, "line": f.line, "where": f.where} for f in findings],
+        }
+        print(json.dumps(payload, indent=2, default=str))
+        return 1 if has_high else 0
+    if fmt == "plain":
+        for f in findings:
+            print(f"{f.severity}\t{f.check}\t{f.file}:{f.line}\t{f.message}")
+        return 1 if has_high else 0
+
+    print(colors.section("NGINX"))
+    print(colors.dim(f"  config: {path}  ({len(cfg.files)} file(s) parsed)"))
+    if cfg.errors:
+        print(colors.yellow(f"  {len(cfg.errors)} parse warning(s):"))
+        for e in cfg.errors[:5]:
+            print(f"      {colors.dim('└')} {e.file}:{e.line} {e.message}")
+    if not findings:
+        print(f"  {colors.status_marker('OK')} no security issues found")
+        return 0
+    sev_marker = {"high": "FAIL", "medium": "WARN", "low": "WARN"}
+    width = max((len(f.check) for f in findings), default=10)
+    for f in findings:
+        marker = colors.status_marker(sev_marker[f.severity])
+        print(f"  {marker} {f.check.ljust(width)}  {f.message}")
+        print(f"        {colors.dim('└')} {f.where}  {colors.dim(f'{f.file}:{f.line}')}")
+    counts: dict = {}
+    for f in findings:
+        counts[f.severity] = counts.get(f.severity, 0) + 1
+    parts = [
+        colors.red(f"{counts.get('high', 0)} high", bold=True),
+        colors.yellow(f"{counts.get('medium', 0)} medium", bold=True),
+        colors.dim(f"{counts.get('low', 0)} low"),
+    ]
+    print("")
+    print(f"  Summary: {' · '.join(parts)}")
+    return 1 if has_high else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="wtf",
@@ -1802,6 +1865,11 @@ def build_parser() -> argparse.ArgumentParser:
     crontab.add_argument("--strict", action="store_true", help="Exit non-zero on warnings too")
     crontab.add_argument("--exit-zero", action="store_true", help="Always exit with code 0")
     crontab.set_defaults(func=cmd_crontab)
+
+    nginx = subparsers.add_parser("nginx", help="Analyze an nginx config for security misconfigurations")
+    nginx.add_argument("path", nargs="?", default=None, help="Path to nginx.conf (default: autodetect /etc/nginx/nginx.conf)")
+    nginx.add_argument("--format", choices=["text", "plain", "json"], default=argparse.SUPPRESS)
+    nginx.set_defaults(func=cmd_nginx)
 
     return parser
 

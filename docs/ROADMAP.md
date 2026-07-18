@@ -36,6 +36,12 @@ is a monitoring stack, not wtftools — see **Out of scope**.
 
 ## Health & prevention — the morning check
 
+- [x] **nginx config security analysis (`wtf nginx`)** — a read-only, stdlib-only
+  linter for nginx configs. Ships its own tolerant parser (includes, quoted
+  regexes, `map`/`geo`, Lua blocks) and eight checks: alias traversal, host
+  spoofing, `valid_referers none`, dropped security headers, multi-line headers,
+  SSRF, HTTP splitting and weak origin regexes. Standalone (`wtf nginx [PATH]`)
+  and as the `nginx-config` audit check.
 - [x] **Stale-library processes (needrestart-style)** — after `apt upgrade
   openssl`, services keep the old libssl mapped in memory. Scans `/proc/*/maps`
   for deleted `.so` mappings. Surfaces in `wtf audit` (`stale-libs` check) with

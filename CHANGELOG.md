@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `wtf nginx [PATH]` — a stdlib-only, read-only linter that analyzes an nginx
+  config for well-known security misconfigurations (no dependencies). Ships its
+  own tolerant nginx config parser (handles includes with globs, quoted regexes,
+  `map`/`geo`, and OpenResty Lua blocks). Checks: `alias-traversal`,
+  `host-spoofing`, `valid-referers`, `add-header-redefinition`,
+  `add-header-multiline`, `ssrf`, `http-splitting`, `origins`. Findings carry a
+  severity (high/medium/low) and an exact `file:line`; text/plain/json output.
+  Also wired into the audit as the `nginx-config` check (fail on any high-severity
+  finding, warn otherwise) with `wtf explain` advice and `<Tab>`-completion.
 - Three new audit checks (also shown by `wtf problems`, each with `wtf explain`
   advice and `<Tab>`-completion):
   - `deleted-files` — reclaimable space held by deleted-but-open files

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from wtftools import config as config_mod
-from wtftools import cron, sysinfo
+from wtftools import cron, nginx_checks, nginx_conf, sysinfo
 
 logger = logging.getLogger(__name__)
 
@@ -623,6 +623,26 @@ def _check_stale_libs() -> CheckResult:
     return CheckResult("stale libraries", "warn", f"{len(procs)} process(es) using deleted libraries — restart them after the upgrade{note}", detail=detail)
 
 
+def _check_nginx_config() -> CheckResult:
+    path = nginx_conf.default_config_path()
+    if path is None:
+        return CheckResult("nginx config", "skip", "no readable nginx.conf found")
+    try:
+        cfg = nginx_conf.parse(path)
+    except (OSError, ValueError) as exc:
+        return CheckResult("nginx config", "skip", f"cannot parse {path}: {type(exc).__name__}")
+    findings = nginx_checks.analyze(cfg)
+    if not findings:
+        return CheckResult("nginx config", "ok", f"no security issues in {path}")
+    counts: Dict[str, int] = {}
+    for f in findings:
+        counts[f.severity] = counts.get(f.severity, 0) + 1
+    summary = ", ".join(f"{counts[s]} {s}" for s in ("high", "medium", "low") if counts.get(s))
+    detail = [f"{f.severity} {f.check} {f.file}:{f.line} — {f.message}" for f in findings[:8]]
+    status = "fail" if counts.get("high") else "warn"
+    return CheckResult("nginx config", status, f"{len(findings)} issue(s): {summary}", detail=detail)
+
+
 CHECK_REGISTRY: Dict[str, CheckFn] = {
     "uptime": _check_uptime,
     "system": _check_system_running,
@@ -665,6 +685,7 @@ CHECK_REGISTRY: Dict[str, CheckFn] = {
     "http-probes": _check_http_probes,
     "tcp-probes": _check_tcp_probes,
     "fail2ban": _check_fail2ban,
+    "nginx-config": _check_nginx_config,
 }
 
 
